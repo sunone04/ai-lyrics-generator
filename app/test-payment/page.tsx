@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
 
-export default function TestPaymentPage() {
+function TestPaymentContent() {
   const searchParams = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -142,5 +142,25 @@ export default function TestPaymentPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function TestPaymentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>加载中...</CardTitle>
+            <CardDescription>正在加载支付页面</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <TestPaymentContent />
+    </Suspense>
   );
 }
