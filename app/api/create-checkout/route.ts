@@ -39,22 +39,6 @@ export async function POST(request: NextRequest) {
       authError = result.error;
     }
 
-    // 方法2: 从Cookie获取（备用方案）
-    if (!user && !authError) {
-      const cookieHeader = request.headers.get('cookie');
-      if (cookieHeader) {
-        // 尝试从cookie中提取Supabase session
-        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-          const [key, value] = cookie.trim().split('=');
-          acc[key] = value;
-          return acc;
-        }, {} as Record<string, string>);
-        
-        // 这里可以添加从cookie中提取token的逻辑
-        console.log('Cookie headers:', cookies);
-      }
-    }
-
     if (authError || !user) {
       console.error('认证失败:', { authError, user: !!user, hasAuthHeader: !!authHeader });
       return NextResponse.json(
@@ -88,9 +72,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // 创建真实的Paddle结账链接
-      // 使用transactions.create方法，这是Paddle SDK的正确API
-      const transaction = await paddle.transactions.create({
+      // 创建 Paddle 交易
+      const transactionData = {
         items: [{
           priceId: priceId,
           quantity: 1
@@ -99,22 +82,39 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           plan_type: planType,
           customer_email: user.email!
-        }
-      });
+        },
+        // 如果有客户ID，可以设置客户
+        ...(profile?.paddle_customer_id && {
+          customerId: profile.paddle_customer_id
+        })
+      };
+
+      console.log('创建交易数据:', transactionData);
+
+      const transaction = await paddle.transactions.create(transactionData);
 
       // 检查交易是否创建成功
       if (!transaction || !transaction.id) {
-        throw new Error('Failed to create transaction');
+        throw new Error('交易创建失败：无有效的交易ID');
       }
 
-      // 构建Paddle结账URL
-      const checkoutUrl = `https://checkout.paddle.com/transaction/${transaction.id}`;
+      // 根据 Paddle 文档，checkout URL 的格式应该是这样的
+      let checkoutUrl: string;
+      
+      // 如果交易对象中直接包含checkout_url，使用它
+      if ('checkoutUrl' in transaction && transaction.checkoutUrl) {
+        checkoutUrl = transaction.checkoutUrl as string;
+      } else {
+        // 否则构建标准的checkout URL
+        checkoutUrl = `https://checkout.paddle.com/transaction/${transaction.id}`;
+      }
 
       console.log('Paddle交易创建成功:', {
         transactionId: transaction.id,
         checkoutUrl: checkoutUrl,
         userId: user.id,
-        planType: planType
+        planType: planType,
+        environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
       });
 
       return NextResponse.json({
@@ -124,7 +124,12 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (paddleError: any) {
-      console.error('Paddle API调用失败:', paddleError);
+      console.error('Paddle API调用失败:', {
+        error: paddleError,
+        message: paddleError.message,
+        stack: paddleError.stack,
+        response: paddleError.response?.data
+      });
       
       // 在开发环境中，如果Paddle API失败，返回测试页面
       if (process.env.NODE_ENV === 'development') {
@@ -134,13 +139,14 @@ export async function POST(request: NextRequest) {
           url: testUrl,
           transactionId: `test_${Date.now()}`,
           message: '开发模式：Paddle API暂时不可用，已创建测试页面',
-          warning: '这是一个测试链接，用于验证流程'
+          warning: '这是一个测试链接，用于验证流程',
+          paddleError: paddleError.message
         });
       } else {
-        // 在生产环境中，返回错误
+        // 在生产环境中，返回更详细的错误信息
         return NextResponse.json({
           error: '支付系统暂时不可用，请稍后重试',
-          details: '无法创建支付链接'
+          details: paddleError.message || '无法创建支付链接'
         }, { status: 500 });
       }
     }
