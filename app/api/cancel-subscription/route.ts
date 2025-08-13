@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Paddle } from '@paddle/paddle-node-sdk';
+import { Paddle, Environment } from '@paddle/paddle-node-sdk';
 
 // 初始化Paddle SDK
-const paddle = new Paddle({
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
-  apiKey: process.env.PADDLE_API_KEY!,
+const paddle = new Paddle(process.env.PADDLE_API_KEY!, {
+  environment: process.env.NODE_ENV === 'production' ? Environment.production : Environment.sandbox,
 });
 
 // 初始化Supabase服务端客户端

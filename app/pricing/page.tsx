@@ -245,7 +245,7 @@ export default function PricingPage() {
                     className="w-full py-4 px-8 rounded-md font-semibold transition-colors text-lg bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-500 ring-offset-2"
                   >
                     订阅年度套餐
-                  </button>
+                  </SubscribeButton>
                 )}
               </div>
             </div>

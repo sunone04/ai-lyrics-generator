@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
 import { LoadingPage } from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
-import { SubscriptionManager } from '@/components/subscription-manager';
+import SubscriptionManager from '@/components/subscription-manager';
 import { 
   UserIcon,
   CreditCardIcon,

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Paddle } from '@paddle/paddle-node-sdk';
+import { Paddle, Environment } from '@paddle/paddle-node-sdk';
 
 // 初始化Paddle SDK
-const paddle = new Paddle({
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
-  apiKey: process.env.PADDLE_API_KEY!,
+const paddle = new Paddle(process.env.PADDLE_API_KEY!, {
+  environment: process.env.NODE_ENV === 'production' ? Environment.production : Environment.sandbox,
 });
 
 // 初始化Supabase服务端客户端
@@ -30,38 +29,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证Webhook签名
-    try {
-      const event = paddle.webhooks.unmarshal(
-        rawBody,
-        signature,
-        process.env.PADDLE_WEBHOOK_SECRET!
-      );
-      
-      console.log('Webhook事件类型:', event.event_type);
-      console.log('Webhook事件数据:', JSON.stringify(event.data, null, 2));
+         // 验证Webhook签名
+     try {
+       const event = await paddle.webhooks.unmarshal(
+         rawBody,
+         signature,
+         process.env.PADDLE_WEBHOOK_SECRET!
+       );
+       
+       console.log('Webhook事件类型:', event.eventType);
+       console.log('Webhook事件数据:', JSON.stringify(event.data, null, 2));
 
-      // 处理不同的事件类型
-      switch (event.event_type) {
-        case 'transaction.completed':
-          await handleTransactionCompleted(event.data);
-          break;
-          
-        case 'subscription.canceled':
-          await handleSubscriptionCanceled(event.data);
-          break;
-          
-        case 'subscription.updated':
-          await handleSubscriptionUpdated(event.data);
-          break;
-          
-        case 'subscription.paused':
-          await handleSubscriptionPaused(event.data);
-          break;
-          
-        default:
-          console.log(`未处理的事件类型: ${event.event_type}`);
-      }
+       // 处理不同的事件类型
+       switch (event.eventType) {
+         case 'transaction.completed':
+           await handleTransactionCompleted(event.data);
+           break;
+           
+         case 'subscription.canceled':
+           await handleSubscriptionCanceled(event.data);
+           break;
+           
+         case 'subscription.updated':
+           await handleSubscriptionUpdated(event.data);
+           break;
+           
+         case 'subscription.paused':
+           await handleSubscriptionPaused(event.data);
+           break;
+           
+         default:
+           console.log(`未处理的事件类型: ${event.eventType}`);
+       }
 
       // 返回成功响应
       return NextResponse.json({ success: true });

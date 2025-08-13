@@ -80,9 +80,14 @@ export function validatePaddleConfig(): boolean {
   ];
   
   for (const field of requiredFields) {
-    const value = field.includes('.') 
-      ? field.split('.').reduce((obj, key) => obj?.[key], PADDLE_CONFIG)
-      : PADDLE_CONFIG[field as keyof typeof PADDLE_CONFIG];
+    let value: any;
+    
+    if (field.includes('.')) {
+      const keys = field.split('.');
+      value = keys.reduce((obj: any, key) => obj?.[key], PADDLE_CONFIG);
+    } else {
+      value = PADDLE_CONFIG[field as keyof typeof PADDLE_CONFIG];
+    }
       
     if (!value || value.includes('your_') || value.includes('placeholder')) {
       console.error(`Paddle配置不完整: ${field} 未设置或使用占位符值`);

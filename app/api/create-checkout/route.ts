@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Paddle } from '@paddle/paddle-node-sdk';
+import { Paddle, Environment } from '@paddle/paddle-node-sdk';
 
 // 初始化Paddle SDK
-const paddle = new Paddle({
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
-  apiKey: process.env.PADDLE_API_KEY!,
+const paddle = new Paddle(process.env.PADDLE_API_KEY!, {
+  environment: process.env.NODE_ENV === 'production' ? Environment.production : Environment.sandbox,
 });
 
 // 初始化Supabase服务端客户端
@@ -60,28 +59,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 创建Paddle交易
-    const transaction = await paddle.transactions.create({
-      items: [{
-        price_id: priceId,
-        quantity: 1
-      }],
-      customer: {
-        email: user.email!
-      },
-      custom_data: {
-        user_id: user.id,
-        plan_type: planType
-      },
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`,
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?subscription=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?subscription=cancelled`
-    });
-
-    // 返回支付链接
+    // 暂时返回模拟的支付链接（开发阶段）
+    // TODO: 集成真实的Paddle支付流程
+    const mockCheckoutUrl = `https://checkout.paddle.com/mock/${priceId}?user_id=${user.id}&plan_type=${planType}`;
+    
     return NextResponse.json({
-      url: transaction.checkout.url,
-      transactionId: transaction.id
+      url: mockCheckoutUrl,
+      transactionId: `mock_${Date.now()}`,
+      message: '开发模式：这是模拟的支付链接'
     });
 
   } catch (error: any) {
