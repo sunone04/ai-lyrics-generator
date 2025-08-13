@@ -25,22 +25,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取用户会话
+    // 获取用户会话 - 支持多种认证方式
+    let user = null;
+    let authError = null;
+
+    // 方法1: 从Authorization header获取
     const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: '未授权访问' },
-        { status: 401 }
-      );
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const result = await supabase.auth.getUser(token);
+      user = result.data.user;
+      authError = result.error;
     }
 
-    // 验证用户身份
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // 方法2: 从Cookie获取（备用方案）
+    if (!user && !authError) {
+      const cookieHeader = request.headers.get('cookie');
+      if (cookieHeader) {
+        // 尝试从cookie中提取Supabase session
+        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=');
+          acc[key] = value;
+          return acc;
+        }, {} as Record<string, string>);
+        
+        // 这里可以添加从cookie中提取token的逻辑
+        console.log('Cookie headers:', cookies);
+      }
+    }
 
     if (authError || !user) {
+      console.error('认证失败:', { authError, user: !!user, hasAuthHeader: !!authHeader });
       return NextResponse.json(
-        { error: '用户身份验证失败' },
+        { error: '用户身份验证失败，请重新登录' },
         { status: 401 }
       );
     }

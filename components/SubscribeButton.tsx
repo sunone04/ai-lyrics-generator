@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { createClient } from '@/lib/supabase';
 
 interface SubscribeButtonProps {
   priceId: string;
@@ -28,10 +29,20 @@ export default function SubscribeButton({
     setIsLoading(true);
     
     try {
+      // 获取当前用户的认证token
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        toast.error('请先登录');
+        return;
+      }
+
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           priceId,
