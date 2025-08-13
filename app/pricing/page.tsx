@@ -5,16 +5,14 @@ import Head from 'next/head';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 import { PRICING } from '@/lib/constants';
-// import { SUBSCRIPTION_LIMITS } from '@/lib/constants'; // Unused
 import { Profile } from '@/lib/types';
 import { CheckIcon } from '@heroicons/react/24/outline';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
-import toast from 'react-hot-toast';
+import SubscribeButton from '@/components/SubscribeButton';
 
 export default function PricingPage() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -40,53 +38,9 @@ export default function PricingPage() {
 
   const handleSubscribe = async (priceId: string, planType: 'monthly' | 'yearly') => {
     if (!user) {
-      // 直接跳转到登录页面，而不是显示toast
+      // 直接跳转到登录页面
       window.location.href = '/auth/signin';
       return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      // 检查用户是否登录
-      if (!user) {
-        throw new Error('Please sign in to subscribe');
-      }
-
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId,
-          planType,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout');
-      }
-
-      // Handle different response types
-      if (data.useClientSide) {
-        // Use client-side Paddle SDK as fallback
-        const { paddleService } = await import('@/lib/paddle-service');
-        await paddleService.openCheckout(data.priceId, {
-          userId: data.userId,
-          planType: data.planType,
-          customerEmail: data.customerEmail
-        });
-      } else {
-        // Redirect to server-created checkout
-        window.location.href = data.checkoutUrl;
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to start checkout');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -173,14 +127,14 @@ export default function PricingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Free Plan */}
-            <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
+            <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200 flex flex-col">
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Free</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-2">$0</div>
                 <p className="text-gray-600">Perfect for trying out</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-4 mb-8 flex-grow">
                 {features.free.map((feature, index) => (
                   <li key={index} className="flex items-start">
                     <CheckIcon className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -189,25 +143,27 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              {user && profile?.status === 'free' ? (
-                <button
-                  disabled
-                  className="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-md font-semibold cursor-not-allowed"
-                >
-                  Current Plan
-                </button>
-              ) : !user ? (
-                <button
-                  onClick={() => window.location.href = '/auth/signin'}
-                  className="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-md font-semibold hover:bg-gray-300 transition-colors cursor-pointer"
-                >
-                  Get Started
-                </button>
-              ) : null}
+              <div className="mt-auto">
+                {user && profile?.status === 'free' ? (
+                  <button
+                    disabled
+                    className="w-full bg-gray-200 text-gray-800 py-4 px-8 rounded-md font-semibold cursor-not-allowed text-lg"
+                  >
+                    Current Plan
+                  </button>
+                ) : !user ? (
+                  <button
+                    onClick={() => window.location.href = '/auth/signin'}
+                    className="w-full bg-gray-200 text-gray-800 py-4 px-8 rounded-md font-semibold hover:bg-gray-300 transition-colors cursor-pointer text-lg"
+                  >
+                    Get Started
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {/* Monthly Plan */}
-            <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200 relative">
+            <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200 relative flex flex-col">
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Monthly</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-2">
@@ -217,7 +173,7 @@ export default function PricingPage() {
                 <p className="text-gray-600">Auto-renews monthly • Cancel anytime</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-4 mb-8 flex-grow">
                 {features.monthly.map((feature, index) => (
                   <li key={index} className="flex items-start">
                     <CheckIcon className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -226,24 +182,28 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              <button
-                onClick={() => handleSubscribe(process.env.NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID!, 'monthly')}
-                disabled={isLoading || profile?.status === 'active'}
-                className={`w-full py-3 px-6 rounded-md font-semibold transition-colors cursor-pointer ${
-                  profile?.status === 'active'
-                    ? 'bg-gray-200 text-gray-800'
-                    : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
-                }`}
-              >
-                {profile?.status === 'active'
-                  ? 'Current Plan' 
-                  : 'Subscribe Monthly'
-                }
-              </button>
+              <div className="mt-auto">
+                {profile?.status === 'active' ? (
+                  <button
+                    disabled
+                    className="w-full bg-gray-200 text-gray-800 py-4 px-8 rounded-md font-semibold cursor-not-allowed text-lg"
+                  >
+                    当前套餐
+                  </button>
+                ) : (
+                  <SubscribeButton
+                    priceId={process.env.NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID!}
+                    planType="monthly"
+                    className="w-full py-4 px-8 rounded-md font-semibold transition-colors text-lg bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    订阅月度套餐
+                  </SubscribeButton>
+                )}
+              </div>
             </div>
 
             {/* Yearly Plan */}
-            <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-blue-500 relative">
+            <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-blue-500 relative flex flex-col">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
                   Best Value
@@ -261,7 +221,7 @@ export default function PricingPage() {
                 </p>
               </div>
 
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-4 mb-8 flex-grow">
                 {features.yearly.map((feature, index) => (
                   <li key={index} className="flex items-start">
                     <CheckIcon className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -270,20 +230,24 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              <button
-                onClick={() => handleSubscribe(process.env.NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID!, 'yearly')}
-                disabled={isLoading || profile?.status === 'active'}
-                className={`w-full py-3 px-6 rounded-md font-semibold transition-colors cursor-pointer ${
-                  profile?.status === 'active'
-                    ? 'bg-gray-200 text-gray-800'
-                    : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 ring-2 ring-blue-500 ring-offset-2'
-                }`}
-              >
-                {profile?.status === 'active'
-                  ? 'Current Plan' 
-                  : 'Subscribe Yearly'
-                }
-              </button>
+              <div className="mt-auto">
+                {profile?.status === 'active' ? (
+                  <button
+                    disabled
+                    className="w-full bg-gray-200 text-gray-800 py-4 px-8 rounded-md font-semibold cursor-not-allowed text-lg"
+                  >
+                    当前套餐
+                  </button>
+                ) : (
+                  <SubscribeButton
+                    priceId={process.env.NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID!}
+                    planType="yearly"
+                    className="w-full py-4 px-8 rounded-md font-semibold transition-colors text-lg bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-500 ring-offset-2"
+                  >
+                    订阅年度套餐
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

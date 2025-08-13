@@ -1,75 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
-import { paddleAPI } from '@/lib/paddle-api';
+import { createClient } from '@supabase/supabase-js';
+import { Paddle } from '@paddle/paddle-node-sdk';
+
+// 初始化Paddle SDK
+const paddle = new Paddle({
+  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+  apiKey: process.env.PADDLE_API_KEY!,
+});
+
+// 初始化Supabase服务端客户端
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
-  // Hoist primitives so they are visible in catch for fallback response
-  let userId: string | null = null
-  let customerEmail: string | null = null
-  let priceId: string | undefined
-  let planType: string | undefined
-
   try {
-    // 验证用户认证
-    const { user: authedUser } = await requireAuth();
-    userId = authedUser.id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    customerEmail = (authedUser as any).email ?? null
+    // 获取请求体
+    const { priceId, planType } = await request.json();
 
-    const body = await request.json();
-    priceId = body.priceId
-    planType = body.planType
-
-    if (!priceId || !planType) {
+    if (!priceId) {
       return NextResponse.json(
-        { error: 'Missing required parameters' },
+        { error: '缺少价格ID' },
         { status: 400 }
       );
     }
 
-    // Create Paddle checkout using official API
-    const checkoutData = await paddleAPI.createCheckout(
-      [
-        {
-          price_id: priceId,
-          quantity: 1
-        }
-      ],
-      {
-        userId: userId!,
-        planType: planType,
-        customerEmail: customerEmail,
-        successUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?subscription=success`,
-        cancelUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?subscription=cancelled`
-      }
-    );
+    // 获取用户会话
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: '未授权访问' },
+        { status: 401 }
+      );
+    }
 
-    return NextResponse.json({
-      success: true,
-      checkoutUrl: checkoutData.data.url,
-      checkoutId: checkoutData.data.id,
-      subscription_type: 'recurring',
-      plan_type: planType
+    // 验证用户身份
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: '用户身份验证失败' },
+        { status: 401 }
+      );
+    }
+
+    // 检查用户是否已有活跃订阅
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('status, paddle_customer_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.status === 'active') {
+      return NextResponse.json(
+        { error: '您已有活跃订阅' },
+        { status: 400 }
+      );
+    }
+
+    // 创建Paddle交易
+    const transaction = await paddle.transactions.create({
+      items: [{
+        price_id: priceId,
+        quantity: 1
+      }],
+      customer: {
+        email: user.email!
+      },
+      custom_data: {
+        user_id: user.id,
+        plan_type: planType
+      },
+      return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?subscription=success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/pricing?subscription=cancelled`
     });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // 返回支付链接
+    return NextResponse.json({
+      url: transaction.checkout.url,
+      transactionId: transaction.id
+    });
+
   } catch (error: any) {
-    console.error('Checkout creation error:', error);
-    
-    // Fallback to client-side checkout if API fails
-    if (error?.message?.includes('Paddle API error')) {
-      return NextResponse.json({
-        success: true,
-        useClientSide: true,
-        priceId,
-        planType,
-        customerEmail,
-        userId
-      });
-    }
+    console.error('创建支付链接失败:', error);
     
     return NextResponse.json(
-      { error: (error && error.message) ? error.message : 'Failed to create checkout' },
+      { error: '创建支付链接失败，请稍后重试' },
       { status: 500 }
     );
   }

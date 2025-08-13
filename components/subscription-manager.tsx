@@ -1,251 +1,289 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase';
+import { Profile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { Loader2, CreditCard, Calendar, AlertTriangle } from 'lucide-react';
+import { Loader2, Crown, Calendar, CreditCard, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-interface SubscriptionData {
-  hasSubscription: boolean;
-  subscription?: {
-    id: string;
-    status: string;
-    currentPeriodEnd: string;
-    nextBillingDate: string;
-    cancelAtPeriodEnd: boolean;
-    priceId: string;
-    amount: string;
-    currency: string;
-    interval: string;
-  };
-  message?: string;
-}
-
-export function SubscriptionManager() {
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+export default function SubscriptionManager() {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   useEffect(() => {
-    fetchSubscription();
+    fetchProfile();
   }, []);
 
-  const fetchSubscription = async () => {
+  const fetchProfile = async () => {
     try {
-      const response = await fetch('/api/subscription/manage');
-      const data = await response.json();
-      setSubscription(data);
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data.profile);
+      }
     } catch (error) {
-      console.error('Error fetching subscription:', error);
-      toast.error('Failed to load subscription details');
+      console.error('获取用户资料失败:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubscriptionAction = async (action: string) => {
-    if (!subscription?.subscription?.id) return;
+  const handleCancelSubscription = async () => {
+    if (!profile?.paddle_customer_id) {
+      toast.error('无法找到订阅信息');
+      return;
+    }
 
-    setActionLoading(action);
+    setIsCanceling(true);
+    
     try {
-      const response = await fetch('/api/subscription/manage', {
+      const response = await fetch('/api/cancel-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action,
-          subscriptionId: subscription.subscription.id,
+          customerId: profile.paddle_customer_id,
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${action} subscription`);
+      if (response.ok) {
+        toast.success('订阅已取消，您将在当前计费周期结束后失去访问权限');
+        // 刷新用户资料
+        await fetchProfile();
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || '取消订阅失败');
       }
-
-      toast.success(data.message);
-      await fetchSubscription(); // Refresh subscription data
     } catch (error: any) {
-      toast.error(error.message || `Failed to ${action} subscription`);
+      toast.error(error.message || '取消订阅失败，请稍后重试');
     } finally {
-      setActionLoading(null);
+      setIsCanceling(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const formatAmount = (amount: string, currency: string) => {
-    const numAmount = parseInt(amount) / 100; // Paddle amounts are in cents
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(numAmount);
-  };
-
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { label: 'Active', variant: 'default' as const },
-      past_due: { label: 'Past Due', variant: 'destructive' as const },
-      canceled: { label: 'Canceled', variant: 'secondary' as const },
-      paused: { label: 'Paused', variant: 'secondary' as const },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || 
-                   { label: status, variant: 'secondary' as const };
-
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800">活跃</Badge>;
+      case 'canceled':
+        return <Badge className="bg-red-100 text-red-800">已取消</Badge>;
+      case 'past_due':
+        return <Badge className="bg-yellow-100 text-yellow-800">逾期</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800">免费</Badge>;
+    }
   };
 
-  if (loading) {
+  const getPlanName = (priceId?: string) => {
+    if (!priceId) return '免费套餐';
+    
+    if (priceId === process.env.NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID) {
+      return '月度套餐';
+    } else if (priceId === process.env.NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID) {
+      return '年度套餐';
+    }
+    
+    return '高级套餐';
+  };
+
+  if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="ml-2">Loading subscription details...</span>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
     );
   }
 
-  if (!subscription?.hasSubscription) {
+  if (!profile) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Subscription
-          </CardTitle>
-          <CardDescription>
-            You don&apos;t have an active subscription
-          </CardDescription>
+          <CardTitle>订阅状态</CardTitle>
+          <CardDescription>无法加载订阅信息</CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            {subscription?.message || 'No subscription found'}
-          </p>
-          <Button asChild>
-            <a href="/pricing">View Plans</a>
-          </Button>
-        </CardContent>
       </Card>
     );
   }
 
-  const sub = subscription.subscription!;
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
-          Subscription Management
-        </CardTitle>
-        <CardDescription>
-          Manage your subscription and billing
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Subscription Status */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-medium">Status</h3>
-            <p className="text-sm text-muted-foreground">Current subscription status</p>
+    <div className="space-y-6">
+      {/* 当前订阅状态 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Crown className="h-5 w-5 text-yellow-500" />
+            当前订阅
+          </CardTitle>
+          <CardDescription>
+            您的AI歌词生成器订阅状态和详细信息
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">套餐类型</span>
+            <span className="font-semibold">{getPlanName(profile.active_price_id)}</span>
           </div>
-          {getStatusBadge(sub.status)}
-        </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">订阅状态</span>
+            {getStatusBadge(profile.status)}
+          </div>
 
-        {/* Billing Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h3 className="font-medium flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Billing Cycle
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {formatAmount(sub.amount, sub.currency)} per {sub.interval}
-            </p>
-          </div>
-          <div>
-            <h3 className="font-medium">Next Billing Date</h3>
-            <p className="text-sm text-muted-foreground">
-              {formatDate(sub.nextBillingDate)}
-            </p>
-          </div>
-        </div>
-
-        {/* Cancellation Warning */}
-        {sub.cancelAtPeriodEnd && (
-          <div className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-yellow-800">Subscription Ending</h4>
-              <p className="text-sm text-yellow-700">
-                Your subscription will end on {formatDate(sub.currentPeriodEnd)}. 
-                You&apos;ll lose access to premium features after this date.
-              </p>
+          {profile.paddle_customer_id && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-600">客户ID</span>
+              <span className="font-mono text-sm text-gray-500">
+                {profile.paddle_customer_id.slice(0, 8)}...
+              </span>
             </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">最后更新</span>
+            <span className="text-sm text-gray-500">
+              {new Date(profile.updated_at).toLocaleDateString('zh-CN')}
+            </span>
           </div>
-        )}
+        </CardContent>
+      </Card>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3 pt-4 border-t">
-          {sub.status === 'active' && !sub.cancelAtPeriodEnd && (
-            <Button
-              variant="outline"
-              onClick={() => handleSubscriptionAction('cancel')}
-              disabled={actionLoading === 'cancel'}
-            >
-              {actionLoading === 'cancel' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Cancel Subscription
-            </Button>
-          )}
+      {/* 使用统计 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-500" />
+            今日使用统计
+          </CardTitle>
+          <CardDescription>
+            您今天的使用情况
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">歌词生成次数</span>
+            <span className="font-semibold">
+              {profile.generation_count} / {profile.status === 'active' ? '30' : '1'}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">AI重写次数</span>
+            <span className="font-semibold">
+              {profile.rewrite_count} / {profile.status === 'active' ? '30' : '0'}
+            </span>
+          </div>
 
-          {sub.status === 'active' && (
-            <Button
-              variant="outline"
-              onClick={() => handleSubscriptionAction('pause')}
-              disabled={actionLoading === 'pause'}
-            >
-              {actionLoading === 'pause' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Pause Subscription
-            </Button>
-          )}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">重置日期</span>
+            <span className="text-sm text-gray-500">
+              {new Date(profile.usage_last_reset).toLocaleDateString('zh-CN')}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
-          {sub.status === 'paused' && (
-            <Button
-              onClick={() => handleSubscriptionAction('resume')}
-              disabled={actionLoading === 'resume'}
-            >
-              {actionLoading === 'resume' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Resume Subscription
-            </Button>
-          )}
+      {/* 订阅管理操作 */}
+      {profile.status === 'active' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-red-500" />
+              订阅管理
+            </CardTitle>
+            <CardDescription>
+              管理您的订阅设置
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium">取消订阅</p>
+                  <p>取消后，您将在当前计费周期结束后失去对高级功能的访问权限。</p>
+                </div>
+              </div>
+              
+              <Button
+                onClick={handleCancelSubscription}
+                disabled={isCanceling}
+                variant="outline"
+                className="w-full border-red-200 text-red-700 hover:bg-red-50"
+              >
+                {isCanceling ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    处理中...
+                  </>
+                ) : (
+                  '取消订阅'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {sub.cancelAtPeriodEnd && (
-            <Button
-              onClick={() => handleSubscriptionAction('resume')}
-              disabled={actionLoading === 'resume'}
-            >
-              {actionLoading === 'resume' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Reactivate Subscription
-            </Button>
-          )}
-
-          <Button variant="outline" asChild>
-            <a href="/pricing">Change Plan</a>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {/* 升级提示 */}
+      {profile.status === 'free' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-500" />
+              升级到高级套餐
+            </CardTitle>
+            <CardDescription>
+              解锁更多功能和更高的使用限制
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                    <span>每日1次生成</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                    <span>无AI重写功能</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                    <span>最多3个收藏</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>每日30次生成</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>每日30次AI重写</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>最多100个收藏</span>
+                  </div>
+                </div>
+              </div>
+              
+              <Button
+                onClick={() => window.location.href = '/pricing'}
+                className="w-full"
+              >
+                查看套餐详情
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
