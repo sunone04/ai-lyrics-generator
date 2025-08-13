@@ -98,29 +98,17 @@ export async function POST(request: NextRequest) {
         throw new Error('交易创建失败：无有效的交易ID');
       }
 
-      // 根据 Paddle 文档，checkout URL 的格式应该是这样的
-      let checkoutUrl: string;
-      
-      // 如果交易对象中直接包含checkout_url，使用它
-      if ('checkoutUrl' in transaction && transaction.checkoutUrl) {
-        checkoutUrl = transaction.checkoutUrl as string;
-      } else {
-        // 否则构建标准的checkout URL
-        checkoutUrl = `https://checkout.paddle.com/transaction/${transaction.id}`;
-      }
-
       console.log('Paddle交易创建成功:', {
         transactionId: transaction.id,
-        checkoutUrl: checkoutUrl,
         userId: user.id,
         planType: planType,
         environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
       });
 
+      // 返回交易ID，客户端将使用Paddle.Checkout.open()打开结账页面
       return NextResponse.json({
-        url: checkoutUrl,
         transactionId: transaction.id,
-        message: '支付链接已创建'
+        message: '交易创建成功，正在打开支付页面...'
       });
 
     } catch (paddleError: any) {
@@ -140,7 +128,8 @@ export async function POST(request: NextRequest) {
           transactionId: `test_${Date.now()}`,
           message: '开发模式：Paddle API暂时不可用，已创建测试页面',
           warning: '这是一个测试链接，用于验证流程',
-          paddleError: paddleError.message
+          paddleError: paddleError.message,
+          isTestMode: true
         });
       } else {
         // 在生产环境中，返回更详细的错误信息

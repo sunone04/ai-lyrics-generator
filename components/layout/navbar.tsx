@@ -234,6 +234,12 @@ export default function Navbar() {
                   >
                     Account
                   </Link>
+                  <Link
+                    href="/paddle-setup"
+                    className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                  >
+                    Paddle Setup
+                  </Link>
                 </div>
               ) : (
                 <button
@@ -305,6 +311,13 @@ export default function Navbar() {
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Account
+                  </Link>
+                  <Link
+                    href="/paddle-setup"
+                    className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Paddle Setup
                   </Link>
                 </>
               ) : (

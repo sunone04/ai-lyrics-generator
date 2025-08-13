@@ -103,3 +103,17 @@ export interface SEOData {
   canonical?: string;
   ogImage?: string;
 }
+
+// Paddle.js 全局类型声明
+declare global {
+  interface Window {
+    Paddle: {
+      Setup: (config: { token: string }) => void;
+      Checkout: {
+        open: (options: { transactionId: string }) => void;
+      };
+    };
+  }
+}
+
+export {};

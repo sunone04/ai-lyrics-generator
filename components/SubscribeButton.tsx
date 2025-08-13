@@ -56,11 +56,31 @@ export default function SubscribeButton({
         throw new Error(data.error || '创建订单失败，请稍后重试');
       }
 
-      // 重定向到Paddle结账页面
-      if (data.url) {
-        window.location.href = data.url;
+      // 处理响应数据
+      if (data.transactionId) {
+        // 如果是开发模式的测试页面，直接跳转
+        if (data.isTestMode && data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        
+        // 检查Paddle.js是否已加载
+        if (typeof window !== 'undefined' && window.Paddle) {
+          try {
+            // 打开Paddle结账页面
+            window.Paddle.Checkout.open({
+              transactionId: data.transactionId
+            });
+          } catch (paddleError: any) {
+            console.error('Paddle结账页面打开失败:', paddleError);
+            toast.error('支付页面打开失败，请稍后重试');
+          }
+        } else {
+          // 如果Paddle.js未加载，显示错误
+          toast.error('支付系统未正确加载，请刷新页面重试');
+        }
       } else {
-        throw new Error('未收到支付链接');
+        throw new Error('未收到交易ID');
       }
     } catch (error: any) {
       toast.error(error.message || '创建订单失败，请稍后重试');
