@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
 import { aiService } from '@/lib/ai-service';
+import { securityService } from '@/lib/security-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,8 +39,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 防白嫖检查
+    const clientIp = request.headers.get('x-forwarded-for') || 
+                    request.headers.get('x-real-ip') || 
+                    'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+    const browserFingerprint = securityService.generateBrowserFingerprint(userAgent);
+    
+    const securityCheck = await securityService.performSecurityCheck({
+      ipAddress: clientIp,
+      userAgent,
+      browserFingerprint,
+      userId: user.id,
+      actionType: 'rewrite'
+    });
+
+    if (securityCheck.isAnomaly) {
+      await securityService.logSecurityEvent({
+        ipAddress: clientIp,
+        userAgent,
+        browserFingerprint,
+        userId: user.id,
+        actionType: 'rewrite'
+      }, false);
+      
+      return NextResponse.json(
+        { 
+          error: 'Suspicious activity detected',
+          message: 'Your request has been flagged for suspicious activity. Please try again later or contact support if this persists.',
+          reason: securityCheck.reason
+        },
+        { status: 429 }
+      );
+    }
+
     // Check rewrite limits (similar to generation limits)
-    const dailyLimit = profile.status === 'free' ? 3 : 25;
+    const dailyLimit = profile.status === 'free' ? 1 : 30;
     if (profile.rewrite_count >= dailyLimit) {
       return NextResponse.json(
         { 
@@ -48,7 +83,7 @@ export async function POST(request: NextRequest) {
           action: 'upgrade',
           userStatus: profile.status,
           upgradeMessage: profile.status === 'free' 
-            ? 'Upgrade to Premium to get 25 rewrites per day!'
+            ? 'Upgrade to Premium to get 30 lyrics optimizations per day!'
             : 'Your premium subscription may have expired.'
         },
         { status: 429 }
@@ -68,6 +103,15 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .update({ rewrite_count: profile.rewrite_count + 1 })
       .eq('id', user.id);
+
+    // 记录成功的操作
+    await securityService.logSecurityEvent({
+      ipAddress: clientIp,
+      userAgent,
+      browserFingerprint,
+      userId: user.id,
+      actionType: 'rewrite'
+    }, true);
 
     return NextResponse.json({
       rewrittenPortion,

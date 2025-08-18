@@ -31,7 +31,7 @@ export default function PrivacyPage() {
                 <li>Account information (email address, password)</li>
                 <li>Generated lyrics and associated parameters</li>
                 <li>Usage data and preferences</li>
-                <li>Payment information (processed securely by Paddle)</li>
+                <li>Payment information (processed securely by our payment provider)</li>
               </ul>
             </section>
 

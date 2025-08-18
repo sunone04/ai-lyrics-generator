@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
 import { LoadingPage } from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
-import SubscriptionManager from '@/components/subscription-manager';
+
 import { 
   UserIcon,
   CreditCardIcon,
@@ -189,25 +189,6 @@ export default function AccountPage() {
                       </div>
                     </div>
                     
-                    {profile.active_price_id && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Price ID
-                        </label>
-                        <div className="text-gray-900 text-sm">
-                          {profile.active_price_id}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Customer ID
-                      </label>
-                      <div className="text-gray-900 text-sm">
-                        {profile.paddle_customer_id || 'Not available'}
-                      </div>
-                    </div>
                   </>
                 ) : (
                   <div>
@@ -217,15 +198,7 @@ export default function AccountPage() {
                   </div>
                 )}
                 
-                <div className="pt-4">
-                  <Link
-                    href="/pricing"
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    <CreditCardIcon className="h-4 w-4 mr-2" />
-                    {profile.status === 'active' ? 'Manage Subscription' : 'Upgrade Plan'}
-                  </Link>
-                </div>
+
               </div>
             </div>
 
@@ -251,7 +224,7 @@ export default function AccountPage() {
                     AI Rewrites Used
                   </label>
                   <div className="text-gray-900">
-                    {profile.rewrite_count || 0} / {profile.status === 'active' ? '30' : '3'} per day
+                    {profile.rewrite_count || 0} / {profile.status === 'active' ? '30' : '1'} per day
                   </div>
                 </div>
               </div>
@@ -285,10 +258,7 @@ export default function AccountPage() {
             </div>
           </div>
 
-          {/* Subscription Management */}
-          <div className="mt-8">
-            <SubscriptionManager />
-          </div>
+
 
           {/* Quick Actions */}
           <div className="mt-8 bg-white shadow rounded-lg p-6">

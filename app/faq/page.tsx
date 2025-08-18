@@ -41,7 +41,7 @@ const faqData: FAQItem[] = [
   {
     category: 'Subscription',
     question: 'What\'s the difference between free and premium plans?',
-    answer: 'Free users get 1 generation per day with our basic AI model and can favorite up to 3 lyrics. Premium subscribers get 25 generations and 25 AI rewrites daily, access to our pro AI model, editing tools, commercial usage rights, and can favorite up to 100 lyrics.'
+    answer: 'Free users get 1 generation per day with our basic AI model and can favorite up to 3 lyrics. Premium subscribers get 30 generations and 30 lyrics optimizations daily, access to our pro AI model, editing tools, commercial usage rights, and can favorite up to 100 lyrics.'
   },
   {
     category: 'Subscription',
@@ -199,12 +199,7 @@ export default function FAQPage() {
               >
                 Contact Support
               </a>
-              <a
-                href="/pricing"
-                className="bg-white text-blue-600 px-6 py-3 rounded-md hover:bg-gray-50 transition-colors font-medium border border-blue-600"
-              >
-                View Pricing
-              </a>
+
             </div>
           </div>
         </div>

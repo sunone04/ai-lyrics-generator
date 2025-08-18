@@ -79,12 +79,7 @@ export default function Home() {
                 Generate AI Lyrics Now
                 <ArrowRightIcon className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link
-                href="/pricing"
-                className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transition-all duration-300 min-w-[200px]"
-              >
-                View Pricing Plans
-              </Link>
+
             </div>
 
             {/* Trust Indicators */}
@@ -372,12 +367,7 @@ export default function Home() {
               Start Creating Now
               <ArrowRightIcon className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link
-              href="/pricing"
-              className="border-2 border-gray-400 text-gray-700 px-10 py-4 rounded-full text-lg font-semibold hover:bg-gray-100 backdrop-blur-md transition-all duration-300"
-            >
-              View Pricing Plans
-            </Link>
+
           </div>
 
           {/* Share Section */}

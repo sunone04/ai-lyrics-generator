@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { aiService } from '@/lib/ai-service';
 import { userService } from '@/lib/user-service';
+import { securityService } from '@/lib/security-service';
 import { LyricsGenerationParams } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -67,6 +68,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 防白嫖检查
+    const clientIp = request.headers.get('x-forwarded-for') || 
+                    request.headers.get('x-real-ip') || 
+                    'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+    const browserFingerprint = securityService.generateBrowserFingerprint(userAgent);
+    
+    const securityCheck = await securityService.performSecurityCheck({
+      ipAddress: clientIp,
+      userAgent,
+      browserFingerprint,
+      userId: user.id,
+      actionType: 'generate'
+    });
+
+    if (securityCheck.isAnomaly) {
+      await securityService.logSecurityEvent({
+        ipAddress: clientIp,
+        userAgent,
+        browserFingerprint,
+        userId: user.id,
+        actionType: 'generate'
+      }, false);
+      
+      return NextResponse.json(
+        { 
+          error: 'Suspicious activity detected',
+          message: 'Your request has been flagged for suspicious activity. Please try again later or contact support if this persists.',
+          reason: securityCheck.reason
+        },
+        { status: 429 }
+      );
+    }
+
     // Check usage limits
     const { canUse, remaining } = await userService.checkUsageLimit(user.id, 'generation');
     
@@ -125,6 +160,15 @@ export async function POST(request: NextRequest) {
 
     // Update usage count
     await userService.updateUsageCount(user.id, 'generation');
+
+    // 记录成功的操作
+    await securityService.logSecurityEvent({
+      ipAddress: clientIp,
+      userAgent,
+      browserFingerprint,
+      userId: user.id,
+      actionType: 'generate'
+    }, true);
 
     // Get updated remaining count
     const { remaining: newRemaining } = await userService.checkUsageLimit(user.id, 'generation');

@@ -186,43 +186,18 @@ export class UserService {
    */
   async updateSubscriptionStatus(
     userId: string, 
-    status: 'free' | 'active' | 'canceled' | 'past_due',
-    paddleCustomerId?: string,
-    activePriceId?: string
+    status: 'free' | 'active' | 'canceled' | 'past_due'
   ): Promise<void> {
     const supabase = await createServerClient();
     
-    const updateData: any = { status };
-    if (paddleCustomerId) updateData.paddle_customer_id = paddleCustomerId;
-    if (activePriceId) updateData.active_price_id = activePriceId;
-    
     const { error } = await supabase
       .from('profiles')
-      .update(updateData)
+      .update({ status })
       .eq('id', userId);
     
     if (error) {
       throw new Error(`Failed to update subscription status: ${error.message}`);
     }
-  }
-  
-  /**
-   * 通过Paddle客户ID查找用户
-   */
-  async getUserByPaddleCustomerId(paddleCustomerId: string): Promise<Profile | null> {
-    const supabase = await createServerClient();
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('paddle_customer_id', paddleCustomerId)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') {
-      throw new Error(`Failed to find user by Paddle customer ID: ${error.message}`);
-    }
-    
-    return data;
   }
   
   /**

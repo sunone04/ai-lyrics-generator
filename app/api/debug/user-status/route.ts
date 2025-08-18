@@ -27,8 +27,6 @@ export async function GET(_request: NextRequest) {
         profile: {
           id: profile.id,
           status: profile.status,
-          paddle_customer_id: profile.paddle_customer_id,
-          active_price_id: profile.active_price_id,
           generation_count: profile.generation_count,
           rewrite_count: profile.rewrite_count,
           usage_last_reset: profile.usage_last_reset,

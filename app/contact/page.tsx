@@ -120,12 +120,7 @@ export default function ContactPage() {
                   >
                     → Comprehensive FAQ
                   </a>
-                  <a
-                    href="/pricing"
-                    className="block text-blue-600 hover:text-blue-500 transition-colors"
-                  >
-                    → Pricing & Features
-                  </a>
+
                   <a
                     href="/terms"
                     className="block text-blue-600 hover:text-blue-500 transition-colors"

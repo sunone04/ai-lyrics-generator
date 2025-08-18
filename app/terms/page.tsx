@@ -60,7 +60,7 @@ export default function TermsPage() {
               </p>
               <ul className="list-disc pl-6 text-gray-700 space-y-2">
                 <li>Free accounts: 1 generation per day, up to 3 favorites</li>
-                <li>Premium accounts: 25 generations and 25 rewrites per day, up to 100 favorites</li>
+                <li>Premium accounts: 30 generations and 30 lyrics optimizations per day, up to 100 favorites</li>
                 <li>You may not use automated systems to access the service</li>
                 <li>You may not attempt to reverse engineer or copy our AI models</li>
                 <li>You may not use the service for illegal or harmful purposes</li>
@@ -87,7 +87,7 @@ export default function TermsPage() {
                 billing period.
               </p>
               <ul className="list-disc pl-6 text-gray-700 space-y-2">
-                <li>All payments are processed securely through Paddle</li>
+                <li>All payments are processed securely through our payment provider</li>
                 <li>Refunds are available within 30 days of initial subscription</li>
                 <li>We reserve the right to change pricing with 30 days notice</li>
                 <li>Failed payments may result in service suspension</li>

@@ -117,7 +117,7 @@ export default function EditPage() {
 
     if (!profile || profile.status !== 'active') {
       toast.error('This feature requires a premium subscription');
-      router.push('/pricing');
+              router.push('/auth/signin');
       return;
     }
 
@@ -455,7 +455,7 @@ export default function EditPage() {
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500">Daily rewrite limit:</span>
-                    <span className="font-medium text-gray-700">{profile?.rewrite_count || 0}/25</span>
+                    <span className="font-medium text-gray-700">{profile?.rewrite_count || 0}/30</span>
                   </div>
                   
                   {!selectedText && (
@@ -490,7 +490,7 @@ export default function EditPage() {
                     → View your lyrics history
                   </button>
                   <button
-                    onClick={() => router.push('/pricing')}
+                    onClick={() => router.push('/auth/signin')}
                     className="w-full text-left text-blue-600 hover:text-blue-700 transition-colors"
                   >
                     → Upgrade subscription

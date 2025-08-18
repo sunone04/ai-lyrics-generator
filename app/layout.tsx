@@ -126,20 +126,7 @@ export default function RootLayout({
           </>
         ) : null}
         
-        {/* Paddle.js 脚本 - 用于支付结账 */}
-        <Script 
-          src="https://cdn.paddle.com/paddle/v2/paddle.js" 
-          strategy="afterInteractive"
-        />
-        <Script id="paddle-setup" strategy="afterInteractive">
-          {`
-            if (typeof window !== 'undefined' && window.Paddle && '${process.env.NEXT_PUBLIC_PADDLE_CLIENT_ID}') {
-              window.Paddle.Setup({
-                token: '${process.env.NEXT_PUBLIC_PADDLE_CLIENT_ID}'
-              });
-            }
-          `}
-        </Script>
+
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}

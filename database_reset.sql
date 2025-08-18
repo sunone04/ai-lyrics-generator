@@ -1,150 +1,46 @@
-# AI歌词生成器 - 完整数据库设计
+-- AI歌词生成器 - 数据库重置脚本
+-- 执行顺序：先删除所有对象，然后重新创建
 
-## 设计原则
+-- 1. 删除所有视图
+DROP VIEW IF EXISTS user_usage_stats CASCADE;
+DROP VIEW IF EXISTS blog_stats CASCADE;
+DROP VIEW IF EXISTS api_usage_stats CASCADE;
 
-- **用户数据分离**：严格遵循 Supabase 的标准模式，将用户的认证信息保留在 `auth.users` 表中，而将应用的公共用户信息存储在 `public.profiles` 表中。
-- **性能与并发**：通过创建聚合表来跟踪用量，而不是为每次生成都插入一条新记录。
-- **关系完整性**：使用外键约束来确保数据的一致性和完整性。
-- **安全性**：实现防白嫖机制，包括IP记录和浏览器指纹。
-- **扩展性**：支持分页、搜索、统计等高级功能。
+-- 2. 删除所有触发器
+DROP TRIGGER IF EXISTS update_favorite_count_trigger ON generations;
+DROP TRIGGER IF EXISTS update_posts_updated_at ON posts;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
-## 数据库表结构
+-- 3. 删除所有函数
+DROP FUNCTION IF EXISTS update_favorite_count() CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS cleanup_old_generations() CASCADE;
+DROP FUNCTION IF EXISTS cleanup_expired_sessions() CASCADE;
+DROP FUNCTION IF EXISTS cleanup_old_api_logs() CASCADE;
+DROP FUNCTION IF EXISTS check_user_usage_limit(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS check_favorite_limit(UUID) CASCADE;
+DROP FUNCTION IF EXISTS increment_usage_count(UUID, TEXT) CASCADE;
 
-### **表: `profiles`**
+-- 4. 删除所有表（按依赖关系顺序）
+DROP TABLE IF EXISTS api_usage_logs CASCADE;
+DROP TABLE IF EXISTS user_sessions CASCADE;
+DROP TABLE IF EXISTS generations CASCADE;
+DROP TABLE IF EXISTS posts CASCADE;
+DROP TABLE IF EXISTS categories CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
 
-- **用途**: 存储与 `auth.users` 关联的用户特定信息，主要用于管理订阅状态和API使用配额。
-- **列定义**:
-| 列名 | 数据类型 | 描述与约束 |
-| :--- | :--- | :--- |
-| `id` | `UUID` | **主键 (Primary Key)**。与 `auth.users.id` 形成一对一关联。 |
-| `email` | `VARCHAR(255)` | 用户邮箱地址。从 `auth.users.email` 同步。 |
-| `updated_at` | `TIMESTAMPTZ` | 记录最后更新时间。 |
-| `paddle_customer_id`| `TEXT` | 存储来自 Paddle 支付系统的客户ID。`UNIQUE` 约束。 |
-| `status` | `subscription_status` | 用户的订阅状态。枚举类型，值为 `'free'`, `'active'`, `'canceled'`, `'past_due'`。默认为 `'free'`。 |
-| `active_price_id` | `TEXT` | 如果用户是付费会员，则存储其订阅的 Paddle 价格ID。 |
-| `generation_count` | `INT` | 用户当天已使用的歌词**生成**次数。默认为 `0`。 |
-| `rewrite_count` | `INT` | 用户当天已使用的**AI辅助重写**次数。默认为 `0`。 |
-| `usage_last_reset`| `DATE` | 上次重置 `generation_count` 和 `rewrite_count` 的日期。默认为当天。 |
-| `favorite_count` | `INT` | 用户当前收藏的歌词数量。默认为 `0`。 |
-| `is_admin` | `BOOLEAN` | 是否为管理员。默认为 `FALSE`。 |
-| `last_login_ip` | `INET` | 用户最后登录的IP地址。 |
-| `last_login_at` | `TIMESTAMPTZ` | 用户最后登录时间。 |
-| `browser_fingerprint` | `TEXT` | 浏览器指纹，用于防白嫖。 |
+-- 5. 删除所有枚举类型
+DROP TYPE IF EXISTS generation_type CASCADE;
+DROP TYPE IF EXISTS post_status CASCADE;
+DROP TYPE IF EXISTS subscription_status CASCADE;
 
-### **表: `generations`**
-
-- **用途**: 记录用户的每一次歌词生成历史，包括所有输入参数和最终输出。
-- **列定义**:
-| 列名 | 数据类型 | 描述与约束 |
-| :--- | :--- | :--- |
-| `id` | `BIGINT` | **主键 (Primary Key)**。自增ID。 |
-| `user_id` | `UUID` | **外键 (Foreign Key)**，关联到 `public.profiles.id`。 |
-| `created_at` | `TIMESTAMPTZ` | 记录的创建时间。默认为 `NOW()`。 |
-| `language` | `TEXT` | 输入参数：语言。 |
-| `music_style` | `TEXT` | 输入参数：音乐风格。 |
-| `music_theme` | `TEXT` | 输入参数：音乐主题。 |
-| `length_option` | `TEXT` | 输入参数：长度。 |
-| `lyric_style` | `TEXT` | 输入参数：歌词风格。 |
-| `intent_or_request`| `TEXT` | 输入参数：创作意图/其他要求。 |
-| `artist_style` | `TEXT` | 输入参数：参考歌手风格。 |
-| `emotion_intensity`| `SMALLINT`| 输入参数：情感强度 (例如 1-100)。 |
-| `rhyme_requirement`| `TEXT` | 输入参数：韵脚要求。 |
-| `song_structure`| `TEXT` | 输入参数：歌曲结构 (e.g., "Verse-Chorus")。 |
-| `paragraph_length`| `TEXT` | 输入参数：段落长度描述。 |
-| `sentence_preference`| `TEXT` | 输入参数：句式偏好。 |
-| `bpm` | `SMALLINT`| 输入参数：BPM。 |
-| `generated_lyrics`| `TEXT` | AI生成的完整歌词文本。`NOT NULL`。 |
-| `model_used` | `TEXT` | 记录使用的模型（例如 "basic" 或 "pro"）。`NOT NULL`。 |
-| `is_favorited` | `BOOLEAN`| 用户是否收藏了此条记录。默认为 `FALSE`。 |
-| `generation_type` | `generation_type` | 生成类型：'full'（完整生成）或 'partial'（部分优化）。默认为 'full'。 |
-| `parent_generation_id` | `BIGINT` | 如果是部分优化，关联到原始生成记录。外键关联到 `generations.id`。 |
-| `optimization_request` | `TEXT` | 如果是部分优化，记录用户的优化要求。 |
-
-### **表: `categories`**
-
-- **用途**: 存储博客文章的分类。
-- **列定义**:
-| 列名 | 数据类型 | 描述与约束 |
-| :--- | :--- | :--- |
-| `id` | `BIGINT` | **主键 (Primary Key)**。自增ID。 |
-| `created_at` | `TIMESTAMPTZ`| 创建时间。默认为 `NOW()`。 |
-| `name` | `TEXT` | 分类名称（例如 "嘻哈与说唱"）。`UNIQUE` 且 `NOT NULL`。 |
-| `slug` | `TEXT` | 用于URL的唯一标识（例如 "hip-hop-rap"）。`UNIQUE` 且 `NOT NULL`。 |
-| `seo_title` | `TEXT` | 用于分类归档页的 `<title>` 标签。 |
-| `meta_description`| `TEXT` | 用于分类归档页的 `<meta name="description">` 标签。 |
-| `sort_order` | `INT` | 分类排序顺序。默认为 `0`。 |
-| `is_active` | `BOOLEAN` | 分类是否激活。默认为 `TRUE`。 |
-
-### **表: `posts`**
-
-- **用途**: 存储每一篇博客文章及其SEO元数据。
-- **列定义**:
-| 列名 | 数据类型 | 描述与约束 |
-| :--- | :--- | :--- |
-| `id` | `BIGINT` | **主键 (Primary Key)**。自增ID。 |
-| `created_at` | `TIMESTAMPTZ`| 创建时间。默认为 `NOW()`。 |
-| `updated_at` | `TIMESTAMPTZ`| 最后更新时间。默认为 `NOW()`。 |
-| `category_id` | `BIGINT` | **外键 (Foreign Key)**，关联到 `public.categories.id`。 |
-| `title` | `TEXT` | 文章标题。将用作 `<h1>` 和默认的 `<title>`。`NOT NULL`。 |
-| `content` | `TEXT` | 文章正文，存储由富文本编辑器生成的HTML。 |
-| `status` | `post_status` | 文章状态。枚举类型，值为 `'draft'` 或 `'published'`。默认为 `'draft'`。 |
-| `slug` | `TEXT` | 用于文章URL的唯一标识（例如 "how-to-write-rap-lyrics"）。`UNIQUE` 且 `NOT NULL`。 |
-| `seo_title` | `TEXT` | （可选）覆盖默认的页面 `<title>` 标签。 |
-| `meta_description`| `TEXT` | 页面的 `<meta name="description">` 标签。 |
-| `featured_image` | `TEXT` | 特色图片URL（可选）。 |
-| `excerpt` | `TEXT` | 文章摘要，用于列表页显示。 |
-| `view_count` | `INT` | 文章浏览次数。默认为 `0`。 |
-| `published_at` | `TIMESTAMPTZ`| 文章发布时间。 |
-
-### **表: `user_sessions`**
-
-- **用途**: 记录用户会话信息，用于防白嫖机制。
-- **列定义**:
-| 列名 | 数据类型 | 描述与约束 |
-| :--- | :--- | :--- |
-| `id` | `BIGINT` | **主键 (Primary Key)**。自增ID。 |
-| `user_id` | `UUID` | **外键 (Foreign Key)**，关联到 `public.profiles.id`。 |
-| `session_id` | `TEXT` | 会话ID。`UNIQUE` 且 `NOT NULL`。 |
-| `ip_address` | `INET` | 用户IP地址。`NOT NULL`。 |
-| `user_agent` | `TEXT` | 用户代理字符串。 |
-| `browser_fingerprint` | `TEXT` | 浏览器指纹。 |
-| `created_at` | `TIMESTAMPTZ` | 会话创建时间。默认为 `NOW()`。 |
-| `last_activity` | `TIMESTAMPTZ` | 最后活动时间。默认为 `NOW()`。 |
-| `is_active` | `BOOLEAN` | 会话是否活跃。默认为 `TRUE`。 |
-
-### **表: `api_usage_logs`**
-
-- **用途**: 记录API使用日志，用于监控和防滥用。
-- **列定义**:
-| 列名 | 数据类型 | 描述与约束 |
-| :--- | :--- | :--- |
-| `id` | `BIGINT` | **主键 (Primary Key)**。自增ID。 |
-| `user_id` | `UUID` | **外键 (Foreign Key)**，关联到 `public.profiles.id`。 |
-| `ip_address` | `INET` | 请求IP地址。`NOT NULL`。 |
-| `endpoint` | `TEXT` | API端点。`NOT NULL`。 |
-| `method` | `TEXT` | HTTP方法。`NOT NULL`。 |
-| `request_data` | `JSONB` | 请求数据（可选）。 |
-| `response_status` | `SMALLINT` | 响应状态码。 |
-| `response_time` | `INT` | 响应时间（毫秒）。 |
-| `created_at` | `TIMESTAMPTZ` | 记录创建时间。默认为 `NOW()`。 |
-| `user_agent` | `TEXT` | 用户代理字符串。 |
-
-## **完整的Supabase数据库设置SQL**
-
-### **1. 创建枚举类型**
-```sql
--- 创建订阅状态枚举
+-- 6. 重新创建枚举类型
 CREATE TYPE subscription_status AS ENUM ('free', 'active', 'canceled', 'past_due');
-
--- 创建文章状态枚举
 CREATE TYPE post_status AS ENUM ('draft', 'published');
-
--- 创建生成类型枚举
 CREATE TYPE generation_type AS ENUM ('full', 'partial');
-```
 
-### **2. 创建表结构**
-```sql
+-- 7. 重新创建表结构
 -- 用户配置文件表
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -245,10 +141,8 @@ CREATE TABLE api_usage_logs (
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   user_agent TEXT
 );
-```
 
-### **3. 创建索引（性能优化）**
-```sql
+-- 8. 创建索引（性能优化）
 -- 用户配置文件索引
 CREATE INDEX idx_profiles_email ON profiles(email);
 CREATE INDEX idx_profiles_paddle_customer_id ON profiles(paddle_customer_id);
@@ -287,21 +181,16 @@ CREATE INDEX idx_api_usage_logs_user_id ON api_usage_logs(user_id);
 CREATE INDEX idx_api_usage_logs_ip_address ON api_usage_logs(ip_address);
 CREATE INDEX idx_api_usage_logs_created_at ON api_usage_logs(created_at);
 CREATE INDEX idx_api_usage_logs_endpoint ON api_usage_logs(endpoint);
-```
 
-### **4. 启用行级安全 (RLS)**
-```sql
--- 启用所有表的RLS
+-- 9. 启用行级安全 (RLS)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE generations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_usage_logs ENABLE ROW LEVEL SECURITY;
-```
 
-### **5. 创建RLS策略**
-```sql
+-- 10. 创建RLS策略
 -- Profiles表策略
 CREATE POLICY "Users can view own profile" ON profiles 
 FOR SELECT USING (auth.uid() = id);
@@ -401,10 +290,8 @@ FOR SELECT USING (
     WHERE id = auth.uid() AND is_admin = TRUE
   )
 );
-```
 
-### **6. 创建触发器函数**
-```sql
+-- 11. 创建触发器函数
 -- 自动为新用户创建profile的函数
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -485,10 +372,8 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_favorite_count_trigger
     AFTER INSERT OR UPDATE OR DELETE ON generations
     FOR EACH ROW EXECUTE FUNCTION update_favorite_count();
-```
 
-### **7. 创建数据清理函数**
-```sql
+-- 12. 创建数据清理函数
 -- 自动删除未收藏的旧记录的函数
 CREATE OR REPLACE FUNCTION cleanup_old_generations()
 RETURNS void AS $$
@@ -520,10 +405,8 @@ BEGIN
   WHERE created_at < NOW() - INTERVAL '30 days';
 END;
 $$ LANGUAGE plpgsql;
-```
 
-### **8. 创建实用函数**
-```sql
+-- 13. 创建实用函数
 -- 检查用户使用限制的函数
 CREATE OR REPLACE FUNCTION check_user_usage_limit(user_uuid UUID, operation_type TEXT)
 RETURNS BOOLEAN AS $$
@@ -610,10 +493,8 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-```
 
-### **9. 插入默认数据**
-```sql
+-- 14. 插入默认数据
 -- 插入默认博客分类
 INSERT INTO categories (name, slug, seo_title, meta_description, sort_order) VALUES
 ('Getting Started', 'getting-started', 'Getting Started with Songwriting', 'Learn the basics of songwriting and lyric creation', 1),
@@ -624,10 +505,8 @@ INSERT INTO categories (name, slug, seo_title, meta_description, sort_order) VAL
 ('R&B & Soul', 'rnb-soul', 'R&B and Soul Music Writing', 'Create soulful R&B lyrics and melodies', 6),
 ('Electronic Music', 'electronic-music', 'Electronic Music Production', 'Write lyrics for electronic and dance music', 7),
 ('Songwriting Tips', 'songwriting-tips', 'General Songwriting Tips', 'Essential tips and techniques for better songwriting', 8);
-```
 
-### **10. 创建视图**
-```sql
+-- 15. 创建视图
 -- 用户使用统计视图
 CREATE VIEW user_usage_stats AS
 SELECT 
@@ -674,10 +553,8 @@ FROM api_usage_logs
 WHERE created_at >= NOW() - INTERVAL '30 days'
 GROUP BY DATE(created_at), endpoint, method
 ORDER BY usage_date DESC, request_count DESC;
-```
 
-### **11. 验证设置**
-```sql
+-- 16. 验证设置
 -- 检查所有表是否创建成功
 SELECT table_name FROM information_schema.tables 
 WHERE table_schema = 'public' 
@@ -687,7 +564,7 @@ AND table_name IN ('profiles', 'generations', 'categories', 'posts', 'user_sessi
 SELECT schemaname, tablename, rowsecurity 
 FROM pg_tables 
 WHERE schemaname = 'public' 
-AND table_name IN ('profiles', 'generations', 'categories', 'posts', 'user_sessions', 'api_usage_logs');
+AND tablename IN ('profiles', 'generations', 'categories', 'posts', 'user_sessions', 'api_usage_logs');
 
 -- 检查策略是否创建成功
 SELECT schemaname, tablename, policyname 
@@ -702,48 +579,3 @@ WHERE trigger_schema = 'public';
 -- 检查视图是否创建成功
 SELECT table_name FROM information_schema.views 
 WHERE table_schema = 'public';
-```
-
-## **执行说明**
-
-### **执行顺序：**
-1. 先执行枚举类型创建
-2. 然后创建表结构
-3. 创建索引
-4. 启用RLS
-5. 创建RLS策略
-6. 创建触发器函数
-7. 创建数据清理函数
-8. 创建实用函数
-9. 插入默认数据
-10. 创建视图
-11. 最后验证设置
-
-### **注意事项：**
-- 所有SQL语句需要在Supabase的SQL编辑器中执行
-- 触发器函数需要在Supabase控制台中执行，因为它涉及auth schema
-- 定时任务需要在Supabase的Cron Jobs中手动设置
-- 建议在测试环境中先执行，确认无误后再在生产环境执行
-- 创建管理员账户需要在用户注册后手动执行SQL：`UPDATE profiles SET is_admin = TRUE WHERE email = 'your-admin-email@example.com';`
-
-### **新增功能支持：**
-1. **防白嫖机制**：通过IP地址和浏览器指纹跟踪
-2. **歌词部分优化**：支持选择部分歌词进行AI重写
-3. **收藏限制**：免费用户3首，付费用户100首
-4. **管理员权限**：支持后台管理功能
-5. **API监控**：记录所有API调用用于分析和防滥用
-6. **会话管理**：跟踪用户会话状态
-7. **统计功能**：提供详细的使用统计和博客统计
-8. **分页支持**：通过索引优化支持大量数据的分页查询
-9. **SEO优化**：支持自定义SEO标题和描述
-10. **性能优化**：完整的索引策略和查询优化
-
-
-   -- 每天凌晨2点清理旧记录
-   SELECT cron.schedule('cleanup-old-generations', '0 2 * * *', 'SELECT cleanup_old_generations();');
-   
-   -- 每天凌晨3点清理过期会话
-   SELECT cron.schedule('cleanup-expired-sessions', '0 3 * * *', 'SELECT cleanup_expired_sessions();');
-   
-   -- 每天凌晨4点清理旧API日志
-   SELECT cron.schedule('cleanup-old-api-logs', '0 4 * * *', 'SELECT cleanup_old_api_logs();');

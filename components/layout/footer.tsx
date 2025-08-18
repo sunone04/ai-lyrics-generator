@@ -33,9 +33,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-gray-300 hover:text-blue-400 transition-colors">
-                  Pricing Plans
-                </Link>
+                
               </li>
               <li>
                 <Link href="/faq" className="text-gray-300 hover:text-blue-400 transition-colors">

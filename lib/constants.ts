@@ -29,14 +29,14 @@ export const SITE_CONFIG = {
 export const SUBSCRIPTION_LIMITS = {
   free: {
     maxGenerations: 1,
-    maxRewrites: 0,
+    maxLyricOptimizations: 1,
     canEditLyrics: false,
     canUseProModel: false,
     maxFavorites: 3
   },
   active: {
     maxGenerations: 30,
-    maxRewrites: 30,
+    maxLyricOptimizations: 30,
     canEditLyrics: true,
     canUseProModel: true,
     maxFavorites: 100
@@ -44,26 +44,14 @@ export const SUBSCRIPTION_LIMITS = {
   // 保持向后兼容
   paid: {
     maxGenerations: 30,
-    maxRewrites: 30,
+    maxLyricOptimizations: 30,
     canEditLyrics: true,
     canUseProModel: true,
     maxFavorites: 100
   }
 };
 
-export const PRICING = {
-  monthly: {
-    price: 19.9,
-    currency: 'USD',
-    interval: 'month'
-  },
-  yearly: {
-    price: 199,
-    currency: 'USD', 
-    interval: 'year',
-    discount: 18
-  }
-};
+
 
 export const FORM_OPTIONS = {
   languages: [

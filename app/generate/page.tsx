@@ -199,7 +199,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   };
 
   const handleUpgrade = () => {
-    router.push('/pricing');
+            router.push('/auth/signin');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
