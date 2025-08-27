@@ -29,35 +29,33 @@ function AuthCallbackHandler({ code, redirectTo }: { code: string | null; redire
           
           if (error) {
             console.error('Auth callback error:', error);
-            router.push('/auth/signin?error=auth_failed');
+            const reason = encodeURIComponent(error.message || 'auth_failed');
+            router.push(`/auth/signin?error=auth_failed&reason=${reason}`);
             return;
           }
 
           // Ensure user profile exists
           if (data.user) {
             try {
-              // Call our API to ensure profile is created
               await fetch('/api/user/profile', {
                 method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
               });
             } catch (profileError) {
               console.error('Profile creation error during auth callback:', profileError);
-              // Don't fail the auth process, but log the error
+              // 不阻塞登录
             }
           }
 
           // Redirect to dashboard or intended page
           router.push(redirectTo);
         } else {
-          // No code provided, redirect to signin
-          router.push('/auth/signin');
+          router.push('/auth/signin?error=missing_code');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Unexpected error in auth callback:', error);
-        router.push('/auth/signin?error=unexpected_error');
+        const reason = encodeURIComponent(error?.message || 'unexpected_error');
+        router.push(`/auth/signin?error=unexpected_error&reason=${reason}`);
       }
     };
 

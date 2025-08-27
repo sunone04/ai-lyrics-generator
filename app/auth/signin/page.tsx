@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
@@ -14,12 +14,14 @@ import { EyeIcon, EyeSlashIcon, CheckCircleIcon, ExclamationCircleIcon } from '@
 function SignInContent() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo');
+  const error = searchParams.get('error');
+  const reason = searchParams.get('reason');
   
-  return <SignInForm returnTo={returnTo} />;
+  return <SignInForm returnTo={returnTo} initialError={{ error, reason }} />;
 }
 
 // 主要的登录表单组件
-function SignInForm({ returnTo }: { returnTo: string | null }) {
+function SignInForm({ returnTo, initialError }: { returnTo: string | null; initialError: { error: string | null; reason: string | null } }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +34,23 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
   
   // 创建 Supabase 客户端实例
   const supabase = createClient();
+
+  // 根据回调错误参数给出用户提示，并打印开发者可用信息
+  useEffect(() => {
+    if (initialError?.error) {
+      const map: Record<string, string> = {
+        auth_failed: 'Authentication failed. Please try again.',
+        missing_code: 'Missing auth code. Please try again.',
+        unexpected_error: 'Unexpected error. Please try again.'
+      };
+      const display = map[initialError.error] || 'Sign in failed. Please try again.';
+      setErrors({ general: display });
+      if (initialError.reason) {
+        // 开发者可在控制台查看详细原因
+        console.warn('[Auth Callback] reason=', decodeURIComponent(initialError.reason));
+      }
+    }
+  }, [initialError]);
 
   // 清除错误信息
   const clearErrors = () => {
@@ -69,7 +88,19 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
 
     setIsLoading(true);
 
+    // 超时兜底：避免按钮一直转圈
+    let timeoutId: any;
+    const startTimeoutGuard = () => {
+      timeoutId = setTimeout(() => {
+        setIsLoading(false);
+        setErrors({ general: 'Sign in is taking too long. Please try again.' });
+        toast.error('Sign in timeout. Please retry.');
+      }, 15000);
+    };
+
     try {
+      startTimeoutGuard();
+
       if (isSignUp) {
         const { error, data } = await supabase.auth.signUp({
           email,
@@ -77,10 +108,9 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
         });
 
         if (error) {
-          // 处理具体的注册错误
           if (error.message.includes('already registered') || error.message.includes('User already registered')) {
             setErrors({ 
-              general: 'This email is already registered but may not be confirmed. Try signing in or use the "Resend Confirmation" button below.' 
+              general: 'This email is already registered. Try signing in or resend confirmation.' 
             });
           } else if (error.message.includes('weak password')) {
             setErrors({ password: 'Password is too weak. Please use a stronger password.' });
@@ -92,14 +122,11 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
           return;
         }
 
-        // 注册成功 - 但可能是重复注册
         if (data.user && !data.user.email_confirmed_at) {
-          // 用户已存在但未确认
           setRegistrationSuccess(true);
           setPassword('');
           toast.success('Registration request processed! Please check your email for the confirmation link.');
         } else {
-          // 新用户注册
           setRegistrationSuccess(true);
           setPassword('');
           toast.success('Registration successful! Please check your email for the confirmation link.');
@@ -111,7 +138,6 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
         });
 
         if (error) {
-          // 处理具体的登录错误
           if (error.message.includes('Invalid login credentials')) {
             setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
           } else if (error.message.includes('Email not confirmed')) {
@@ -124,7 +150,16 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
           return;
         }
 
-        // Check for returnTo parameter
+        // 额外确认：等待会话就绪（最多 3 次 * 300ms）
+        let tries = 0;
+        while (tries < 3) {
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (currentUser) break;
+          await new Promise(r => setTimeout(r, 300));
+          tries++;
+        }
+
+        // 跳转
         if (returnTo) {
           router.push(decodeURIComponent(returnTo));
         } else {
@@ -133,7 +168,9 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
       }
     } catch (error: any) {
       setErrors({ general: 'An unexpected error occurred. Please try again.' });
+      console.error('[SignIn] unexpected error:', error);
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
@@ -143,16 +180,13 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
     clearErrors();
     
     try {
-      // Check for returnTo parameter for Google OAuth
       const callbackUrl = returnTo 
         ? `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(returnTo)}`
         : `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: callbackUrl
-        }
+        options: { redirectTo: callbackUrl }
       });
 
       if (error) {
@@ -164,6 +198,7 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
       }
     } catch (error: any) {
       setErrors({ general: 'Failed to sign in with Google. Please try again.' });
+      console.error('[GoogleSignIn] unexpected error:', error);
     } finally {
       setIsGoogleLoading(false);
     }
@@ -199,6 +234,7 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
       }
     } catch (error: any) {
       setErrors({ general: 'Failed to resend confirmation email. Please try again.' });
+      console.error('[ResendConfirmation] unexpected error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -305,7 +341,6 @@ function SignInForm({ returnTo }: { returnTo: string | null }) {
                       <ExclamationCircleIcon className="h-5 w-5 text-red-400 mr-2 mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="text-sm text-red-700">{errors.general}</p>
-                        {/* 如果是邮箱已注册的错误，显示重新发送按钮 */}
                         {(errors.general.includes('already registered') || errors.general.includes('not be confirmed')) && (
                           <button
                             onClick={resendConfirmation}
