@@ -27,37 +27,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // 获取初始会话 - 使用更可靠的getUser方法
     const getInitialSession = async () => {
       try {
-        // 首先尝试获取当前会话
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Error getting session:', sessionError);
-        }
-
-        // 然后验证用户身份
-        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          console.error('Error getting user:', userError);
-        }
-
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (mounted) {
-          // 只有当session和user都存在且匹配时才设置
           if (currentSession && currentUser && currentSession.user.id === currentUser.id) {
             setSession(currentSession);
             setUser(currentUser);
           } else {
-            // 如果不匹配，清除状态
             setSession(null);
             setUser(null);
           }
           setLoading(false);
         }
-      } catch (error) {
-        console.error('Error in getInitialSession:', error);
+      } catch {
         if (mounted) {
           setSession(null);
           setUser(null);
@@ -68,41 +52,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
-    // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, newSession) => {
         if (!mounted) return;
-        
         try {
-          if (event === 'SIGNED_IN' && session) {
-            // 验证用户身份
-            const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-            if (!error && currentUser && currentUser.id === session.user.id) {
-              setSession(session);
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            // 会话创建或刷新：获取最新用户
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (currentUser) {
+              setSession(newSession);
               setUser(currentUser);
             } else {
-              console.error('User verification failed:', error);
               setSession(null);
               setUser(null);
             }
-          } else if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          } else if (event === 'SIGNED_OUT') {
             setSession(null);
             setUser(null);
-          } else if (session) {
-            // 其他事件，验证session有效性
-            const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-            if (!error && currentUser && currentUser.id === session.user.id) {
-              setSession(session);
-              setUser(currentUser);
-            } else {
-              setSession(null);
-              setUser(null);
-            }
+          } else {
+            // 其他事件，尽量保持现状
+            setSession(newSession);
           }
-        } catch (error) {
-          console.error('Error in auth state change:', error);
-          setSession(null);
-          setUser(null);
         } finally {
           setLoading(false);
         }
@@ -121,7 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('Error signing out:', error);
       }
-      // 清除本地状态
       setSession(null);
       setUser(null);
     } catch (error) {
