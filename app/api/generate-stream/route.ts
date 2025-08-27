@@ -146,8 +146,9 @@ export async function POST(request: NextRequest) {
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'private, no-cache',
         'Connection': 'keep-alive',
+        'Vary': 'Cookie'
       },
     })
   } catch (error) {
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
       message: 'Something went wrong. Please try again later.'
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=0, no-store', 'Vary': 'Cookie' }
     })
   }
 }

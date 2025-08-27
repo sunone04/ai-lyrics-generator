@@ -5,8 +5,10 @@ export async function middleware(request: NextRequest) {
 
   // 仅保护敏感页面/API：管理端与用户私有API
   if (isProtectedPath(pathname)) {
-    const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token')
-    if (!hasAuthCookie) {
+    const access = request.cookies.get('sb-access-token')?.value || ''
+    const refresh = request.cookies.get('sb-refresh-token')?.value || ''
+    const tokenLikelyValid = (access && access.length > 20) || (refresh && refresh.length > 20)
+    if (!tokenLikelyValid) {
       return handleUnauthorized(request)
     }
   }
@@ -23,6 +25,8 @@ function isProtectedPath(pathname: string): boolean {
     '/account/:path*',
     '/dashboard',
     '/dashboard/:path*',
+    '/generate/result',
+    '/generate/result/:path*',
     // 仅保护需要用户身份的API
     '/api/user',
     '/api/user/:path*',
@@ -57,6 +61,8 @@ export const config = {
     '/account/:path*',
     '/dashboard',
     '/dashboard/:path*',
+    '/generate/result',
+    '/generate/result/:path*',
     '/api/user',
     '/api/user/:path*',
     '/api/generations',

@@ -17,15 +17,21 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to refresh profile');
     }
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       profile
-    });
+    })
+    res.headers.set('Cache-Control', 'private, max-age=0, no-store')
+    res.headers.set('Vary', 'Cookie')
+    return res
 
   } catch (error: any) {
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: error.message || 'Failed to refresh profile' },
       { status: 500 }
-    );
+    )
+    res.headers.set('Cache-Control', 'private, max-age=0, no-store')
+    res.headers.set('Vary', 'Cookie')
+    return res
   }
 }

@@ -125,24 +125,33 @@ export async function POST(request: NextRequest) {
       actionType: 'rewrite'
     }, true);
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       rewrittenPortion,
       remainingRewrites: dailyLimit - profile.rewrite_count - 1
-    });
+    })
+    res.headers.set('Cache-Control', 'private, max-age=0, no-store')
+    res.headers.set('Vary', 'Cookie')
+    return res
 
   } catch (error: any) {
     console.error('Error in rewrite API:', error);
     
     if (error.message.includes('Network connection failed')) {
-      return NextResponse.json(
+      const res503 = NextResponse.json(
         { error: 'AI service temporarily unavailable. Please try again later.' },
         { status: 503 }
-      );
+      )
+      res503.headers.set('Cache-Control', 'private, max-age=0, no-store')
+      res503.headers.set('Vary', 'Cookie')
+      return res503
     }
     
-    return NextResponse.json(
+    const res500 = NextResponse.json(
       { error: 'Failed to rewrite lyrics. Please try again.' },
       { status: 500 }
-    );
+    )
+    res500.headers.set('Cache-Control', 'private, max-age=0, no-store')
+    res500.headers.set('Vary', 'Cookie')
+    return res500
   }
 }

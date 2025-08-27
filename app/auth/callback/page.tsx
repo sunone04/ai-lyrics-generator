@@ -40,6 +40,7 @@ function AuthCallbackHandler({ code, redirectTo }: { code: string | null; redire
               await fetch('/api/user/profile', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
+                cache: 'no-store'
               });
             } catch (profileError) {
               console.error('Profile creation error during auth callback:', profileError);

@@ -14,18 +14,24 @@ export async function GET(request: NextRequest) {
     // Get user generations
     const generations = await userService.getUserGenerations(user.id, favoritesOnly);
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       generations: generations || []
-    });
+    })
+    res.headers.set('Cache-Control', 'private, max-age=300')
+    res.headers.set('Vary', 'Cookie')
+    return res
 
   } catch (error: any) {
     console.error('Generations fetch error:', error);
     
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: error.message || 'Failed to fetch generations' },
       { status: 500 }
-    );
+    )
+    res.headers.set('Cache-Control', 'private, max-age=0, no-store')
+    res.headers.set('Vary', 'Cookie')
+    return res
   }
 }
 
@@ -47,16 +53,20 @@ export async function DELETE(request: NextRequest) {
     // Delete generation
     await userService.deleteGeneration(user.id, generationId);
 
-    return NextResponse.json({
-      success: true
-    });
+    const res = NextResponse.json({ success: true })
+    res.headers.set('Cache-Control', 'private, max-age=0, no-store')
+    res.headers.set('Vary', 'Cookie')
+    return res
 
   } catch (error: any) {
     console.error('Generation deletion error:', error);
     
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: error.message || 'Failed to delete generation' },
       { status: 500 }
-    );
+    )
+    res.headers.set('Cache-Control', 'private, max-age=0, no-store')
+    res.headers.set('Vary', 'Cookie')
+    return res
   }
 }

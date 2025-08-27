@@ -3,19 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { cacheService } from '@/lib/cache-service';
 
-// Cache for profile data to reduce database calls
-const PROFILE_CACHE = new Map<string, { profile: any; timestamp: number }>();
-const PROFILE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-// Clean up cache periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of PROFILE_CACHE.entries()) {
-    if (now - value.timestamp > PROFILE_CACHE_TTL) {
-      PROFILE_CACHE.delete(key);
-    }
-  }
-}, 300000); // Clean every 5 minutes
+// 强制动态：用户态接口不应被静态化/缓存到边缘
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,9 +56,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(profile, {
       headers: {
-        'Cache-Control': 'private, max-age=3600', // 60 minutes client cache
-        'ETag': `"${Date.now()}"`,
-        'X-Cache': profile ? 'HIT' : 'MISS'
+        'Cache-Control': 'private, max-age=3600',
+        'Vary': 'Cookie'
       }
     });
 

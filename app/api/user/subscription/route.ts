@@ -23,13 +23,16 @@ export async function GET(request: NextRequest) {
       subscriptionInfo,
       membershipDisplay
     });
-    // 私有缓存：30分钟，减少重复查询；支付事件发生时由服务端更新数据库即可
     res.headers.set('Cache-Control', 'private, max-age=1800');
+    res.headers.set('Vary', 'Cookie');
     return res;
   } catch (error) {
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
+    res.headers.set('Cache-Control', 'private, max-age=0, no-store');
+    res.headers.set('Vary', 'Cookie');
+    return res;
   }
 }
