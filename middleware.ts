@@ -5,10 +5,17 @@ export async function middleware(request: NextRequest) {
 
   // 仅保护敏感页面/API：管理端与用户私有API
   if (isProtectedPath(pathname)) {
-    const access = request.cookies.get('sb-access-token')?.value || ''
-    const refresh = request.cookies.get('sb-refresh-token')?.value || ''
-    const tokenLikelyValid = (access && access.length > 20) || (refresh && refresh.length > 20)
-    if (!tokenLikelyValid) {
+    // 兼容不同 Supabase 版本/前缀：匹配形如 sb-<project>-access-token / sb-<project>-refresh-token
+    const all = request.cookies.getAll()
+    const hasSupabaseToken = all.some(c => {
+      const name = c.name || ''
+      const val = c.value || ''
+      const looksAccess = name.startsWith('sb-') && name.endsWith('access-token')
+      const looksRefresh = name.startsWith('sb-') && name.endsWith('refresh-token')
+      const longEnough = val.length > 20
+      return (looksAccess || looksRefresh) && longEnough
+    })
+    if (!hasSupabaseToken) {
       return handleUnauthorized(request)
     }
   }
