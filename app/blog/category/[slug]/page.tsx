@@ -31,12 +31,14 @@ export async function generateStaticParams() {
 
 // 获取分类信息
 async function getCategory(slug: string): Promise<Category | null> {
-  // 首先尝试从缓存获取
-  let categories = await cacheService.getCategories();
-  let category = categories.find(cat => cat.slug === slug);
+  // 首先尝试从缓存获取（需要空值保护）
+  const cachedCategories = await cacheService.getCategories();
+  const categoryFromCache = Array.isArray(cachedCategories)
+    ? cachedCategories.find((cat: any) => cat?.slug === slug)
+    : undefined;
   
-  if (category) {
-    return category as import('@/lib/types').Category;
+  if (categoryFromCache) {
+    return categoryFromCache as import('@/lib/types').Category;
   }
   
   // 缓存未命中，从数据库获取
@@ -60,12 +62,12 @@ async function getCategory(slug: string): Promise<Category | null> {
 
 // 获取分类下的文章
 async function getCategoryPosts(categoryId: number): Promise<Post[]> {
-  // 首先尝试从缓存获取
-  let posts = await cacheService.getBlogPosts(undefined, 1, 100); // 获取足够多的文章
+  // 首先尝试从缓存获取（需要空值保护）
+  const cached = await cacheService.getBlogPosts(undefined, 1, 100); // 获取足够多的文章
   
-  if (posts && posts.posts.length > 0) {
+  if (cached && Array.isArray(cached.posts) && cached.posts.length > 0) {
     // 过滤出当前分类的文章
-    return posts.posts.filter(post => post.category_id === categoryId);
+    return cached.posts.filter((post: any) => post?.category_id === categoryId) as Post[];
   }
   
   // 缓存未命中，从数据库获取
@@ -93,10 +95,10 @@ async function getCategoryPosts(categoryId: number): Promise<Post[]> {
 // 获取其他分类（排除当前分类）
 async function getOtherCategories(currentCategoryId: number): Promise<Category[]> {
   // 首先尝试从缓存获取
-  let categories = await cacheService.getCategories();
+  const categories = await cacheService.getCategories();
   
-  if (categories && categories.length > 0) {
-    return (categories as unknown as import('@/lib/types').Category[]).filter(cat => cat.id !== currentCategoryId);
+  if (Array.isArray(categories) && categories.length > 0) {
+    return (categories as unknown as import('@/lib/types').Category[]).filter(cat => cat?.id !== currentCategoryId);
   }
   
   // 缓存未命中，从数据库获取

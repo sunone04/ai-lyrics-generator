@@ -49,6 +49,8 @@ function LiveGenerationContent() {
   useEffect(() => {
     const startGeneration = async () => {
       try {
+        setStatus(prev => ({ ...prev, status: 'connecting' }));
+        
         // 创建可中止的请求控制器
         abortControllerRef.current = new AbortController();
 
@@ -79,6 +81,11 @@ function LiveGenerationContent() {
           signal: abortControllerRef.current.signal,
         });
 
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
         // Handle cached result (Active CPU optimization)
         if (response.headers.get('content-type')?.includes('application/json')) {
           const cachedData = await response.json();
@@ -101,97 +108,82 @@ function LiveGenerationContent() {
 
         setStatus(prev => ({ ...prev, status: 'generating' }));
 
+        // 设置超时
+        timeoutRef.current = setTimeout(() => {
+          setStatus(prev => ({ 
+            ...prev, 
+            status: 'timeout',
+            error: 'Generation timed out. Please try again.'
+          }));
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+          }
+        }, 60000); // 60秒超时
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        // Set client-side timeout (Active CPU optimization)
-        timeoutRef.current = setTimeout(() => {
-          setStatus(prev => ({
-            ...prev,
-            status: 'timeout',
-            error: 'Generation took too long. Please try again.'
-          }));
-          try { reader.cancel(); } catch {}
-          try { abortControllerRef.current?.abort(); } catch {}
-        }, 150000); // 2.5 minutes client timeout
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) break;
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                
-                switch (data.type) {
-                  case 'chunk':
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  
+                  if (data.type === 'chunk') {
                     setStatus(prev => ({
                       ...prev,
                       liveText: prev.liveText + data.content
                     }));
-                    break;
-                    
-                  case 'heartbeat':
-                    // Reset timeout on heartbeat (Active CPU optimization)
-                    if (timeoutRef.current) {
-                      clearTimeout(timeoutRef.current);
-                      timeoutRef.current = setTimeout(() => {
-                        setStatus(prev => ({
-                          ...prev,
-                          status: 'timeout',
-                          error: 'Generation took too long. Please try again.'
-                        }));
-                        reader.cancel();
-                      }, 150000);
-                    }
-                    break;
-                    
-                  case 'complete':
-                    if (timeoutRef.current) {
-                      clearTimeout(timeoutRef.current);
-                    }
+                  } else if (data.type === 'complete') {
+                    clearTimeout(timeoutRef.current!);
                     setStatus(prev => ({
                       ...prev,
                       status: 'completed',
-                      generationId: data.generationId?.toString(),
-                      totalTime: data.totalTime
+                      generationId: Date.now().toString(),
+                      totalTime: Date.now() - startTimeRef.current
                     }));
-                    
-                    // Redirect to result page after a short delay
-                    setTimeout(() => {
-                      router.push(`/generate/result/${data.generationId}`);
-                    }, 2000);
                     return;
-                    
-                  case 'error':
-                    if (timeoutRef.current) {
-                      clearTimeout(timeoutRef.current);
-                    }
+                  } else if (data.type === 'error') {
+                    clearTimeout(timeoutRef.current!);
                     setStatus(prev => ({
                       ...prev,
                       status: 'error',
-                      error: data.error || 'Generation failed'
+                      error: data.message || 'Generation failed'
                     }));
                     return;
+                  }
+                } catch (parseError) {
+                  console.warn('Failed to parse SSE data:', parseError);
                 }
-              } catch (parseError) {
-                console.error('Failed to parse SSE data:', parseError);
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
 
-      } catch (error) {
+      } catch (error: any) {
         console.error('Generation error:', error);
+        clearTimeout(timeoutRef.current!);
+        
+        let errorMessage = 'Failed to generate lyrics';
+        if (error.name === 'AbortError') {
+          errorMessage = 'Generation was cancelled';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
         setStatus(prev => ({
           ...prev,
           status: 'error',
-          error: error instanceof Error ? error.message : 'Generation failed'
+          error: errorMessage
         }));
       }
     };
@@ -202,31 +194,11 @@ function LiveGenerationContent() {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-      // 主动中止进行中的流式fetch
-      try { abortControllerRef.current?.abort(); } catch {}
     };
-  }, [
-    language,
-    musicStyle,
-    musicTheme,
-    lengthOption,
-    lyricStyle,
-    intentOrRequest,
-    artistStyle,
-    emotionIntensity,
-    rhymeRequirement,
-    songStructure,
-    paragraphLength,
-    bpm,
-    useBpm,
-    melody,
-    syllablePattern,
-    modelType,
-    router
-  ]);
+  }, []);
 
   // 当页面隐藏/卸载时立即中止（移动端后台/标签切换优化）
   useEffect(() => {

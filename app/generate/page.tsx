@@ -194,6 +194,32 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       return;
     }
 
+    // 检查用户配额
+    try {
+      const profileResponse = await fetch('/api/user/profile');
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        const profile = profileData.profile || profileData;
+        
+        if (profile) {
+          const dailyLimit = profile.status === 'active' ? 30 : 2;
+          if ((profile.generation_count || 0) >= dailyLimit) {
+            if (profile.status === 'free') {
+              toast.error('Daily limit reached. Upgrade to Premium for 30 generations per day.');
+              router.push('/pricing');
+              return;
+            } else {
+              toast.error('Daily limit reached. Please try again tomorrow.');
+              return;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user quota:', error);
+      // 继续执行，让后端API处理配额检查
+    }
+
     try {
       // Prepare params for submission, replacing "Other" values with custom inputs
       const submissionParams = { ...params };

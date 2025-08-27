@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getRouteConfig } from '@/lib/route-protection';
 
 interface AuthGuardProps {
@@ -22,6 +22,7 @@ export function AuthGuard({
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [shouldRedirect, setShouldRedirect] = useState(false);
   
   // 获取当前路由的配置
   const routeConfig = getRouteConfig(pathname);
@@ -33,7 +34,16 @@ export function AuthGuard({
   const requiresAuth = forceRequireAuth !== undefined ? forceRequireAuth : routeConfig.requiresAuth;
 
   useEffect(() => {
-    if (!loading && requiresAuth && !user && finalRedirectTo) {
+    // 只有在loading完成且需要认证但用户未登录时才重定向
+    if (!loading && requiresAuth && !user) {
+      setShouldRedirect(true);
+    } else {
+      setShouldRedirect(false);
+    }
+  }, [user, loading, requiresAuth]);
+
+  useEffect(() => {
+    if (shouldRedirect && finalRedirectTo) {
       // 保存当前路径作为返回地址
       const returnTo = encodeURIComponent(pathname);
       const redirectUrl = finalRedirectTo.includes('?') 
@@ -42,8 +52,9 @@ export function AuthGuard({
       
       router.push(redirectUrl);
     }
-  }, [user, loading, router, finalRedirectTo, requiresAuth, pathname]);
+  }, [shouldRedirect, finalRedirectTo, pathname, router]);
 
+  // 如果还在加载认证状态，显示加载状态
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

@@ -57,7 +57,12 @@ function isPublicPage(pathname: string): boolean {
 function isProtectedPage(pathname: string): boolean {
   const protectedPaths = [
     '/dashboard',
-    '/admin1762096094'
+    '/dashboard/',
+    '/admin1762096094',
+    '/generate/result',
+    '/generate/result/',
+    '/edit',
+    '/account'
   ]
   
   return protectedPaths.some(path => pathname.startsWith(path))
@@ -84,16 +89,21 @@ export const config = {
     // 这是性能优化的关键：只对需要的路由执行中间件
     '/dashboard',
     '/dashboard/:path*',
-    // 其余页面均为公开访问，不做拦截
     '/admin1762096094',
     '/admin1762096094/:path*',
-    // 受保护的API路由（仅保留存在的）
+    '/generate/result/:path*',
+    '/edit',
+    '/edit/:path*',
+    '/account',
+    '/account/:path*',
+    // 受保护的API路由
+    '/api/generate-stream',
     '/api/rewrite',
     '/api/user',
     '/api/user/:path*',
     '/api/generations',
     '/api/generations/:path*',
-
-    // 不再拦截任何公开页面，公开页不经过中间件
+    '/api/favorite',
+    '/api/favorite/:path*'
   ]
 }

@@ -73,3 +73,9 @@ export function getRouteConfig(pathname: string): RouteConfig {
   const config = isRouteProtected(pathname);
   return config || { path: pathname, requiresAuth: false };
 }
+
+// 检查路径是否需要认证（简化版本）
+export function requiresAuthentication(pathname: string): boolean {
+  const config = getRouteConfig(pathname);
+  return config.requiresAuth;
+}

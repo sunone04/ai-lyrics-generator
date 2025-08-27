@@ -37,67 +37,104 @@ export const metadata: Metadata = {
 };
 
 async function getBlogPosts() {
-  // 首先尝试从缓存获取
-  let posts = await cacheService.getBlogPosts(undefined, 1, 12);
-  
-  if (posts && posts.posts.length > 0) {
-    return { posts: posts.posts, totalCount: posts.total };
-  }
-  
-  // 缓存未命中，从数据库获取
-  const supabase = await createServerClient();
-  
-  const { data: postsData, error, count } = await supabase
-    .from('posts')
-    .select(`
-      id, title, slug, excerpt, created_at, updated_at, status, published_at, view_count, category_id,
-      category:categories!inner(id, name, slug, created_at, updated_at)
-    `, { count: 'exact' })
-    .eq('status', 'published')
-    .order('created_at', { ascending: false })
-    .limit(12);
+  try {
+    // 首先尝试从缓存获取
+    let posts = await cacheService.getBlogPosts(undefined, 1, 12);
+    
+    if (posts && posts.posts && posts.posts.length > 0) {
+      return { posts: posts.posts, totalCount: posts.total || 0 };
+    }
+    
+    // 缓存未命中，从数据库获取
+    const supabase = await createServerClient();
+    
+    const { data: postsData, error, count } = await supabase
+      .from('posts')
+      .select(`
+        id, title, slug, excerpt, created_at, updated_at, status, published_at, view_count, category_id,
+        category:categories!inner(id, name, slug, created_at, updated_at)
+      `, { count: 'exact' })
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(12);
 
-  if (error) {
-    console.error('Error fetching blog posts:', error);
+    if (error) {
+      console.error('Error fetching blog posts:', error);
+      return { posts: [], totalCount: 0 };
+    }
+
+    // 过滤掉无效的文章数据
+    const validPosts = (postsData || []).filter(post => 
+      post && post.id && post.title && post.slug && post.status === 'published' && post.category
+    );
+
+    const result = { posts: validPosts, totalCount: count || 0 };
+    
+    // 只有在有有效数据时才更新缓存
+    if (validPosts.length > 0) {
+      try {
+        await cacheService.set(`blog_posts:all:1:12`, result, 1800);
+      } catch (cacheError) {
+        console.warn('Failed to update cache:', cacheError);
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Unexpected error in getBlogPosts:', error);
     return { posts: [], totalCount: 0 };
   }
-
-  const result = { posts: postsData || [], totalCount: count || 0 };
-  
-  // 更新缓存
-  await cacheService.set(`blog_posts:all:1:12`, result, 1800);
-  
-  return result;
 }
 
 async function getCategories() {
-  // 首先尝试从缓存获取
-  let categories = await cacheService.getCategories();
-  
-  if (categories && categories.length > 0) {
-    return categories;
-  }
-  
-  // 缓存未命中，从数据库获取
-  const supabase = await createServerClient();
-  
-  const { data: categoriesData, error } = await supabase
-    .from('categories')
-    .select('id, name, slug, seo_title, meta_description, sort_order, is_active, created_at, updated_at')
-    .eq('is_active', true)
-    .order('sort_order');
+  try {
+    // 首先尝试从缓存获取
+    let categories = await cacheService.getCategories();
+    
+    if (categories && categories.length > 0) {
+      return categories;
+    }
+    
+    // 缓存未命中，从数据库获取
+    const supabase = await createServerClient();
+    
+    const { data: categoriesData, error } = await supabase
+      .from('categories')
+      .select('id, name, slug, seo_title, meta_description, sort_order, is_active, created_at, updated_at')
+      .eq('is_active', true)
+      .order('sort_order');
 
-  if (error) {
-    console.error('Error fetching categories:', error);
+    if (error) {
+      console.error('Error fetching categories:', error);
+      // 返回默认分类，避免页面崩溃
+      return BLOG_CATEGORIES;
+    }
+
+    // 过滤掉无效的分类数据
+    const validCategories = (categoriesData || []).filter(cat => 
+      cat && cat.id && cat.name && cat.slug && cat.is_active
+    );
+
+    // 如果没有有效分类，返回默认分类
+    if (validCategories.length === 0) {
+      console.warn('No valid categories found in database, using default categories');
+      return BLOG_CATEGORIES;
+    }
+
+    const result = validCategories;
+    
+    // 更新缓存
+    try {
+      await cacheService.set('categories:all', result, 3600);
+    } catch (cacheError) {
+      console.warn('Failed to update categories cache:', cacheError);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Unexpected error in getCategories:', error);
     return BLOG_CATEGORIES;
   }
-
-  const result = categoriesData || BLOG_CATEGORIES;
-  
-  // 更新缓存
-  await cacheService.set('categories:all', result, 3600);
-  
-  return result;
 }
 
 export default async function BlogPage() {

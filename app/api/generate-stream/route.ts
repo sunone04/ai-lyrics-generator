@@ -9,9 +9,14 @@ export async function POST(request: NextRequest) {
   try {
     // 要求用户登录（功能级别权限控制）
     const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
+      return new Response(JSON.stringify({ 
+        error: 'Authentication required',
+        message: 'Please sign in to generate lyrics'
+      }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       })
@@ -42,18 +47,48 @@ export async function POST(request: NextRequest) {
 
     // 基础必填校验
     if (!params.language || !params.musicStyle || !params.musicTheme || !params.lyricStyle) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required parameters',
+        message: 'Please fill in all required fields'
+      }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
     // 获取用户配额与当日使用次数
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('status, generation_count')
+      .select('status, generation_count, usage_last_reset')
       .eq('id', user.id)
       .single()
+
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      return new Response(JSON.stringify({ 
+        error: 'Failed to fetch user profile',
+        message: 'Please try again later'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // 检查是否需要重置每日计数
+    const today = new Date().toISOString().split('T')[0];
+    if (profile?.usage_last_reset !== today) {
+      // 重置每日计数
+      await supabase
+        .from('profiles')
+        .update({ 
+          generation_count: 0, 
+          rewrite_count: 0, 
+          usage_last_reset: today 
+        })
+        .eq('id', user.id);
+      
+      profile.generation_count = 0;
+    }
 
     const dailyLimit = profile?.status === 'active' ? 30 : 2
     if ((profile?.generation_count ?? 0) >= dailyLimit) {
@@ -98,37 +133,30 @@ export async function POST(request: NextRequest) {
 
           send({ type: 'complete' })
           controller.close()
-
-          // 成功完成后异步增加当日计数（避免拉长尾延迟）
-          queueMicrotask(async () => {
-            try {
-              await supabase
-                .from('profiles')
-                .update({ generation_count: (profile?.generation_count ?? 0) + 1 })
-                .eq('id', user.id)
-            } catch {}
-          })
-        } catch (err) {
-          send({ type: 'error', error: err instanceof Error ? err.message : 'Generation failed' })
-          controller.close()
-        }
-        finally {
-          request.signal.removeEventListener('abort', onAbort)
+        } catch (error) {
+          console.error('Generation error:', error);
+          if (!aborted) {
+            send({ type: 'error', message: 'Failed to generate lyrics. Please try again.' })
+            controller.close()
+          }
         }
       }
     })
 
     return new Response(stream, {
-      status: 200,
       headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive'
-      }
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-      status: 400,
+    console.error('Unexpected error in generate-stream:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      message: 'Something went wrong. Please try again later.'
+    }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' }
     })
   }

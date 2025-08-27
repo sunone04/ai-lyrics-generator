@@ -18,60 +18,67 @@ import {
 export default function Navbar() {
   const { user, loading, signOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
   const router = useRouter();
 
-  // 简单的按需刷新 profile，而不是实时监听
+  // 优化profile获取逻辑
   useEffect(() => {
-    if (user) {
-      // 先尝试本地缓存（长时）
-      const cached = localStorage.getItem('profile_cache')
+    if (user && !loading) {
+      setProfileLoading(true);
+      
+      // 先尝试本地缓存
+      const cached = localStorage.getItem('profile_cache');
       if (cached) {
         try {
-          const parsed = JSON.parse(cached)
+          const parsed = JSON.parse(cached);
           if (parsed?.id === user.id) {
-            setProfile(parsed as Profile)
+            setProfile(parsed as Profile);
+            setProfileLoading(false);
+            return; // 使用缓存，不需要再请求
           } else {
-            localStorage.removeItem('profile_cache')
+            localStorage.removeItem('profile_cache');
           }
         } catch {
-          localStorage.removeItem('profile_cache')
+          localStorage.removeItem('profile_cache');
         }
       }
 
+      // 获取最新profile
       const refreshProfile = async () => {
         try {
-          const response = await fetch('/api/user/profile')
+          const response = await fetch('/api/user/profile');
           if (response.ok) {
-            const data = await response.json()
-            // 兼容 API 直接返回profile对象
-            const prof = data?.profile || data
+            const data = await response.json();
+            const prof = data?.profile || data;
             if (prof?.id) {
-              setProfile(prof as Profile)
-              localStorage.setItem('profile_cache', JSON.stringify(prof))
+              setProfile(prof as Profile);
+              localStorage.setItem('profile_cache', JSON.stringify(prof));
             }
           }
         } catch (error) {
-          console.error('Failed to refresh profile:', error)
+          console.error('Failed to refresh profile:', error);
+        } finally {
+          setProfileLoading(false);
         }
-      }
+      };
       
-      // 后台轻量刷新一次，确保切换账号后最新
-      refreshProfile()
-    } else {
-      // 未登录时清除缓存，防止账号切换污染
-      setProfile(null)
-      localStorage.removeItem('profile_cache')
+      refreshProfile();
+    } else if (!user) {
+      // 未登录时清除缓存和状态
+      setProfile(null);
+      setProfileLoading(false);
+      localStorage.removeItem('profile_cache');
     }
-  }, [user?.id])
+  }, [user, loading]);
 
   const handleSignOut = async () => {
     await signOut();
     router.push('/');
     // 退出登录时清理本地缓存
-    localStorage.removeItem('profile_cache')
+    localStorage.removeItem('profile_cache');
   };
 
   const handleSignIn = () => {
@@ -89,13 +96,27 @@ export default function Navbar() {
     return '';
   };
 
+  // 优化loading状态判断
+  const isNavbarLoading = loading || (user && profileLoading);
+
   // 如果还在加载认证状态，显示加载状态
-  if (loading) {
+  if (isNavbarLoading) {
     return (
       <nav className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            <div className="animate-pulse bg-gray-200 h-8 w-48 rounded"></div>
+            <div className="flex-shrink-0">
+              <Link href="/" className="flex items-center">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">AI</span>
+                  </div>
+                  <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    AI Lyrics Generator
+                  </span>
+                </div>
+              </Link>
+            </div>
             <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
           </div>
         </div>
