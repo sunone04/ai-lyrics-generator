@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { NAVIGATION_ITEMS, BLOG_CATEGORIES } from '@/lib/constants';
-import { Profile } from '@/lib/types';
 import { 
   Bars3Icon, 
   XMarkIcon, 
@@ -16,113 +15,15 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function Navbar() {
-  const { user, loading, signOut } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
   const router = useRouter();
 
-  // 优化profile获取逻辑
-  useEffect(() => {
-    if (user && !loading) {
-      setProfileLoading(true);
-      
-      // 先尝试本地缓存
-      const cached = localStorage.getItem('profile_cache');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed?.id === user.id) {
-            setProfile(parsed as Profile);
-            setProfileLoading(false);
-            return; // 使用缓存，不需要再请求
-          } else {
-            localStorage.removeItem('profile_cache');
-          }
-        } catch {
-          localStorage.removeItem('profile_cache');
-        }
-      }
-
-      // 获取最新profile
-      const refreshProfile = async () => {
-        try {
-          const response = await fetch('/api/user/profile');
-          if (response.ok) {
-            const data = await response.json();
-            const prof = data?.profile || data;
-            if (prof?.id) {
-              setProfile(prof as Profile);
-              localStorage.setItem('profile_cache', JSON.stringify(prof));
-            }
-          }
-        } catch (error) {
-          console.error('Failed to refresh profile:', error);
-        } finally {
-          setProfileLoading(false);
-        }
-      };
-      
-      refreshProfile();
-    } else if (!user) {
-      // 未登录时清除缓存和状态
-      setProfile(null);
-      setProfileLoading(false);
-      localStorage.removeItem('profile_cache');
-    }
-  }, [user, loading]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
-    // 退出登录时清理本地缓存
-    localStorage.removeItem('profile_cache');
-  };
-
   const handleSignIn = () => {
     router.push('/auth/signin');
   };
-
-  const getUserStatusDisplay = () => {
-    if (!profile) return '';
-    
-    if (profile.status === 'free') {
-      return '(Free)';
-    } else if (profile.status === 'active') {
-      return '(Premium Member)';
-    }
-    return '';
-  };
-
-  // 优化loading状态判断
-  const isNavbarLoading = loading || (user && profileLoading);
-
-  // 如果还在加载认证状态，显示加载状态
-  if (isNavbarLoading) {
-    return (
-      <nav className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">AI</span>
-                  </div>
-                  <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    AI Lyrics Generator
-                  </span>
-                </div>
-              </Link>
-            </div>
-            <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
-          </div>
-        </div>
-      </nav>
-    );
-  }
 
   return (
     <nav className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
@@ -160,10 +61,8 @@ export default function Navbar() {
                           {item.name}
                           <ChevronDownIcon className="ml-1 h-4 w-4" />
                         </Link>
-                        
-                        {/* Generate Dropdown */}
                         {isGenerateDropdownOpen && (
-                          <div className="absolute left-0 mt-0 w-52 bg-white rounded-xl shadow-xl ring-1 ring-gray-200 z-50 animate-in slide-in-from-top-2 duration-200">
+                          <div className="absolute left-0 mt-0 w-52 bg-white rounded-xl shadow-xl ring-1 ring-gray-200 z-50">
                             <div className="py-3">
                               <Link
                                 href="/generate"
@@ -195,7 +94,7 @@ export default function Navbar() {
                     </div>
                   );
                 }
-                
+
                 if (item.name === 'Blog') {
                   return (
                     <div key={item.name} className="relative">
@@ -210,10 +109,8 @@ export default function Navbar() {
                           {item.name}
                           <ChevronDownIcon className="ml-1 h-4 w-4" />
                         </Link>
-                        
-                        {/* Blog Dropdown */}
                         {isBlogDropdownOpen && (
-                          <div className="absolute left-0 mt-0 w-60 bg-white rounded-xl shadow-xl ring-1 ring-gray-200 z-50 animate-in slide-in-from-top-2 duration-200">
+                          <div className="absolute left-0 mt-0 w-60 bg-white rounded-xl shadow-xl ring-1 ring-gray-200 z-50">
                             <div className="py-3">
                               <Link
                                 href="/blog"
@@ -256,23 +153,12 @@ export default function Navbar() {
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
               {user ? (
-                <div className="flex items-center space-x-4">
-                  <div className="text-sm text-gray-600">
-                    {user.email} {getUserStatusDisplay()}
-                  </div>
-                  <Link
-                    href="/account"
-                    className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                  >
-                    Account
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="text-gray-700 hover:text-red-600 px-3 py-2 text-sm font-medium"
-                  >
-                    Sign Out
-                  </button>
-                </div>
+                <Link
+                  href="/account"
+                  className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                >
+                  Account
+                </Link>
               ) : (
                 <button
                   onClick={handleSignIn}
@@ -314,7 +200,7 @@ export default function Navbar() {
                 {item.name}
               </Link>
             ))}
-            
+
             {/* Blog Categories for Mobile */}
             <div className="pl-4">
               <div className="text-gray-500 text-sm font-medium mb-2">Blog Categories</div>
@@ -329,31 +215,17 @@ export default function Navbar() {
                 </Link>
               ))}
             </div>
-            
+
             {/* User actions for mobile */}
             <div className="border-t border-gray-200 pt-4">
               {user ? (
-                <>
-                  <div className="px-3 py-2 text-sm text-gray-600">
-                    Logged in as: {user.email} {getUserStatusDisplay()}
-                  </div>
-                  <Link
-                    href="/account"
-                    className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Account
-                  </Link>
-                  <button
-                    onClick={() => {
-                      handleSignOut();
-                      setIsMenuOpen(false);
-                    }}
-                    className="text-gray-700 hover:text-red-600 block px-3 py-2 text-base font-medium w-full text-left"
-                  >
-                    Sign Out
-                  </button>
-                </>
+                <Link
+                  href="/account"
+                  className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Account
+                </Link>
               ) : (
                 <button
                   onClick={() => {

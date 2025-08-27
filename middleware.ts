@@ -1,83 +1,49 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-// 极其轻量的认证中间件 - 标准AI SaaS标准做法
-// 只检查cookie存在性，不进行任何网络请求，最小化Vercel CPU消耗
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
-  // 完全公开的页面 - 无需认证，利于SEO
-  if (isPublicPage(pathname)) {
-    return NextResponse.next()
-  }
-  
-  // 受保护的页面 - 需要认证
-  if (isProtectedPage(pathname)) {
-    // 使用 cookies.has() 替代 cookies.get() - 这是最轻量的方式
-    // 只检查认证cookie是否存在，不读取值，不进行验证
-    const hasAuthCookie = request.cookies.has('sb-access-token') || 
-                         request.cookies.has('sb-refresh-token')
-    
+
+  // 仅保护敏感页面/API：管理端与用户私有API
+  if (isProtectedPath(pathname)) {
+    const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token')
     if (!hasAuthCookie) {
       return handleUnauthorized(request)
     }
   }
 
-  // 允许请求继续，详细验证在页面/API内部进行
-  // 这是标准AI SaaS的做法：中间件轻量，API严格
   return NextResponse.next()
 }
 
-// 判断是否为完全公开的页面（利于SEO）
-function isPublicPage(pathname: string): boolean {
-  const publicPaths = [
-    '/',
-    '/blog',
-    '/blog/',
-    '/faq',
-    '/pricing',
-    '/privacy',
-    '/terms',
-    '/refund',
-    '/contact',
-    '/sitemap.xml',
-    '/robots.txt'
-  ]
-  
-  // 博客分类页面
-  if (pathname.startsWith('/blog/category/')) return true
-  // 博客文章页面
-  if (pathname.startsWith('/blog/') && pathname !== '/blog/') return true
-  // 静态资源
-  if (pathname.startsWith('/_next/') || pathname.startsWith('/favicon')) return true
-  
-  return publicPaths.includes(pathname)
-}
-
-// 判断是否为受保护的页面
-function isProtectedPage(pathname: string): boolean {
+function isProtectedPath(pathname: string): boolean {
   const protectedPaths = [
-    '/dashboard',
-    '/dashboard/',
     '/admin1762096094',
-    '/generate/result',
-    '/generate/result/',
-    '/edit',
-    '/account'
+    '/admin1762096094/',
+    '/admin1762096094/:path*',
+    '/account',
+    '/account/:path*',
+    '/dashboard',
+    '/dashboard/:path*',
+    // 仅保护需要用户身份的API
+    '/api/user',
+    '/api/user/:path*',
+    '/api/generations',
+    '/api/generations/:path*',
+    '/api/favorite',
+    '/api/favorite/:path*',
   ]
-  
-  return protectedPaths.some(path => pathname.startsWith(path))
+  return protectedPaths.some((p) => matchPrefix(pathname, p))
 }
 
-// 处理未授权请求
+function matchPrefix(pathname: string, pattern: string) {
+  if (pattern.endsWith('/:path*')) return pathname.startsWith(pattern.replace('/:path*', ''))
+  return pathname === pattern || pathname.startsWith(pattern)
+}
+
 function handleUnauthorized(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
-  // API路由返回401
   if (pathname.startsWith('/api/')) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
-  
-  // 页面路由重定向到登录页
   const redirectUrl = new URL('/auth/signin', request.url)
   redirectUrl.searchParams.set('redirectTo', pathname)
   return NextResponse.redirect(redirectUrl)
@@ -85,25 +51,17 @@ function handleUnauthorized(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // 精确匹配需要检查的路由，避免不必要的中间件执行
-    // 这是性能优化的关键：只对需要的路由执行中间件
-    '/dashboard',
-    '/dashboard/:path*',
     '/admin1762096094',
     '/admin1762096094/:path*',
-    '/generate/result/:path*',
-    '/edit',
-    '/edit/:path*',
     '/account',
     '/account/:path*',
-    // 受保护的API路由
-    '/api/generate-stream',
-    '/api/rewrite',
+    '/dashboard',
+    '/dashboard/:path*',
     '/api/user',
     '/api/user/:path*',
     '/api/generations',
     '/api/generations/:path*',
     '/api/favorite',
-    '/api/favorite/:path*'
+    '/api/favorite/:path*',
   ]
 }
