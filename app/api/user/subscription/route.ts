@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { authService } from '@/lib/auth-service';
 import { userService } from '@/lib/user-service';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    // 使用智能认证服务，避免重复认证
+    const user = await authService.getAuthenticatedUser();
     
-    // 获取当前用户
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }

@@ -2,6 +2,9 @@ import { Metadata } from 'next'
 import PricingCard from '@/components/pricing/pricing-card'
 import { CheckIcon } from '@heroicons/react/24/outline'
 
+// 强制静态生成 - 定价信息变化缓慢
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: 'Pricing - AI Lyrics Generator | Choose Your Plan',
   description: 'Choose the perfect plan for your songwriting needs. Start free or upgrade to unlock unlimited AI lyrics generation and advanced features.',

@@ -1,56 +1,18 @@
-'use client';
-
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
 import { ArrowRightIcon, SparklesIcon, LanguageIcon, PencilIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { SITE_CONFIG } from '@/lib/constants';
-import toast from 'react-hot-toast';
-import Head from 'next/head';
+
+// 强制静态生成 - 首页内容变化缓慢
+export const dynamic = 'force-static';
 
 // Metadata moved to layout.tsx for client component
 
 export default function Home() {
-  const [showShareModal, setShowShareModal] = useState(false);
-
-  const handleShare = async () => {
-    const shareUrl = SITE_CONFIG.url;
-    const shareText = `🎵 Discover the power of AI-generated lyrics! Create professional song lyrics and rap verses in 100+ languages. Join thousands of musicians and songwriters who trust our AI technology. Try it free today! 🚀`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'AI Lyrics Generator - Create Amazing Lyrics with AI',
-          text: shareText,
-          url: shareUrl,
-        });
-      } catch (_error) {
-        console.log('Share cancelled');
-      }
-    } else {
-      setShowShareModal(true);
-    }
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Copied to clipboard!');
-    } catch (error) {
-      console.error('Failed to copy:', error);
-      toast.error('Failed to copy to clipboard');
-    }
-  };
+  // 首页完全静态，无需状态管理
 
   return (
-    <>
-      <Head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-        <link rel="shortcut icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/favicon.ico" />
-      </Head>
-      <div className="min-h-screen">
+    <div className="min-h-screen">
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-16 lg:py-24">
           {/* Decorative Elements */}
@@ -376,75 +338,11 @@ export default function Home() {
 
           </div>
 
-          {/* Share Section */}
-          <div className="mt-8 p-6 bg-white/70 backdrop-blur-sm rounded-2xl border border-gray-200 max-w-md mx-auto">
-            <p className="text-gray-700 text-sm mb-3 font-medium">
-              💝 Love our AI Lyrics Generator? Help us grow by sharing with friends!
-            </p>
-            <button
-              onClick={handleShare}
-              className="w-full flex items-center justify-center px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-medium"
-            >
-              <ShareIcon className="h-4 w-4 mr-2" />
-              Share with Friends
-            </button>
-          </div>
-
           <div className="mt-12 text-gray-600 text-sm">
             ✨ No credit card required • Start with 3 free generations daily
           </div>
         </div>
       </section>
-
-      {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                <ShareIcon className="h-6 w-6 text-green-600" />
-              </div>
-              
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Share AI Lyrics Generator
-              </h3>
-              
-              <p className="text-gray-600 mb-4">
-                Help us grow by sharing our AI Lyrics Generator with your friends and fellow musicians!
-              </p>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    copyToClipboard(SITE_CONFIG.url);
-                  }}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Copy Website Link
-                </button>
-                
-                <button
-                  onClick={() => {
-                    const shareText = `🎵 Discover the power of AI-generated lyrics! Create professional song lyrics and rap verses in 100+ languages. Join thousands of musicians and songwriters who trust our AI technology. Try it free today! 🚀\n\n${SITE_CONFIG.url}`;
-                    copyToClipboard(shareText);
-                  }}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Copy Share Message
-                </button>
-                
-                <button
-                  onClick={() => setShowShareModal(false)}
-                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-    </>
   );
 }

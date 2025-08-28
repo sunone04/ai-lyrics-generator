@@ -100,34 +100,27 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Create admin client for database operations
-    const adminClient = createAdminClient();
+    // 获取所有分类（永久缓存，无需认证）
+    const categories = await cacheService.getCategories()
     
-    // Get all categories
-    const { data: categories, error } = await adminClient
-      .from('categories')
-      .select('id, name, slug, seo_title, meta_description, sort_order, is_active, created_at, updated_at')
-      .order('name');
-
-    if (error) {
-      console.error('Database error:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch categories' },
-        { status: 500 }
-      );
+    if (categories && categories.length > 0) {
+      return NextResponse.json({
+        success: true,
+        categories
+      })
     }
-
+    
+    // 如果缓存为空，返回空数组（避免无限重试）
     return NextResponse.json({
       success: true,
-      categories
-    });
-
+      categories: []
+    })
   } catch (error: any) {
-    console.error('Categories fetch error:', error);
+    console.error('Categories fetch error:', error)
     
     return NextResponse.json(
       { error: error.message || 'Failed to fetch categories' },
       { status: 500 }
-    );
+    )
   }
 }

@@ -4,6 +4,9 @@ import Breadcrumbs from '@/components/ui/breadcrumbs';
 // import { SITE_CONFIG } from '@/lib/constants'; // Unused
 import { EnvelopeIcon, ChatBubbleLeftRightIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
+// 强制静态生成 - 联系页面内容变化缓慢
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: 'Contact Us',
   description: 'Get in touch with the AI Lyrics Generator team. We\'re here to help with any questions or support needs.',

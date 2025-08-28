@@ -1,18 +1,16 @@
 import { NextRequest } from 'next/server'
 import { aiService } from '@/lib/ai-service'
 import { LyricsGenerationParams } from '@/lib/types'
-import { createServerClient } from '@/lib/supabase-server'
+import { authService } from '@/lib/auth-service'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    // 要求用户登录（功能级别权限控制）
-    const supabase = await createServerClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // 使用智能认证服务，避免重复认证
+    const user = await authService.getAuthenticatedUser()
     
-    if (authError || !user) {
-      console.error('Authentication error:', authError);
+    if (!user) {
       return new Response(JSON.stringify({ 
         error: 'Authentication required',
         message: 'Please sign in to generate lyrics'

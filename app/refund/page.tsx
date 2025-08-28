@@ -1,6 +1,9 @@
 import { Metadata } from 'next';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 
+// 强制静态生成 - 退款政策内容变化缓慢
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: 'Refund Policy - AI Lyrics Generator',
   description: 'Our refund policy and terms for AI Lyrics Generator services.',

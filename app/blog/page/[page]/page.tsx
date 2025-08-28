@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createServerClient } from '@/lib/supabase-server';
+
 import { BLOG_CATEGORIES } from '@/lib/constants';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { formatDate } from '@/lib/utils';
@@ -44,8 +44,9 @@ async function getBlogPosts(page: number) {
     return { posts: posts.posts, totalCount: posts.total };
   }
   
-  // 缓存未命中，从数据库获取
-  const supabase = await createServerClient();
+  // 缓存未命中，从数据库获取（使用AdminClient，无需认证）
+  const { createAdminClient } = await import('@/lib/supabase-server');
+  const supabase = createAdminClient();
   const offset = (page - 1) * POSTS_PER_PAGE;
   
   const { data: postsData, error, count } = await supabase
@@ -72,32 +73,15 @@ async function getBlogPosts(page: number) {
 }
 
 async function getCategories(): Promise<Category[]> {
-  // 首先尝试从缓存获取
+  // 使用永久缓存方法，无需认证
   let categories = await cacheService.getCategories();
   
   if (categories && Array.isArray(categories) && categories.length > 0) {
     return (categories as unknown as import('@/lib/types').Category[]);
   }
   
-  // 缓存未命中，从数据库获取
-  const supabase = await createServerClient();
-  
-  const { data: categoriesData, error } = await supabase
-    .from('categories')
-    .select('id, name, slug, seo_title, meta_description, sort_order, is_active, created_at, updated_at')
-    .order('name');
-
-  if (error) {
-    console.error('Error fetching categories:', error);
-    return BLOG_CATEGORIES;
-  }
-
-  const result = categoriesData || BLOG_CATEGORIES;
-  
-  // 更新缓存
-  await cacheService.set('categories:all', result, 3600);
-  
-  return result;
+  // 如果缓存为空，返回默认分类
+  return BLOG_CATEGORIES;
 }
 
 // 动态生成元数据

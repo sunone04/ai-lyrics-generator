@@ -29,9 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const getInitialSession = async () => {
       try {
+        // 获取初始会话和用户信息
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
         if (mounted) {
+          // 验证会话和用户的一致性
           if (currentSession && currentUser && currentSession.user.id === currentUser.id) {
             setSession(currentSession);
             setUser(currentUser);
@@ -41,7 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setLoading(false);
         }
-      } catch {
+      } catch (error) {
+        console.error('Error getting initial session:', error);
         if (mounted) {
           setSession(null);
           setUser(null);
@@ -52,27 +56,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
+    // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mounted) return;
+        
         try {
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            // 会话创建或刷新：获取最新用户
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-            if (currentUser) {
-              setSession(newSession);
-              setUser(currentUser);
-            } else {
+          switch (event) {
+            case 'SIGNED_IN':
+            case 'TOKEN_REFRESHED':
+              // 会话创建或刷新：获取最新用户信息
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser) {
+                setSession(newSession);
+                setUser(currentUser);
+              } else {
+                setSession(null);
+                setUser(null);
+              }
+              break;
+              
+            case 'SIGNED_OUT':
               setSession(null);
               setUser(null);
-            }
-          } else if (event === 'SIGNED_OUT') {
-            setSession(null);
-            setUser(null);
-          } else {
-            // 其他事件，尽量保持现状
-            setSession(newSession);
+              break;
+              
+            case 'USER_UPDATED':
+              // 用户信息更新：刷新用户数据
+              if (newSession?.user) {
+                setUser(newSession.user);
+              }
+              break;
+              
+            default:
+              // 其他事件：保持当前状态
+              if (newSession) {
+                setSession(newSession);
+              }
+              break;
           }
+        } catch (error) {
+          console.error('Error handling auth state change:', error);
         } finally {
           setLoading(false);
         }

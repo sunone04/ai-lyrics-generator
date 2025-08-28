@@ -132,9 +132,10 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
           toast.success('Registration successful! Please check your email for the confirmation link.');
         }
       } else {
+        // 统一使用Supabase认证
         const { error } = await supabase.auth.signInWithPassword({
           email,
-          password,
+          password
         });
 
         if (error) {
@@ -150,16 +151,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
           return;
         }
 
-        // 额外确认：等待会话就绪（最多 3 次 * 300ms）
-        let tries = 0;
-        while (tries < 3) {
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
-          if (currentUser) break;
-          await new Promise(r => setTimeout(r, 300));
-          tries++;
-        }
-
-        // 跳转
+        // 登录成功，跳转
         if (returnTo) {
           router.push(decodeURIComponent(returnTo));
         } else {

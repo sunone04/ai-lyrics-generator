@@ -36,9 +36,11 @@ export async function generateStaticParams() {
   }));
 }
 
-// 获取单个博客文章
+// 获取单个博客文章（构建时获取，运行时无需认证）
 async function getBlogPost(slug: string): Promise<Post | null> {
-  const supabase = await createServerClient();
+  // 使用AdminClient，无需认证检查
+  const { createAdminClient } = await import('@/lib/supabase-server');
+  const supabase = createAdminClient();
   
   const { data: post, error } = await supabase
     .from('posts')

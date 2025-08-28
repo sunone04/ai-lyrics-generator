@@ -2,6 +2,9 @@ import { Metadata } from 'next';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { SITE_CONFIG } from '@/lib/constants';
 
+// 强制静态生成 - 隐私政策内容变化缓慢
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'Learn how AI Lyrics Generator collects, uses, and protects your personal information.',

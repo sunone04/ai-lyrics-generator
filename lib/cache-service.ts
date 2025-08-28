@@ -2,15 +2,20 @@ import { createAdminClient } from './supabase-server'
 
 // 缓存配置 - 标准AI SaaS做法
 const CACHE_TTL = {
-  USER_PROFILE: 300,      // 5分钟 - 用户数据短期缓存
-  SUBSCRIPTION_STATUS: 600, // 10分钟 - 订阅状态短期缓存
-  BLOG_POSTS: 604800,     // 7天 - 博客内容中期缓存（标准SaaS做法）
-  CATEGORIES: 604800,     // 7天 - 分类中期缓存（标准SaaS做法）
-  GENERATION_STATS: 300,  // 5分钟 - 生成统计短期缓存
-  API_USAGE_LOGS: 1800,   // 30分钟 - API使用日志缓存（标准SaaS做法）
-  GENERATION_HISTORY: 3600, // 1小时 - 生成历史缓存（标准SaaS做法）
-  SITEMAP: 86400,         // 24小时 - 站点地图缓存（标准SaaS做法）
-  PADDLE_WEBHOOK: 1800,   // 30分钟 - Paddle支付缓存（标准SaaS做法）
+  // 博客内容：永久缓存，只在管理操作时手动清除
+  BLOG_POSTS: 0,                // 0 = 永久缓存，除非手动清除
+  BLOG_CATEGORIES: 0,           // 0 = 永久缓存，除非手动清除
+  SITEMAP: 0,                   // 0 = 永久缓存，除非手动清除
+  
+  // 用户内容：短期缓存，需要认证
+  USER_PROFILE: 300,             // 5分钟 - 用户数据短期缓存
+  USER_SUBSCRIPTION: 600,        // 10分钟 - 订阅状态短期缓存
+  USER_GENERATION_STATS: 300,    // 5分钟 - 生成统计短期缓存
+  USER_GENERATION_HISTORY: 3600, // 1小时 - 生成历史短期缓存
+  
+  // 系统内容：中期缓存
+  SYSTEM_API_USAGE: 1800,       // 30分钟 - API使用日志缓存
+  SYSTEM_PADDLE_WEBHOOK: 1800,  // 30分钟 - Paddle支付缓存
 }
 
 interface CacheEntry<T> {
@@ -108,9 +113,10 @@ export class CacheService {
 
   /**
    * 获取用户配置文件（带缓存）
+   * 标准SaaS做法：用户数据短期缓存，需要认证
    */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    const cacheKey = `user_profile:${userId}`
+    const cacheKey = `user:profile:${userId}`
     let profile = await this.get<UserProfile>(cacheKey)
     
     if (!profile) {
@@ -126,6 +132,7 @@ export class CacheService {
       }
       
       profile = data as UserProfile
+      // 5分钟短期缓存，用户数据变化频繁
       await this.set(cacheKey, profile, CACHE_TTL.USER_PROFILE)
     }
     
@@ -133,10 +140,11 @@ export class CacheService {
   }
 
   /**
-   * 获取订阅状态（带缓存）
+   * 获取用户订阅状态（带缓存）
+   * 标准SaaS做法：订阅状态短期缓存，需要认证
    */
-  async getSubscriptionStatus(userId: string): Promise<SubscriptionStatus | null> {
-    const cacheKey = `subscription:${userId}`
+  async getUserSubscriptionStatus(userId: string): Promise<SubscriptionStatus | null> {
+    const cacheKey = `user:subscription:${userId}`
     let status = await this.get<SubscriptionStatus>(cacheKey)
     
     if (!status) {
@@ -152,15 +160,16 @@ export class CacheService {
       }
       
       status = data as SubscriptionStatus
-      await this.set(cacheKey, status, CACHE_TTL.SUBSCRIPTION_STATUS)
+      // 10分钟短期缓存，订阅状态变化不频繁
+      await this.set(cacheKey, status, CACHE_TTL.USER_SUBSCRIPTION)
     }
     
     return status
   }
 
   /**
-   * 获取博客分类（带智能缓存）
-   * 标准SaaS做法：分类较少变化，中期缓存
+   * 获取博客分类（永久缓存）
+   * 标准SaaS做法：博客分类变化缓慢，永久缓存，只在管理操作时手动清除
    */
   async getCategories(): Promise<Category[]> {
     const cacheKey = 'categories:all'
@@ -179,16 +188,16 @@ export class CacheService {
       }
       
       categories = data as Category[]
-      // 7天缓存，标准SaaS做法
-      await this.set(cacheKey, categories, CACHE_TTL.CATEGORIES)
+      // 永久缓存，除非手动清除
+      await this.set(cacheKey, categories, CACHE_TTL.BLOG_CATEGORIES)
     }
     
     return categories
   }
 
   /**
-   * 获取博客文章（带智能缓存）
-   * 标准SaaS做法：文章内容中期缓存，除非有更新
+   * 获取博客文章（永久缓存）
+   * 标准SaaS做法：博客文章变化缓慢，永久缓存，只在管理操作时手动清除
    */
   async getBlogPosts(categorySlug?: string, page: number = 1, limit: number = 10): Promise<BlogPostsResult> {
     const cacheKey = `blog_posts:${categorySlug || 'all'}:${page}:${limit}`
@@ -217,7 +226,7 @@ export class CacheService {
       }
       
       posts = { posts: data, total: data.length }
-      // 7天缓存，标准SaaS做法
+      // 永久缓存，除非手动清除
       await this.set(cacheKey, posts, CACHE_TTL.BLOG_POSTS)
     }
     
@@ -430,8 +439,8 @@ export class CacheService {
   }
 
   /**
-   * 获取站点地图数据（带缓存）
-   * 标准SaaS做法：站点地图变化不频繁，长期缓存
+   * 获取站点地图数据（永久缓存）
+   * 标准SaaS做法：站点地图变化不频繁，永久缓存，只在管理操作时手动清除
    */
   async getSitemapData(): Promise<any> {
     const cacheKey = 'sitemap:all'
@@ -458,6 +467,7 @@ export class CacheService {
         last_updated: new Date().toISOString()
       }
       
+      // 永久缓存，除非手动清除
       await this.set(cacheKey, sitemap, CACHE_TTL.SITEMAP)
     }
     
