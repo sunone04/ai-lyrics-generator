@@ -12,7 +12,9 @@ export default async function AuthCallbackPage(props: any) {
   const codeParam = sp?.code
   const redirectToParam = sp?.redirect_to
   const code = Array.isArray(codeParam) ? codeParam[0] : codeParam
-  const redirectTo = Array.isArray(redirectToParam) ? redirectToParam[0] : redirectToParam || '/'
+  const rawRedirectTo = Array.isArray(redirectToParam) ? redirectToParam[0] : redirectToParam || '/'
+  // 仅允许站内路径，防止外链或协议问题；并对可疑/异常值回退至首页
+  const redirectTo = (typeof rawRedirectTo === 'string' && rawRedirectTo.startsWith('/')) ? rawRedirectTo : '/'
 
   if (!code) {
     // 记录缺少 code 的情况，便于排查回调失败
@@ -42,9 +44,12 @@ export default async function AuthCallbackPage(props: any) {
       const reason = encodeURIComponent(error.message || 'auth_failed')
       redirect(`/auth/signin?error=auth_failed&reason=${reason}`)
     }
-    redirect(redirectTo)
   } catch (error: any) {
-    // 记录捕获的意外异常
+    // 忽略 Next.js 为 redirect 抛出的内部信号
+    if (error?.digest === 'NEXT_REDIRECT' || error?.message === 'NEXT_REDIRECT') {
+      throw error
+    }
+    // 记录捕获的真实异常
     try {
       console.error('[Auth] OAuth callback unexpected error', {
         message: error?.message,
@@ -57,4 +62,7 @@ export default async function AuthCallbackPage(props: any) {
     const reason = encodeURIComponent(error?.message || 'unexpected_error')
     redirect(`/auth/signin?error=unexpected_error&reason=${reason}`)
   }
+
+  // 成功交换会话后进行跳转（可能触发 NEXT_REDIRECT，但已被上方逻辑忽略）
+  redirect(redirectTo)
 }

@@ -142,7 +142,26 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const category = await getCategory(slug);
 
   if (!category) {
-    notFound();
+    // 友好降级：分类不存在时，返回 200 并给出提示，避免因重定向回到一个 404 页被误判为“登录失败”
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">
+              Category Not Found
+            </h1>
+            <p className="text-xl text-black max-w-2xl mx-auto">
+              The category you visited is not available yet.
+            </p>
+            <div className="mt-6">
+              <Link href="/blog" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                Go to Blog
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const [posts, otherCategories] = await Promise.all([
