@@ -2,32 +2,12 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export function AuthButton() {
   const { user, loading, signOut } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const supabase = createClient();
-
-  const handleSignIn = async () => {
-    setIsSigningIn(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) {
-        console.error('Error signing in:', error);
-      }
-    } catch (error) {
-      console.error('Sign in error:', error);
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -55,12 +35,13 @@ export function AuthButton() {
   }
 
   return (
-    <Button 
-      onClick={handleSignIn} 
-      disabled={isSigningIn}
-      className="bg-blue-600 hover:bg-blue-700 text-white"
-    >
-      {isSigningIn ? 'Signing in...' : 'Sign In'}
-    </Button>
+    <Link href="/auth/signin" className="inline-block">
+      <Button 
+        disabled={isSigningIn}
+        className="bg-blue-600 hover:bg-blue-700 text-white"
+      >
+        {isSigningIn ? 'Signing in...' : 'Sign In'}
+      </Button>
+    </Link>
   );
 }

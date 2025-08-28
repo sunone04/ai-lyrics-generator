@@ -176,12 +176,33 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
         ? `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(returnTo)}`
         : `${window.location.origin}/auth/callback`;
 
+      // 结构化调试日志：开始发起 Google 登录
+      try {
+        console.info('[Auth] Google sign-in start', {
+          redirectTo: callbackUrl,
+          returnTo: returnTo || null,
+          location: window.location.href
+        });
+      } catch {}
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: callbackUrl }
       });
 
       if (error) {
+        // 结构化错误日志：OAuth 启动失败（常见：弹窗被拦截、配置不当）
+        try {
+          console.error('[Auth] Google sign-in error', {
+            message: error.message,
+            name: (error as any)?.name,
+            stack: (error as any)?.stack,
+            hint: 'Check Supabase OAuth provider config and callback URL allowlist',
+            callbackUrl,
+            returnTo: returnTo || null
+          });
+        } catch {}
+
         if (error.message.includes('popup')) {
           setErrors({ general: 'Please allow popups for Google sign-in to work.' });
         } else {
@@ -189,6 +210,14 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
         }
       }
     } catch (error: any) {
+      // 结构化错误日志：意外异常
+      try {
+        console.error('[Auth] Google sign-in unexpected error', {
+          message: error?.message,
+          name: error?.name,
+          stack: error?.stack
+        });
+      } catch {}
       setErrors({ general: 'Failed to sign in with Google. Please try again.' });
       console.error('[GoogleSignIn] unexpected error:', error);
     } finally {
