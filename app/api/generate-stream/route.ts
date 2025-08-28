@@ -55,6 +55,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取用户配额与当日使用次数
+    const { createAdminClient } = await import('@/lib/supabase-server');
+    const supabase = createAdminClient();
+    
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('status, generation_count, usage_last_reset')

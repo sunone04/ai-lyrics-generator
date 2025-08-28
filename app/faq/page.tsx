@@ -1,9 +1,10 @@
+'use client';
+
+import { useState } from 'react';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { cn } from '@/lib/utils';
-
-// 强制静态生成 - FAQ内容变化缓慢
-export const dynamic = 'force-static';
+import Head from 'next/head';
 
 interface FAQItem {
   question: string;

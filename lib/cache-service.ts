@@ -400,7 +400,7 @@ export class CacheService {
       }
       
       history = data
-      await this.set(cacheKey, history, CACHE_TTL.GENERATION_HISTORY)
+      await this.set(cacheKey, history, CACHE_TTL.USER_GENERATION_HISTORY)
     }
     
     return history
@@ -432,7 +432,7 @@ export class CacheService {
       const successRate = (data.filter(log => log.status_code < 400).length / totalCalls) * 100
       
       stats = { total_calls: totalCalls, avg_response_time: avgResponseTime, success_rate: successRate }
-      await this.set(cacheKey, stats, CACHE_TTL.API_USAGE_LOGS)
+      await this.set(cacheKey, stats, CACHE_TTL.SYSTEM_API_USAGE)
     }
     
     return stats
@@ -495,7 +495,7 @@ export class CacheService {
       }
       
       payment = data
-      await this.set(cacheKey, payment, CACHE_TTL.PADDLE_WEBHOOK)
+      await this.set(cacheKey, payment, CACHE_TTL.SYSTEM_PADDLE_WEBHOOK)
     }
     
     return payment

@@ -373,7 +373,7 @@ export class UserService {
    */
   async getUserSubscriptionInfo(userId: string): Promise<SubscriptionInfo | null> {
     // 首先尝试从缓存获取
-    let profile = await cacheService.getSubscriptionStatus(userId);
+    let profile = await cacheService.getUserSubscriptionStatus(userId);
     
     if (!profile) {
       const supabase = await createServerClient();
