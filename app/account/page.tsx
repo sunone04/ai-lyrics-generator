@@ -22,10 +22,10 @@ export default async function AccountPage() {
     redirect('/auth/signin')
   }
 
-  // Get user profile
+  // Get user profile（仅选择必要字段，减少传输与序列化）
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id,email,status,is_admin,paddle_customer_id,active_price_id,paddle_subscription_id,subscription_plan_name,subscription_billing_cycle,subscription_start_date,subscription_end_date,next_billing_date,subscription_canceled_at,generation_count,rewrite_count,favorite_count,usage_last_reset,updated_at')
     .eq('id', user.id)
     .single()
 

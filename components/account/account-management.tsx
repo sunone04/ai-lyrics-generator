@@ -15,30 +15,7 @@ import {
   ChartBarIcon
 } from '@heroicons/react/24/outline'
 import { getSubscriptionStatusText, getSubscriptionStatusColor } from '@/lib/paddle'
-
-interface Profile {
-  id: string;
-  email: string;
-  full_name?: string;
-  avatar_url?: string;
-  status: string;
-  usage_count: number;
-  favorite_count: number;
-  created_at: string;
-  updated_at: string;
-  
-  // Paddle 相关字段
-  paddle_customer_id?: string;
-  active_price_id?: string;
-  paddle_subscription_id?: string;
-  subscription_start_date?: string;
-  subscription_end_date?: string;
-  
-  // 使用统计字段
-  generation_count: number;
-  rewrite_count: number;
-  usage_last_reset: string;
-}
+import type { Profile } from '@/lib/types'
 
 // 根据价格ID获取计划名称
 function getPlanName(priceId?: string): string {

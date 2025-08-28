@@ -14,6 +14,14 @@ export interface Profile {
   last_login_ip?: string;
   last_login_at?: string;
   browser_fingerprint?: string;
+  // optional subscription fields for UI convenience
+  paddle_subscription_id?: string;
+  subscription_start_date?: string;
+  subscription_end_date?: string;
+  next_billing_date?: string;
+  subscription_canceled_at?: string;
+  subscription_plan_name?: string;
+  subscription_billing_cycle?: string;
 }
 
 export interface Generation {
