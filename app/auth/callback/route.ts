@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/auth/signin?error=missing_code', url.origin))
   }
 
-  const res = NextResponse.next()
+  // 重要：需要在最终返回的重定向响应对象上写入 Supabase 设置的会话 Cookie
+  // 之前写入到一个未返回的临时响应对象，导致 Cookie 丢失，登录失败
+  const res = NextResponse.redirect(new URL(redirectTo, url.origin))
 
   const supabase = createSsrServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -37,7 +39,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(`/auth/signin?error=auth_failed&reason=${reason}`, url.origin))
   }
 
-  return NextResponse.redirect(new URL(redirectTo, url.origin))
+  // 返回已经写入 Cookie 的重定向响应
+  return res
 }
 
 
