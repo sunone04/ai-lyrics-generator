@@ -100,7 +100,8 @@ function handleUnauthorized(request: NextRequest, reason?: string) {
     }, { status: 401 })
   }
   const redirectUrl = new URL('/auth/signin', request.url)
-  redirectUrl.searchParams.set('redirectTo', pathname)
+  // 与登录页参数一致（/auth/signin 读取 returnTo）
+  redirectUrl.searchParams.set('returnTo', pathname)
   if (reason) {
     redirectUrl.searchParams.set('reason', reason)
   }

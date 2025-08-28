@@ -153,12 +153,17 @@ export default function Navbar() {
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
               {user ? (
-                <Link
-                  href="/account"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Account
-                </Link>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600 truncate max-w-[180px]" title={user.email || ''}>
+                    {user.email || 'Account'}
+                  </span>
+                  <Link
+                    href="/account"
+                    className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+                  >
+                    Account
+                  </Link>
+                </div>
               ) : (
                 <button
                   onClick={handleSignIn}
@@ -219,13 +224,16 @@ export default function Navbar() {
             {/* User actions for mobile */}
             <div className="border-t border-gray-200 pt-4">
               {user ? (
-                <Link
-                  href="/account"
-                  className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Account
-                </Link>
+                <div className="px-3 py-2">
+                  <div className="text-sm text-gray-600 truncate" title={user.email || ''}>{user.email || 'Account'}</div>
+                  <Link
+                    href="/account"
+                    className="mt-1 inline-block text-gray-700 hover:text-blue-600 px-0 py-0 text-base font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Account
+                  </Link>
+                </div>
               ) : (
                 <button
                   onClick={() => {
