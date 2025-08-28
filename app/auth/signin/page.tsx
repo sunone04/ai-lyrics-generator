@@ -3,12 +3,12 @@
 import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase';
 import { LoadingButton } from '@/components/ui/loading';
 import { validateEmail } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { createClient } from '@/lib/supabase';
 
 // 独立的组件来处理 useSearchParams
 function SignInContent() {
@@ -32,7 +32,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const router = useRouter();
   
-  // 创建 Supabase 客户端实例
+  // Supabase client
   const supabase = createClient();
 
   // 根据回调错误参数给出用户提示，并打印开发者可用信息
@@ -46,18 +46,18 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
       const display = map[initialError.error] || 'Sign in failed. Please try again.';
       setErrors({ general: display });
       if (initialError.reason) {
-        // 开发者可在控制台查看详细原因
+        // See console for details in development
         console.warn('[Auth Callback] reason=', decodeURIComponent(initialError.reason));
       }
     }
   }, [initialError]);
 
-  // 清除错误信息
+  // Clear errors
   const clearErrors = () => {
     setErrors({});
   };
 
-  // 验证表单
+  // Validate form
   const validateForm = () => {
     const newErrors: {email?: string; password?: string} = {};
     
@@ -88,7 +88,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
 
     setIsLoading(true);
 
-    // 超时兜底：避免按钮一直转圈
+    // Timeout guard to avoid endless spinner
     let timeoutId: any;
     const startTimeoutGuard = () => {
       timeoutId = setTimeout(() => {
@@ -102,60 +102,27 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
       startTimeoutGuard();
 
       if (isSignUp) {
-        const { error, data } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
         });
-
         if (error) {
-          if (error.message.includes('already registered') || error.message.includes('User already registered')) {
-            setErrors({ 
-              general: 'This email is already registered. Try signing in or resend confirmation.' 
-            });
-          } else if (error.message.includes('weak password')) {
-            setErrors({ password: 'Password is too weak. Please use a stronger password.' });
-          } else if (error.message.includes('invalid email')) {
-            setErrors({ email: 'Please enter a valid email address.' });
-          } else {
-            setErrors({ general: error.message });
-          }
-          return;
-        }
-
-        if (data.user && !data.user.email_confirmed_at) {
-          setRegistrationSuccess(true);
-          setPassword('');
-          toast.success('Registration request processed! Please check your email for the confirmation link.');
+          setErrors({ general: error.message });
         } else {
           setRegistrationSuccess(true);
           setPassword('');
-          toast.success('Registration successful! Please check your email for the confirmation link.');
+          toast.success('注册成功，请检查邮箱中的确认邮件');
         }
       } else {
-        // 统一使用Supabase认证
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            setErrors({ general: 'Invalid email or password. Please check your credentials and try again.' });
-          } else if (error.message.includes('Email not confirmed')) {
-            setErrors({ general: 'Please check your email and click the confirmation link before signing in.' });
-          } else if (error.message.includes('Too many requests')) {
-            setErrors({ general: 'Too many login attempts. Please wait a few minutes and try again.' });
-          } else {
-            setErrors({ general: error.message });
-          }
-          return;
-        }
-
-        // 登录成功，跳转
-        if (returnTo) {
-          router.push(decodeURIComponent(returnTo));
-        } else {
-          router.push('/');
+          setErrors({ general: error.message });
+        } else if (data?.user) {
+          toast.success('登录成功');
+          router.push(returnTo ? decodeURIComponent(returnTo) : '/');
         }
       }
     } catch (error: any) {
@@ -172,42 +139,17 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
     clearErrors();
     
     try {
-      const callbackUrl = returnTo 
-        ? `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(returnTo)}`
-        : `${window.location.origin}/auth/callback`;
-
-      // 结构化调试日志：开始发起 Google 登录
-      try {
-        console.info('[Auth] Google sign-in start', {
-          redirectTo: callbackUrl,
-          returnTo: returnTo || null,
-          location: window.location.href
-        });
-      } catch {}
-
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: callbackUrl }
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: { prompt: 'select_account' },
+        },
       });
-
       if (error) {
-        // 结构化错误日志：OAuth 启动失败（常见：弹窗被拦截、配置不当）
-        try {
-          console.error('[Auth] Google sign-in error', {
-            message: error.message,
-            name: (error as any)?.name,
-            stack: (error as any)?.stack,
-            hint: 'Check Supabase OAuth provider config and callback URL allowlist',
-            callbackUrl,
-            returnTo: returnTo || null
-          });
-        } catch {}
-
-        if (error.message.includes('popup')) {
-          setErrors({ general: 'Please allow popups for Google sign-in to work.' });
-        } else {
-          setErrors({ general: error.message || 'Failed to sign in with Google' });
-        }
+        setErrors({ general: error.message });
+      } else if (data?.url) {
+        window.location.href = data.url;
       }
     } catch (error: any) {
       // 结构化错误日志：意外异常
@@ -218,7 +160,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
           stack: error?.stack
         });
       } catch {}
-      setErrors({ general: 'Failed to sign in with Google. Please try again.' });
+      setErrors({ general: 'Google 登录失败，请重试' });
       console.error('[GoogleSignIn] unexpected error:', error);
     } finally {
       setIsGoogleLoading(false);
@@ -238,19 +180,13 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email,
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
-
       if (error) {
-        if (error.message.includes('already confirmed')) {
-          setErrors({ general: 'This email is already confirmed. Try signing in instead.' });
-        } else if (error.message.includes('not found')) {
-          setErrors({ general: 'Email not found. Please register first.' });
-        } else {
-          setErrors({ general: error.message });
-        }
+        setErrors({ general: error.message });
       } else {
-        toast.success('Confirmation email sent! Please check your inbox.');
+        toast.success('确认邮件已发送（可重复发送）');
         setRegistrationSuccess(true);
       }
     } catch (error: any) {

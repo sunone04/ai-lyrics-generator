@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import { NAVIGATION_ITEMS, BLOG_CATEGORIES } from '@/lib/constants';
 import { 
   Bars3Icon, 
@@ -13,17 +12,36 @@ import {
   PencilIcon,
   LanguageIcon
 } from '@heroicons/react/24/outline';
+import { createClient } from '@/lib/supabase';
 
 export default function Navbar() {
-  const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const router = useRouter();
 
   const handleSignIn = () => {
     router.push('/auth/signin');
   };
+
+  useEffect(() => {
+    const supabase = createClient();
+    let mounted = true;
+    const sync = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setIsSignedIn(!!data.user);
+    };
+    sync();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsSignedIn(!!session?.user);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <nav className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
@@ -78,15 +96,7 @@ export default function Navbar() {
                                 <PencilIcon className="w-4 h-4 mr-3 text-purple-500" />
                                 Polish Lyrics
                               </Link>
-                              {user && (
-                                <Link
-                                  href="/dashboard"
-                                  className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 hover:text-green-700 transition-all duration-200 rounded-lg mx-2"
-                                >
-                                  <LanguageIcon className="w-4 h-4 mr-3 text-green-500" />
-                                  History & Favorites
-                                </Link>
-                              )}
+                              {/* Auth-only link removed */}
                             </div>
                           </div>
                         )}
@@ -152,18 +162,13 @@ export default function Navbar() {
           {/* User Menu */}
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
-              {user ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600 truncate max-w-[180px]" title={user.email || ''}>
-                    {user.email || 'Account'}
-                  </span>
-                  <Link
-                    href="/account"
-                    className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                  >
-                    Account
-                  </Link>
-                </div>
+              {isSignedIn ? (
+                <Link
+                  href="/account"
+                  className="bg-gray-900 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-black transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+                >
+                  Account
+                </Link>
               ) : (
                 <button
                   onClick={handleSignIn}
@@ -223,17 +228,14 @@ export default function Navbar() {
 
             {/* User actions for mobile */}
             <div className="border-t border-gray-200 pt-4">
-              {user ? (
-                <div className="px-3 py-2">
-                  <div className="text-sm text-gray-600 truncate" title={user.email || ''}>{user.email || 'Account'}</div>
-                  <Link
-                    href="/account"
-                    className="mt-1 inline-block text-gray-700 hover:text-blue-600 px-0 py-0 text-base font-medium"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Account
-                  </Link>
-                </div>
+              {isSignedIn ? (
+                <Link
+                  href="/account"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="bg-gray-900 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:bg-black transition-colors cursor-pointer"
+                >
+                  Account
+                </Link>
               ) : (
                 <button
                   onClick={() => {

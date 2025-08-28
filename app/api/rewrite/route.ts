@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+ 
 import { aiService } from '@/lib/ai-service';
 import { securityService } from '@/lib/security-service';
 
@@ -14,38 +14,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createServerClient();
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    // 去除登录校验：演示模式
 
-    // Get user profile to check permissions
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('status, rewrite_count')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      );
-    }
+    // 去除用户资料/权限检查
 
     // Pro模型权限校验（仅会员可用）
-    if ((modelType === 'pro') && profile.status !== 'active') {
-      return NextResponse.json(
-        { error: 'Pro model requires premium subscription' },
-        { status: 403 }
-      );
-    }
+    // 去除 Pro 权限校验
 
     // 防白嫖检查
     const clientIp = request.headers.get('x-forwarded-for') || 
@@ -58,7 +32,7 @@ export async function POST(request: NextRequest) {
       ipAddress: clientIp,
       userAgent,
       browserFingerprint,
-      userId: user.id,
+      userId: undefined as any,
       actionType: 'rewrite'
     });
 
@@ -67,7 +41,7 @@ export async function POST(request: NextRequest) {
         ipAddress: clientIp,
         userAgent,
         browserFingerprint,
-        userId: user.id,
+        userId: undefined as any,
         actionType: 'rewrite'
       }, false);
       
@@ -82,52 +56,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Check rewrite limits (optimize to free=2/day, paid=30/day)
-    const dailyLimit = profile.status === 'free' ? 2 : 30;
-    if (profile.rewrite_count >= dailyLimit) {
-      return NextResponse.json(
-        { 
-          error: 'Daily rewrite limit reached',
-          message: 'You have reached your daily limit for lyrics rewriting.',
-          action: 'upgrade',
-          userStatus: profile.status,
-          upgradeMessage: profile.status === 'free' 
-            ? 'Upgrade to Premium to get 30 lyrics optimizations per day!'
-            : 'Your premium subscription may have expired.'
-        },
-        { status: 429 }
-      );
-    }
+    // 去除配额/会员限制
 
     // Generate rewritten lyrics using AI service
     const rewrittenPortion = await aiService.rewriteLyrics(
       originalLyrics,
       selectedPortion,
       rewriteRequest,
-      modelType || 'basic'
+      (modelType || 'basic')
     );
 
     // Update rewrite count（微任务，减少接口尾延迟）
-    queueMicrotask(async () => {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ rewrite_count: profile.rewrite_count + 1 })
-          .eq('id', user.id);
-      } catch {}
-    });
+    // 去除计数更新
 
     // 记录成功的操作
     await securityService.logSecurityEvent({
       ipAddress: clientIp,
       userAgent,
       browserFingerprint,
-      userId: user.id,
+      userId: undefined as any,
       actionType: 'rewrite'
     }, true);
 
     const res = NextResponse.json({
       rewrittenPortion,
-      remainingRewrites: dailyLimit - profile.rewrite_count - 1
+      remainingRewrites: null
     })
     res.headers.set('Cache-Control', 'private, max-age=0, no-store')
     res.headers.set('Vary', 'Cookie')

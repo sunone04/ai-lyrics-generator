@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
 import { FORM_OPTIONS } from '@/lib/constants';
 import { LyricsGenerationParams } from '@/lib/types';
 import { LoadingButton } from '@/components/ui/loading';
@@ -20,7 +19,8 @@ function GenerateContent() {
 
 // 主要的生成表单组件
 function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
-  const { user, loading } = useAuth();
+  const user = null;
+  const loading = false;
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -195,30 +195,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     }
 
     // 检查用户配额
-    try {
-      const profileResponse = await fetch('/api/user/profile');
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        const profile = profileData.profile || profileData;
-        
-        if (profile) {
-          const dailyLimit = profile.status === 'active' ? 30 : 2;
-          if ((profile.generation_count || 0) >= dailyLimit) {
-            if (profile.status === 'free') {
-              toast.error('Daily limit reached. Upgrade to Premium for 30 generations per day.');
-              router.push('/pricing');
-              return;
-            } else {
-              toast.error('Daily limit reached. Please try again tomorrow.');
-              return;
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking user quota:', error);
-      // 继续执行，让后端API处理配额检查
-    }
+    // 纯前端：不再请求用户配额
 
     try {
       // Prepare params for submission, replacing "Other" values with custom inputs

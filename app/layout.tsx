@@ -6,8 +6,7 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { Toaster } from "react-hot-toast";
 import { SITE_CONFIG } from "@/lib/constants";
-import { AuthProvider } from "@/lib/auth-context";
-import PaddleProvider from "@/components/paddle/paddle-provider";
+ 
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
@@ -145,24 +144,21 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <AuthProvider>
-          <PaddleProvider />
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-            }}
-          />
-        </AuthProvider>
+        <Navbar />
+        <main className="flex-1">
+          {children}
+        </main>
+        <Footer />
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+          }}
+        />
       </body>
     </html>
   );

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { CheckIcon } from '@heroicons/react/24/outline'
-import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { openPaddleCheckout, initializePaddle, isPaddleLoaded } from '@/lib/paddle'
 import Link from 'next/link'
@@ -24,7 +23,7 @@ interface PricingCardProps {
 }
 
 export default function PricingCard({ plan }: PricingCardProps) {
-  const { user } = useAuth()
+  const user = null as any
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   

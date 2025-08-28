@@ -1,53 +1,69 @@
-import { Metadata } from 'next'
-import { createServerClient } from '@/lib/supabase-server'
-import { redirect } from 'next/navigation'
-import AccountManagement from '@/components/account/account-management'
+'use client';
 
-export const metadata: Metadata = {
-  title: 'Account Management - AI Lyrics Generator',
-  description: 'Manage your AI Lyrics Generator account, subscription, and billing information.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-}
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
-export default async function AccountPage() {
-  const supabase = await createServerClient()
-  
-  // Get user session
-  const { data: { user }, error } = await supabase.auth.getUser()
-  
-  if (error || !user) {
-    redirect('/auth/signin')
-  }
+export default function AccountPage() {
+  const supabase = createClient();
+  const router = useRouter();
+  const [email, setEmail] = useState<string>('');
+  const [status, setStatus] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
-  // Get user profile（仅选择必要字段，减少传输与序列化）
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id,email,status,is_admin,paddle_customer_id,active_price_id,paddle_subscription_id,subscription_plan_name,subscription_billing_cycle,subscription_start_date,subscription_end_date,next_billing_date,subscription_canceled_at,generation_count,rewrite_count,favorite_count,usage_last_reset,updated_at')
-    .eq('id', user.id)
-    .single()
+  useEffect(() => {
+    let mounted = true;
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted) return;
+      if (!user) {
+        router.replace('/auth/signin?returnTo=' + encodeURIComponent('/account'));
+        return;
+      }
+      setEmail(user.email || '');
+      try {
+        const res = await fetch('/api/user/profile');
+        if (res.ok) {
+          const profile = await res.json();
+          setStatus(profile?.status || 'free');
+        }
+      } catch {}
+      setLoading(false);
+    };
+    init();
+    return () => { mounted = false; };
+  }, [router, supabase]);
 
-  if (profileError) {
-    console.error('Error fetching profile:', profileError)
-    redirect('/auth/signin')
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    toast.success('Signed out');
+    router.replace('/');
+  };
+
+  const goResetPassword = async () => {
+    router.push('/auth/reset-password');
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (
-    <div className="bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Account Management
-          </h1>
-          <p className="mt-4 text-lg text-gray-600">
-            Manage your subscription, billing, and account settings.
-          </p>
-          
-          <AccountManagement user={user} profile={profile} />
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow p-6 space-y-4">
+        <h1 className="text-2xl font-bold">Account</h1>
+        <div className="space-y-1">
+          <div><span className="text-gray-500">Email:</span> <span className="font-medium">{email}</span></div>
+          <div><span className="text-gray-500">Plan:</span> <span className="font-medium">{status === 'active' ? 'Pro' : 'Free'}</span></div>
+        </div>
+        <div className="pt-4 flex gap-3">
+          <button onClick={goResetPassword} className="px-4 py-2 bg-gray-100 rounded-md">Forgot / Reset Password</button>
+          <button onClick={signOut} className="px-4 py-2 bg-red-600 text-white rounded-md">Sign Out</button>
         </div>
       </div>
     </div>
-  )
+  );
 }
+
+

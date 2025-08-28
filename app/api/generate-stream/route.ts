@@ -1,24 +1,12 @@
 import { NextRequest } from 'next/server'
 import { aiService } from '@/lib/ai-service'
 import { LyricsGenerationParams } from '@/lib/types'
-import { authService } from '@/lib/auth-service'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    // 使用智能认证服务，避免重复认证
-    const user = await authService.getAuthenticatedUser()
-    
-    if (!user) {
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required',
-        message: 'Please sign in to generate lyrics'
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
+    // 去除认证逻辑：开放式生成接口（仅供本地/演示）
 
     const body = await request.json()
 
@@ -39,7 +27,6 @@ export async function POST(request: NextRequest) {
       useBpm: Boolean(body.useBpm || false),
       melody: body.melody ? String(body.melody) : undefined,
       syllablePattern: body.syllablePattern ? String(body.syllablePattern) : undefined,
-      // 模型在后端决定：默认按用户未登录->basic（后续接入会员判断）
       modelType: 'basic'
     }
 
@@ -54,57 +41,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 获取用户配额与当日使用次数
-    const { createAdminClient } = await import('@/lib/supabase-server');
-    const supabase = createAdminClient();
-    
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('status, generation_count, usage_last_reset')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to fetch user profile',
-        message: 'Please try again later'
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    // 检查是否需要重置每日计数
-    const today = new Date().toISOString().split('T')[0];
-    if (profile?.usage_last_reset !== today) {
-      // 重置每日计数
-      await supabase
-        .from('profiles')
-        .update({ 
-          generation_count: 0, 
-          rewrite_count: 0, 
-          usage_last_reset: today 
-        })
-        .eq('id', user.id);
-      
-      profile.generation_count = 0;
-    }
-
-    const dailyLimit = profile?.status === 'active' ? 30 : 2
-    if ((profile?.generation_count ?? 0) >= dailyLimit) {
-      return new Response(JSON.stringify({
-        error: 'Daily generation limit reached',
-        message: profile?.status === 'active'
-          ? 'You have reached your daily limit for lyric generation.'
-          : 'Free plan: 2 generations per day. Upgrade for 30/day.',
-        action: profile?.status === 'active' ? 'wait' : 'upgrade',
-        userStatus: profile?.status || 'free'
-      }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
+    // 去除配额/计数逻辑：不再访问数据库或 Supabase
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {

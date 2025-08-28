@@ -83,11 +83,14 @@ export default function ResultPage() {
 
         setGeneration(generationData);
 
-        // Get user profile
-        const response = await fetch('/api/user/profile');
-        if (response.ok) {
-          const userProfile = await response.json();
-          setProfile(userProfile);
+        // Get user profile (client-side to avoid server auth helpers)
+        if (user) {
+          const { data: profileRow } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (profileRow) setProfile(profileRow as any);
         }
 
       } catch (error) {

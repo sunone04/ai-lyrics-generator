@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { createClient } from '@/lib/supabase';
 import { Generation, Profile } from '@/lib/types';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
@@ -19,18 +19,16 @@ import {
 import Link from 'next/link';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
-import { AuthGuard } from '@/components/auth/auth-guard';
+ 
 
 export default function DashboardPage() {
-  return (
-    <AuthGuard>
-      <DashboardContent />
-    </AuthGuard>
-  );
+  return <DashboardContent />;
 }
 
 function DashboardContent() {
-  const { user, loading: authLoading } = useAuth();
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [favorites, setFavorites] = useState<Generation[]>([]);
@@ -38,6 +36,22 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; generationId: number | null }>({ show: false, generationId: null });
   const router = useRouter();
+
+  useEffect(() => {
+    let mounted = true;
+    const initAuth = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setUser(data.user ?? null);
+      setAuthLoading(false);
+      if (!data.user) {
+        const returnTo = encodeURIComponent('/dashboard');
+        router.replace(`/auth/signin?returnTo=${returnTo}`);
+      }
+    };
+    initAuth();
+    return () => { mounted = false; };
+  }, [supabase, router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,12 +62,13 @@ function DashboardContent() {
           const payment = params.get('payment');
           if (payment === 'success') toast.success('Payment successful. Your membership will be activated shortly.');
           if (payment === 'failed') toast.error('Payment failed or canceled. Please try again.');
-          // Get user profile
-          const profileResponse = await fetch('/api/user/profile');
-          if (profileResponse.ok) {
-            const profileResult = await profileResponse.json();
-            setProfile(profileResult.profile);
-          }
+          // Get user profile directly via Supabase
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (prof) setProfile(prof as any);
 
           // Get recent generations
           const generationsResponse = await fetch('/api/user/generations');

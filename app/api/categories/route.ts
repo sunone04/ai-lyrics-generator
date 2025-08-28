@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
-import { createAdminClient } from '@/lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
 import { isAdmin } from '@/lib/admin-config';
 import { cacheService } from '@/lib/cache-service';
 
@@ -17,8 +16,11 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
-    // Create service client to verify token
-    const supabase = await createServerClient();
+    // Verify token using public supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
@@ -47,8 +49,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert category using admin client (service role)
-    const adminClient = createAdminClient();
+    // Insert category using service role on server
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
     const { data: category, error: dbError } = await adminClient
       .from('categories')
       .insert({
