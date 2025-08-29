@@ -1,44 +1,54 @@
-type CheckoutOptions = {
-  items: { priceId: string; quantity: number }[];
-  customer?: any;
-  customData?: Record<string, any>;
-  settings?: { successUrl?: string; locale?: string };
+export interface PaddleConfig {
+  environment: 'sandbox' | 'live';
+  clientId: string;
+  apiKey: string;
+  webhookSecret: string;
+  monthlyPriceId: string;
+  yearlyPriceId: string;
+  apiBaseUrl: string;
+}
+
+export const getPaddleConfig = (): PaddleConfig => {
+  const envVar = process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT as 'sandbox' | 'live' | undefined;
+  const environment: 'sandbox' | 'live' = envVar === 'sandbox' ? 'sandbox' : 'live';
+  
+  return {
+    environment: environment || 'sandbox',
+    clientId: process.env.NEXT_PUBLIC_PADDLE_CLIENT_ID || '',
+    apiKey: process.env.PADDLE_API_KEY || '',
+    webhookSecret: process.env.PADDLE_WEBHOOK_SECRET || '',
+    monthlyPriceId: process.env.NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID || '',
+    yearlyPriceId: process.env.NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID || '',
+    apiBaseUrl: environment === 'sandbox'
+      ? (process.env.NEXT_PUBLIC_PADDLE_API_BASE_URL || 'https://sandbox-api.paddle.com')
+      : 'https://api.paddle.com'
+  };
 };
 
-export function isPaddleLoaded() {
-  return typeof window !== 'undefined' && !!(window as any).Paddle;
-}
+export const isPaddleEnabled = (): boolean => {
+  const config = getPaddleConfig();
+  return !!(config.clientId && config.apiKey && config.webhookSecret);
+};
 
-export function initializePaddle() {
-  if (!isPaddleLoaded()) return;
-  const Paddle = (window as any).Paddle;
-  if (!Paddle?.Initialized) {
-    try {
-      Paddle.Initialize({
-        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_ID,
-        eventCallback: () => {},
+// Paddle.js 初始化脚本
+export const getPaddleInitScript = (): string => {
+  const config = getPaddleConfig();
+  
+  return `
+    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+    <script type="text/javascript">
+      ${config.environment === 'sandbox' ? 'Paddle.Environment.set("sandbox");' : ''}
+      Paddle.Initialize({ 
+        token: "${config.clientId}"
       });
-    } catch {}
-  }
-}
+    </script>
+  `;
+};
 
-export async function openPaddleCheckout(opts: CheckoutOptions) {
-  if (!isPaddleLoaded()) throw new Error('Paddle not loaded');
-  const Paddle = (window as any).Paddle;
-  return new Promise<void>((resolve, reject) => {
-    try {
-      Paddle.Checkout.open({
-        items: opts.items,
-        customer: opts.customer,
-        customData: opts.customData,
-        settings: opts.settings,
-        onLoaded: () => resolve(),
-        onError: (e: any) => reject(e),
-      });
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
+// 价格ID映射
+export const getPriceId = (plan: 'monthly' | 'yearly'): string => {
+  const config = getPaddleConfig();
+  return plan === 'monthly' ? config.monthlyPriceId : config.yearlyPriceId;
+};
 
 

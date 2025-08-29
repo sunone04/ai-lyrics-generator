@@ -10,9 +10,12 @@ import {
   ChevronDownIcon,
   SparklesIcon,
   PencilIcon,
-  LanguageIcon
+  LanguageIcon,
+  StarIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
 import { createClient } from '@/lib/supabase';
+import { useSubscription } from '@/lib/hooks/use-subscription';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -21,6 +24,7 @@ export default function Navbar() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
+  const { subscription, isPro, isFree } = useSubscription();
 
   const handleSignIn = () => {
     router.push('/auth/signin');
@@ -106,7 +110,6 @@ export default function Navbar() {
                                 <LanguageIcon className="w-4 h-4 mr-3 text-indigo-500" />
                                 Dashboard
                               </Link>
-                              {/* Auth-only link removed */}
                             </div>
                           </div>
                         )}
@@ -173,15 +176,33 @@ export default function Navbar() {
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
               {isSignedIn ? (
-                <Link
-                  href="/account"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer flex items-center gap-2"
-                >
-                  <span>Account</span>
-                  {userEmail && (
-                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{userEmail.split('@')[0]}</span>
-                  )}
-                </Link>
+                <div className="flex items-center gap-3">
+                  {/* Subscription Status Badge */}
+                  <div className="flex items-center gap-2">
+                    {isPro ? (
+                      <div className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-md">
+                        <StarIcon className="w-3.5 h-3.5" />
+                        <span>PRO</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full text-xs font-medium">
+                        <UserIcon className="w-3.5 h-3.5" />
+                        <span>FREE</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Account Button */}
+                  <Link
+                    href="/account"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer flex items-center gap-2"
+                  >
+                    <span>Account</span>
+                    {userEmail && (
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{userEmail.split('@')[0]}</span>
+                    )}
+                  </Link>
+                </div>
               ) : (
                 <button
                   onClick={handleSignIn}
