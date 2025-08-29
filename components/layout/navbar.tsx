@@ -19,6 +19,7 @@ export default function Navbar() {
   const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSignIn = () => {
@@ -32,10 +33,12 @@ export default function Navbar() {
       const { data } = await supabase.auth.getUser();
       if (!mounted) return;
       setIsSignedIn(!!data.user);
+      setUserEmail(data.user?.email ?? null);
     };
     sync();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsSignedIn(!!session?.user);
+      setUserEmail(session?.user?.email ?? null);
     });
     return () => {
       mounted = false;
@@ -95,6 +98,13 @@ export default function Navbar() {
                               >
                                 <PencilIcon className="w-4 h-4 mr-3 text-purple-500" />
                                 Polish Lyrics
+                              </Link>
+                              <Link
+                                href="/dashboard"
+                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700 transition-all duration-200 rounded-lg mx-2"
+                              >
+                                <LanguageIcon className="w-4 h-4 mr-3 text-indigo-500" />
+                                Dashboard
                               </Link>
                               {/* Auth-only link removed */}
                             </div>
@@ -165,9 +175,12 @@ export default function Navbar() {
               {isSignedIn ? (
                 <Link
                   href="/account"
-                  className="bg-gray-900 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-black transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer flex items-center gap-2"
                 >
-                  Account
+                  <span>Account</span>
+                  {userEmail && (
+                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{userEmail.split('@')[0]}</span>
+                  )}
                 </Link>
               ) : (
                 <button

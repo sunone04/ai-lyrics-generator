@@ -27,6 +27,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{email?: string; password?: string; general?: string}>({});
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
@@ -73,6 +74,9 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
       newErrors.password = 'Password must be at least 6 characters';
     }
 
+    if (isSignUp && password !== confirmPassword) {
+      newErrors.password = 'Passwords do not match';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -383,6 +387,27 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                       </p>
                     )}
                   </div>
+
+                  {isSignUp && (
+                    <div>
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                        Confirm Password
+                      </label>
+                      <input
+                        id="confirmPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className={`block w-full mt-1 px-4 py-3 text-gray-900 border rounded-md shadow-sm focus:outline-none text-base placeholder-gray-500 ${
+                          errors.password 
+                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                        }`}
+                        placeholder="Re-enter your password"
+                        minLength={6}
+                      />
+                    </div>
+                  )}
 
                   <LoadingButton
                     type="submit"
