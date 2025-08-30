@@ -393,4 +393,4 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
 }
 
 // 启用ISR - 每60秒重新验证一次
-export const revalidate = 60;
+export const revalidate = false;

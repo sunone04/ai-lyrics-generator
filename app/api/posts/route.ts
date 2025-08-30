@@ -72,7 +72,6 @@ export async function POST(request: NextRequest) {
       }
 
       await cacheService.clearPostCache(post.id)
-      console.log('Blog cache cleared after post creation')
     } catch (reErr) {
       console.warn('Revalidate after post create failed:', reErr)
     }

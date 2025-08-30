@@ -26,7 +26,7 @@ export default function ShareButton({ title, description, url }: ShareButtonProp
   return (
     <button
       onClick={handleShare}
-      className="text-blue-600 hover:text-blue-500 font-medium"
+      className="text-blue-600 hover:text-blue-500 font-medium cursor-pointer transition-colors"
     >
       Share
     </button>

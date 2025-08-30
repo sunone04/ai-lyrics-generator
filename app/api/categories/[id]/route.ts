@@ -161,7 +161,6 @@ export async function DELETE(
     // Clear cache and revalidate
     try {
       await cacheService.clearCategoryCache(parseInt(id));
-      console.log('Blog cache cleared after category deletion');
       
       // Trigger ISR invalidation
       try {

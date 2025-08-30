@@ -188,7 +188,6 @@ export async function DELETE(
       )
 
       await cacheService.clearPostCache(parseInt(id))
-      console.log('Blog cache cleared after post deletion')
     } catch (cacheErr) {
       console.warn('Cache clear after post deletion failed:', cacheErr)
     }

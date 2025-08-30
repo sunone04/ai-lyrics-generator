@@ -59,6 +59,47 @@ async function getBlogPost(slug: string): Promise<Post | null> {
   return post;
 }
 
+// 获取相关文章
+async function getRelatedPosts(post: Post): Promise<Post[]> {
+  const { createAdminClient } = await import('@/lib/supabase-server');
+  const supabase = createAdminClient();
+
+  const { data: relatedPosts, error } = await supabase
+    .from('posts')
+    .select(`
+      *,
+      category:categories(*)
+    `)
+    .eq('category_id', post.category_id)
+    .neq('id', post.id) // 排除当前文章
+    .eq('status', 'published')
+    .limit(3);
+
+  if (error) {
+    console.error('Error fetching related posts:', error);
+    return [];
+  }
+
+  return relatedPosts || [];
+}
+
+// 获取所有分类
+async function getAllCategories() {
+  const { createAdminClient } = await import('@/lib/supabase-server');
+  const supabase = createAdminClient();
+
+  const { data: categories, error } = await supabase
+    .from('categories')
+    .select('*');
+
+  if (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+
+  return categories || [];
+}
+
 // 动态生成元数据
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -129,6 +170,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
+  const relatedPosts = await getRelatedPosts(post);
+  const allCategories = await getAllCategories();
   const structuredData = generateStructuredData(post);
 
   return (
@@ -175,7 +218,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               <div className="prose prose-lg max-w-none prose-blue prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900">
                 {post.content ? (
                   <>
-                    <div dangerouslySetInnerHTML={{ __html: post.content.replace(/on\w+="[^"]*"/g, '') }} />
+                    <div 
+                      className="blog-content"
+                      dangerouslySetInnerHTML={{ __html: post.content.replace(/on\w+="[^"]*"/g, '') }} 
+                    />
                     <div className="not-prose mt-10 p-6 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-100">
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">Try Our AI Lyrics Generator</h3>
                       <p className="text-gray-600 mb-4">Put these ideas into practice instantly and create professional-quality lyrics.</p>
@@ -212,20 +258,70 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
               Continue Reading
             </h2>
-            <div className="bg-blue-50 rounded-lg p-6 text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                Ready to Create Your Own Lyrics?
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Put these songwriting tips into practice with our AI-powered lyrics generator.
-              </p>
-              <Link
-                href="/generate"
-                className="inline-block bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 transition-colors font-medium"
-              >
-                Generate Lyrics Now
-              </Link>
-            </div>
+            {relatedPosts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {relatedPosts.map((relatedPost) => (
+                  <article key={relatedPost.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="p-6">
+                      <div className="flex items-center space-x-2 mb-3">
+                        {relatedPost.category && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {relatedPost.category.name}
+                          </span>
+                        )}
+                        <time className="text-xs text-gray-500" dateTime={relatedPost.created_at}>
+                          {formatDate(relatedPost.created_at)}
+                        </time>
+                      </div>
+                      
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                        <Link href={`/blog/${relatedPost.slug}`} className="hover:text-blue-600 transition-colors">
+                          {relatedPost.title}
+                        </Link>
+                      </h3>
+                      
+                      {relatedPost.meta_description && (
+                        <p className="text-sm text-gray-600 line-clamp-3">
+                          {relatedPost.meta_description}
+                        </p>
+                      )}
+                      
+                      <Link
+                        href={`/blog/${relatedPost.slug}`}
+                        className="inline-block mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Read more →
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+                  Explore More Categories
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {allCategories.map((category) => (
+                    <Link
+                      key={category.id}
+                      href={`/blog/category/${category.slug}`}
+                      className="inline-block bg-white text-gray-700 py-2 px-3 rounded-md border border-gray-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors text-sm text-center"
+                    >
+                      {category.name}
+                    </Link>
+                  ))}
+                </div>
+                <div className="mt-4 text-center">
+                  <Link
+                    href="/blog"
+                    className="inline-block text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    View All Posts →
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

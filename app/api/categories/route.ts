@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
     // 标准SaaS做法：管理操作后立即清除相关缓存
     try {
       await cacheService.clearCategoryCache(category.id);
-      console.log('Blog cache cleared after category creation');
       // 触发 ISR 失效
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
