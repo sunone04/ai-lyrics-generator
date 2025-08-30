@@ -1,47 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
-import { createServerClient, createAdminClient } from '@/lib/supabase-server';
-import { isAdmin } from '@/lib/admin-config';
+import { createAdminClient } from '@/lib/supabase-server';
 import { cacheService } from '@/lib/cache-service';
+import { cookies } from 'next/headers';
 
-export async function PUT(
+export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Create admin client for database operations
+    const adminClient = createAdminClient();
+    
+    // Get post by ID with category information
+    const { data: post, error } = await adminClient
+      .from('posts')
+      .select(`
+        id, title, slug, content, seo_title, meta_description, 
+        category_id, status, created_at, updated_at,
+        categories (
+          id,
+          name,
+          slug
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: 'Post not found' },
+        { status: 404 }
       );
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // Create service client to verify token
-    const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      post
+    });
 
-    // Check admin permissions
-    if (!isAdmin(user.email)) {
+  } catch (error: any) {
+    console.error('Post fetch error:', error);
+    
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch post' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    // 检查管理员session cookie
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session');
+    
+    if (adminSession?.value !== 'authenticated') {
       return NextResponse.json(
         { error: 'Admin access required' },
-        { status: 403 }
+        { status: 401 }
       );
     }
 
     // Parse request body
-    const { title, content, slug, seo_title, meta_description, category_id, status } = await request.json();
+    const { title, content, slug, seo_title, meta_description, category_id, status, published_at } = await request.json();
 
     // Validate required fields
     if (!title || !content || !slug || !category_id) {
@@ -62,11 +89,12 @@ export async function PUT(
         seo_title: seo_title || title,
         meta_description: meta_description || null,
         category_id,
-        status: status || 'draft',
+        status: 'published',
+        published_at: published_at || new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select('id, title, slug, status, category_id, created_at, updated_at')
+      .select('id, title, slug, status, category_id, created_at, updated_at, published_at')
       .single();
 
     if (dbError) {
@@ -119,39 +147,20 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    // 检查管理员session cookie
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session');
     
-    // Create service client to verify token
-    const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Check admin permissions
-    if (!isAdmin(user.email)) {
+    if (adminSession?.value !== 'authenticated') {
       return NextResponse.json(
         { error: 'Admin access required' },
-        { status: 403 }
+        { status: 401 }
       );
     }
     
-    // Delete post using admin client with service role
-    const adminSupabase = createAdminClient();
-    const { error: dbError } = await adminSupabase
+    // Delete post using admin client
+    const adminClient = createAdminClient();
+    const { error: dbError } = await adminClient
       .from('posts')
       .delete()
       .eq('id', id);

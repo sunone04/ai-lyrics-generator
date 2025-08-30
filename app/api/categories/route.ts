@@ -1,45 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { isAdmin } from '@/lib/admin-config';
+import { createAdminClient } from '@/lib/supabase-server';
 import { cacheService } from '@/lib/cache-service';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    // 检查管理员session cookie
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session');
     
-    // Verify token using public supabase client
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Check admin permissions
-    if (!isAdmin(user.email)) {
+    if (adminSession?.value !== 'authenticated') {
       return NextResponse.json(
         { error: 'Admin access required' },
-        { status: 403 }
+        { status: 401 }
       );
     }
 
     // Parse request body
-    const { name, slug, meta_description } = await request.json();
+    const { name, slug, seo_title, meta_description } = await request.json();
 
     // Validate required fields
     if (!name || !slug) {
@@ -49,20 +27,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert category using service role on server
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+    // Insert category using admin client
+    const adminClient = createAdminClient();
     const { data: category, error: dbError } = await adminClient
       .from('categories')
       .insert({
         name,
         slug,
-        meta_description: meta_description || null
+        seo_title: seo_title || name,
+        meta_description: meta_description || null,
+        is_active: true
       })
-      .select('id, name, slug, meta_description, created_at, updated_at')
+      .select('id, name, slug, seo_title, meta_description, is_active, created_at, updated_at')
       .single();
 
     if (dbError) {

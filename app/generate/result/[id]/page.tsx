@@ -6,7 +6,6 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 import { Generation, Profile } from '@/lib/types';
 import { downloadTextFile } from '@/lib/utils';
-// import { copyToClipboard } from '@/lib/utils'; // Unused
 import { LoadingPage } from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { 

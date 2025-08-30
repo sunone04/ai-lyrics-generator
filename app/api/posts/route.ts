@@ -1,43 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
-import { createServerClient, createAdminClient } from '@/lib/supabase-server';
-import { isAdmin } from '@/lib/admin-config';
+import { createAdminClient } from '@/lib/supabase-server';
 import { cacheService } from '@/lib/cache-service';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    // 检查管理员session cookie
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session');
     
-    // Create service client to verify token
-    const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Check admin permissions
-    if (!isAdmin(user.email)) {
+    if (adminSession?.value !== 'authenticated') {
       return NextResponse.json(
         { error: 'Admin access required' },
-        { status: 403 }
+        { status: 401 }
       );
     }
 
     // Parse request body
-    const { title, content, slug, seo_title, meta_description, category_id, status } = await request.json();
+    const { title, content, slug, seo_title, meta_description, category_id, status, published_at } = await request.json();
 
     // Validate required fields
     if (!title || !content || !slug || !category_id) {
@@ -58,9 +38,10 @@ export async function POST(request: NextRequest) {
         seo_title: seo_title || title,
         meta_description: meta_description || null,
         category_id,
-        status: status || 'draft'
+        status: 'published',
+        published_at: published_at || new Date().toISOString()
       })
-      .select('id, title, slug, status, category_id, created_at, updated_at')
+      .select('id, title, slug, status, category_id, created_at, updated_at, published_at')
       .single();
 
     if (dbError) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerComponentClient } from '@/lib/supabase-server';
 
 export async function PATCH(
   request: NextRequest,
@@ -17,7 +17,7 @@ export async function PATCH(
       );
     }
 
-    const supabase = await createServerClient();
+    const supabase = await createServerComponentClient();
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

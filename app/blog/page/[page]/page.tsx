@@ -7,7 +7,6 @@ import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { formatDate } from '@/lib/utils';
 import { Category } from '@/lib/types';
 import { cacheService } from '@/lib/cache-service';
-// import { Post } from '@/lib/types'; // Unused
 
 interface BlogPageProps {
   params: Promise<{

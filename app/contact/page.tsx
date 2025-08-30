@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
-// import { SITE_CONFIG } from '@/lib/constants'; // Unused
 import { EnvelopeIcon, ChatBubbleLeftRightIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 // 强制静态生成 - 联系页面内容变化缓慢

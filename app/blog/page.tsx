@@ -1,13 +1,11 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { createServerClient } from '@/lib/supabase-server';
+import { cacheService } from '@/lib/cache-service';
+import { createServerComponentClient } from '@/lib/supabase-server';
 import { BLOG_CATEGORIES } from '@/lib/constants';
-// import ClientBreadcrumbs from '@/components/ui/client-breadcrumbs';
 import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
-// import { Category } from '@/lib/types'; // Unused
 
-import { cacheService } from '@/lib/cache-service';
 
 export const metadata: Metadata = {
   title: 'AI Lyrics Generator Blog - Songwriting Tips, Rap Lyrics & Music Guides',
@@ -252,6 +250,5 @@ export default async function BlogPage() {
   );
 }
 
-// 启用ISR - 每60秒重新验证一次
-// 博客首页：180天 ISR；管理操作时通过 /api/revalidate 立即刷新
-export const revalidate = 15552000;
+// 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
+export const revalidate = false;

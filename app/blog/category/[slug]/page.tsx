@@ -1,12 +1,10 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-// import { createServerClient } from '@/lib/supabase-server'; // Unused
-// import { BLOG_CATEGORIES } from '@/lib/constants';
-// // import ClientBreadcrumbs from '@/components/ui/client-breadcrumbs';
+import { cacheService } from '@/lib/cache-service';
+import { createServerComponentClient } from '@/lib/supabase-server';
 import { formatDate } from '@/lib/utils';
 import { Post, Category } from '@/lib/types';
-import { cacheService } from '@/lib/cache-service';
 
 interface CategoryPageProps {
   params: Promise<{
@@ -209,7 +207,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* <ClientBreadcrumbs /> */}
           
           <div className="mt-8">
             <div className="text-center mb-12">
@@ -334,9 +331,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   );
 }
 
-// 启用ISR - 每60秒重新验证一次
-// 分类页：180天 ISR；管理操作后按需刷新
-export const revalidate = 15552000;
+// 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
+export const revalidate = false;
 
 // 启用动态路由 - 允许访问未预生成的分类页面
 export const dynamicParams = true;

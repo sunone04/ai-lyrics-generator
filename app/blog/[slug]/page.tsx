@@ -1,11 +1,11 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createServerClient } from '@/lib/supabase-server';
+import { cacheService } from '@/lib/cache-service';
+import { createServerComponentClient } from '@/lib/supabase-server';
 import { formatDate } from '@/lib/utils';
-// import ClientBreadcrumbs from '@/components/ui/client-breadcrumbs';
-import ShareButton from '@/components/ui/share-button';
 import { Post } from '@/lib/types';
+import ShareButton from '@/components/ui/share-button';
 
 interface BlogPostPageProps {
   params: Promise<{
@@ -233,6 +233,5 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   );
 }
 
-// 启用ISR - 每60秒重新验证一次
-// 博客详情：180天 ISR；管理操作时通过 /api/revalidate 立即刷新
-export const revalidate = 15552000;
+// 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
+export const revalidate = false;

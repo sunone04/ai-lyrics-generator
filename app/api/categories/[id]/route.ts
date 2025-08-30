@@ -1,49 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { isAdmin } from '@/lib/admin-config';
+import { createAdminClient } from '@/lib/supabase-server';
 import { cacheService } from '@/lib/cache-service';
+import { cookies } from 'next/headers';
 
-export async function PUT(
+export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Create admin client for database operations
+    const adminClient = createAdminClient();
+    
+    // Get category by ID
+    const { data: category, error } = await adminClient
+      .from('categories')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: 'Category not found' },
+        { status: 404 }
       );
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    return NextResponse.json({
+      success: true,
+      category
+    });
+
+  } catch (error: any) {
+    console.error('Category fetch error:', error);
     
-    // Verify token
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch category' },
+      { status: 500 }
     );
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+  }
+}
 
-    // Check admin permissions
-    if (!isAdmin(user.email)) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    // 检查管理员session cookie
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session');
+    
+    if (adminSession?.value !== 'authenticated') {
       return NextResponse.json(
         { error: 'Admin access required' },
-        { status: 403 }
+        { status: 401 }
       );
     }
 
     // Parse request body
-    const { name, slug, meta_description } = await request.json();
+    const { name, slug, seo_title, meta_description, is_active } = await request.json();
 
     // Validate required fields
     if (!name || !slug) {
@@ -53,22 +70,20 @@ export async function PUT(
       );
     }
 
-    // Update category using service role
-    const adminSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
-    const { data: category, error: dbError } = await adminSupabase
+    // Update category using admin client
+    const adminClient = createAdminClient();
+    const { data: category, error: dbError } = await adminClient
       .from('categories')
       .update({
         name,
         slug,
+        seo_title: seo_title || name,
         meta_description: meta_description || null,
+        is_active: is_active !== undefined ? is_active : true,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select('id, name, slug, meta_description, created_at, updated_at')
+      .select('*')
       .single();
 
     if (dbError) {
@@ -79,11 +94,12 @@ export async function PUT(
       );
     }
 
-    // 标准SaaS做法：管理操作后立即清除相关缓存
+    // Clear cache and revalidate
     try {
       await cacheService.clearCategoryCache(parseInt(id));
       console.log('Blog cache cleared after category update');
-      // 触发 ISR 失效：博客首页、分类页
+      
+      // Trigger ISR invalidation
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
           method: 'POST',
@@ -116,64 +132,20 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    // 检查管理员session cookie
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session');
     
-    // Create service client to verify token
-    const supabase = await createServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Check admin permissions
-    if (!isAdmin(user.email)) {
+    if (adminSession?.value !== 'authenticated') {
       return NextResponse.json(
         { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // Check if any posts are using this category
-    const { data: posts, error: postsError } = await supabase
-      .from('posts')
-      .select('id')
-      .eq('category_id', id);
-
-    if (postsError) {
-      console.error('Posts check error:', postsError);
-      return NextResponse.json(
-        { error: 'Failed to check category usage' },
-        { status: 500 }
-      );
-    }
-
-    if (posts && posts.length > 0) {
-      return NextResponse.json(
-        { error: `Cannot delete category. ${posts.length} post(s) are using this category.` },
-        { status: 400 }
+        { status: 401 }
       );
     }
     
-    // Delete category using admin client with service role
-    const adminSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
-    const { error: dbError } = await adminSupabase
+    // Delete category using admin client
+    const adminClient = createAdminClient();
+    const { error: dbError } = await adminClient
       .from('categories')
       .delete()
       .eq('id', id);
@@ -186,10 +158,19 @@ export async function DELETE(
       );
     }
 
-    // 标准SaaS做法：删除分类后立即清除相关缓存
+    // Clear cache and revalidate
     try {
       await cacheService.clearCategoryCache(parseInt(id));
       console.log('Blog cache cleared after category deletion');
+      
+      // Trigger ISR invalidation
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: '/blog', secret: process.env.REVALIDATE_SECRET })
+        });
+      } catch {}
     } catch (cacheErr) {
       console.warn('Cache clear after category deletion failed:', cacheErr);
     }

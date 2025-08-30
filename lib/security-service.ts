@@ -1,4 +1,4 @@
-import { createServerClient } from './supabase-server';
+import { createServerComponentClient } from './supabase-server';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface SecurityCheck {
@@ -22,7 +22,7 @@ export class SecurityService {
 
   private async getSupabase() {
     if (!this.supabase) {
-      this.supabase = await createServerClient();
+      this.supabase = await createServerComponentClient();
     }
     return this.supabase;
   }
