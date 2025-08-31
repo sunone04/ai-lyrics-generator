@@ -101,14 +101,6 @@ export interface LyricsGenerationParams {
 }
 
 // API response types
-export interface GenerationResponse {
-  success: boolean;
-  lyrics?: string;
-  generationId?: number;
-  error?: string;
-  remainingGenerations?: number;
-}
-
 export interface RewriteResponse {
   success: boolean;
   rewrittenLyrics?: string;
@@ -116,21 +108,5 @@ export interface RewriteResponse {
   remainingRewrites?: number;
 }
 
-// User subscription types
-export interface SubscriptionLimits {
-  maxGenerations: number;
-  maxLyricOptimizations: number;
-  canEditLyrics: boolean;
-  canUseProModel: boolean;
-  maxFavorites: number;
-}
 
-// SEO types
-export interface SEOData {
-  title: string;
-  description: string;
-  keywords?: string;
-  canonical?: string;
-  ogImage?: string;
-}
 

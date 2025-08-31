@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
  
 import { aiService } from '@/lib/ai-service';
-import { securityService } from '@/lib/security-service';
+import { createServerComponentClient } from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,49 +14,69 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 去除登录校验：演示模式
-
-    // 去除用户资料/权限检查
-
-    // Pro模型权限校验（仅会员可用）
-    // 去除 Pro 权限校验
-
-    // 防白嫖检查
-    const clientIp = request.headers.get('x-forwarded-for') || 
-                    request.headers.get('x-real-ip') || 
-                    'unknown';
-    const userAgent = request.headers.get('user-agent') || 'unknown';
-    const browserFingerprint = securityService.generateBrowserFingerprint(userAgent);
+    // 恢复认证逻辑
+    const supabase = await createServerComponentClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    const securityCheck = await securityService.performSecurityCheck({
-      ipAddress: clientIp,
-      userAgent,
-      browserFingerprint,
-      userId: undefined as any,
-      actionType: 'rewrite'
-    });
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
-    if (securityCheck.isAnomaly) {
-      await securityService.logSecurityEvent({
-        ipAddress: clientIp,
-        userAgent,
-        browserFingerprint,
-        userId: undefined as any,
-        actionType: 'rewrite'
-      }, false);
-      
+    // 检查用户配额
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('status, rewrite_count, usage_last_reset')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 500 }
+      );
+    }
+
+    // 检查是否需要重置计数
+    const today = new Date().toDateString();
+    if (profile.usage_last_reset !== today) {
+      await supabase
+        .from('profiles')
+        .update({ 
+          generation_count: 0, 
+          rewrite_count: 0, 
+          usage_last_reset: today 
+        })
+        .eq('id', user.id);
+      profile.rewrite_count = 0;
+    }
+
+    // 检查重写配额限制
+    const maxRewrites = profile.status === 'active' ? 30 : 1;
+    if (profile.rewrite_count >= maxRewrites) {
       return NextResponse.json(
         { 
-          error: 'Suspicious activity detected',
-          message: 'Your request has been flagged for suspicious activity. Please try again later or contact support if this persists.',
-          reason: securityCheck.reason
+          error: 'Daily rewrite limit reached',
+          message: profile.status === 'active' 
+            ? 'You have reached your daily rewrite limit. Please try again tomorrow.'
+            : 'You have reached your free daily rewrite limit. Upgrade to Pro for more rewrites.'
         },
         { status: 429 }
       );
     }
 
-    // Check rewrite limits (optimize to free=2/day, paid=30/day)
-    // 去除配额/会员限制
+    // Pro模型权限校验
+    if (modelType === 'pro' && profile.status !== 'active') {
+      return NextResponse.json(
+        { 
+          error: 'Pro model requires subscription',
+          message: 'Please upgrade to Pro to use the advanced model'
+        },
+        { status: 403 }
+      );
+    }
 
     // Generate rewritten lyrics using AI service
     const rewrittenPortion = await aiService.rewriteLyrics(
@@ -66,21 +86,15 @@ export async function POST(request: NextRequest) {
       (modelType || 'basic')
     );
 
-    // Update rewrite count（微任务，减少接口尾延迟）
-    // 去除计数更新
-
-    // 记录成功的操作
-    await securityService.logSecurityEvent({
-      ipAddress: clientIp,
-      userAgent,
-      browserFingerprint,
-      userId: undefined as any,
-      actionType: 'rewrite'
-    }, true);
+    // 更新重写计数
+    await supabase
+      .from('profiles')
+      .update({ rewrite_count: profile.rewrite_count + 1 })
+      .eq('id', user.id);
 
     const res = NextResponse.json({
       rewrittenPortion,
-      remainingRewrites: null
+      remainingRewrites: maxRewrites - (profile.rewrite_count + 1)
     })
     res.headers.set('Cache-Control', 'private, max-age=0, no-store')
     res.headers.set('Vary', 'Cookie')

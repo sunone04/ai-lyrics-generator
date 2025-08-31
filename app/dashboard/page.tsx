@@ -56,12 +56,14 @@ function DashboardContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // 只有在用户已登录且认证加载完成时才获取数据
         if (user && !authLoading) {
           // Payment feedback via query
           const params = new URLSearchParams(window.location.search);
           const payment = params.get('payment');
           if (payment === 'success') toast.success('Payment successful. Your membership will be activated shortly.');
           if (payment === 'failed') toast.error('Payment failed or canceled. Please try again.');
+          
           // Get user profile directly via Supabase
           const { data: prof } = await supabase
             .from('profiles')
@@ -75,6 +77,14 @@ function DashboardContent() {
           if (generationsResponse.ok) {
             const generationsResult = await generationsResponse.json();
             setGenerations(generationsResult.generations || []);
+          } else if (generationsResponse.status === 401) {
+            // 认证失败，重定向到登录页面
+            console.warn('Authentication failed, redirecting to login');
+            router.push('/auth/signin?returnTo=/dashboard');
+            return;
+          } else {
+            console.error('Failed to fetch generations:', generationsResponse.status);
+            toast.error('Failed to load generation history');
           }
 
           // Get favorites
@@ -82,6 +92,14 @@ function DashboardContent() {
           if (favoritesResponse.ok) {
             const favoritesResult = await favoritesResponse.json();
             setFavorites(favoritesResult.generations || []);
+          } else if (favoritesResponse.status === 401) {
+            // 认证失败，重定向到登录页面
+            console.warn('Authentication failed while fetching favorites, redirecting to login');
+            router.push('/auth/signin?returnTo=/dashboard');
+            return;
+          } else {
+            console.error('Failed to fetch favorites:', favoritesResponse.status);
+            toast.error('Failed to load favorites');
           }
         }
       } catch (error) {
@@ -92,8 +110,34 @@ function DashboardContent() {
       }
     };
 
-    fetchData();
-  }, [user, authLoading]);
+    // 只有在认证状态确定后才执行数据获取
+    if (!authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading, supabase, router]);
+
+  // 如果正在认证加载中，显示加载页面
+  if (authLoading) {
+    return <LoadingPage text="Checking authentication..." />;
+  }
+
+  // 如果用户未登录，显示登录提示
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h1>
+          <p className="text-gray-600 mb-6">Please sign in to access your dashboard.</p>
+          <button
+            onClick={() => router.push('/auth/signin?returnTo=/dashboard')}
+            className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleToggleFavorite = async (generationId: number) => {
     if (!user) {

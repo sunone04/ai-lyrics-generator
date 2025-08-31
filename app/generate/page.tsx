@@ -9,6 +9,7 @@ import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { SparklesIcon, LanguageIcon, PencilIcon, ClockIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { createClient } from '@/lib/supabase';
 
 // 独立的组件来处理 useSearchParams
 function GenerateContent() {
@@ -19,8 +20,8 @@ function GenerateContent() {
 
 // 主要的生成表单组件
 function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
-  const user = null;
-  const loading = false;
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -60,6 +61,32 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   
+  // 检查用户认证状态
+  useEffect(() => {
+    const supabase = createClient();
+    let mounted = true;
+    
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setUser(data.user);
+      setLoading(false);
+    };
+    
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+    
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Simple arrow animation handlers
   useEffect(() => {
     const form = formRef.current;
@@ -98,23 +125,23 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       const select = e.target as HTMLSelectElement;
       const customSelect = select.closest('.custom-select');
       if (customSelect) {
-        customSelect.classList.remove('open');
+        // Close dropdown after selection
+        setTimeout(() => {
+          customSelect.classList.remove('open');
+        }, 100);
       }
     };
 
-    // Initial cleanup
-    resetAllArrows();
-
-    // Add event listeners to all selects
-    const selects = form.querySelectorAll('.custom-select select');
-    selects.forEach(select => {
+    // Add event listeners
+    form.querySelectorAll('select').forEach(select => {
       select.addEventListener('focus', handleSelectFocus);
       select.addEventListener('blur', handleSelectBlur);
       select.addEventListener('change', handleSelectChange);
     });
 
     return () => {
-      selects.forEach(select => {
+      // Cleanup event listeners
+      form.querySelectorAll('select').forEach(select => {
         select.removeEventListener('focus', handleSelectFocus);
         select.removeEventListener('blur', handleSelectBlur);
         select.removeEventListener('change', handleSelectChange);
@@ -159,14 +186,13 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     }
   }, [searchParams]);
 
-  const handleInputChange = useCallback((field: keyof LyricsGenerationParams, value: any) => {
+  const handleInputChange = (field: keyof LyricsGenerationParams, value: any) => {
     setParams(prev => ({ ...prev, [field]: value }));
-  }, []);
-  
-  const handleCustomInputChange = useCallback((field: string, value: string) => {
+  };
+
+  const handleCustomInputChange = (field: keyof typeof customInputs, value: string) => {
     setCustomInputs(prev => ({ ...prev, [field]: value }));
-    // Don't update params here - keep it as "Other" to maintain the input field visibility
-  }, []);
+  };
 
   const showUpgradeModal = (data: any) => {
     setUpgradeData(data);
@@ -180,17 +206,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // 检查用户是否已登录
     if (!user) {
-      // Save current form state before redirecting to login
-      const formState = {
-        params,
-        customInputs,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('generate_form_state', JSON.stringify(formState));
-      
       toast.error('Please sign in to generate lyrics');
-      router.push('/auth/signin?returnTo=' + encodeURIComponent('/generate'));
+      router.push('/auth/signin?returnTo=/generate');
       return;
     }
 
@@ -225,6 +244,18 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       toast.error(error.message || 'Failed to generate lyrics');
     }
   };
+
+  // 如果正在加载认证状态，显示加载页面
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-12 relative">
@@ -305,15 +336,14 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
 
                 {/* Music Style */}
                 <div className="space-y-2">
-                  <label className="flex items-center text-base font-semibold text-gray-800 mb-3">
-                    <SparklesIcon className="w-5 h-5 mr-2 text-purple-600" />
+                  <label className="block text-base font-semibold text-gray-800 mb-3">
                     Music Style *
                   </label>
                   <div className="custom-select">
                     <select
                       value={params.musicStyle}
                       onChange={(e) => handleInputChange('musicStyle', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
+                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
                       required
                     >
                       {FORM_OPTIONS.musicStyles.map(style => (
@@ -327,7 +357,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                       placeholder="Enter custom music style..."
                       value={customInputs.musicStyle}
                       onChange={(e) => handleCustomInputChange('musicStyle', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
+                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
                       maxLength={50}
                       required
                     />
@@ -336,69 +366,66 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
 
               {/* Music Theme */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Music Theme *
-                  </label>
-                  <div className="custom-select">
-                    <select
-                      name="musicTheme"
-                      value={params.musicTheme}
-                      onChange={(e) => handleInputChange('musicTheme', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      required
-                    >
-                      {FORM_OPTIONS.musicThemes.map(theme => (
-                        <option key={theme} value={theme}>{theme}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {params.musicTheme === 'Other' && (
-                    <input
-                      type="text"
-                      placeholder="Enter custom theme..."
-                      value={customInputs.musicTheme}
-                      onChange={(e) => handleCustomInputChange('musicTheme', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                      maxLength={50}
-                      required
-                    />
-                  )}
+              <div>
+                <label className="block text-base font-semibold text-gray-800 mb-3">
+                  Music Theme *
+                </label>
+                <div className="custom-select">
+                  <select
+                    value={params.musicTheme}
+                    onChange={(e) => handleInputChange('musicTheme', e.target.value)}
+                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
+                    required
+                  >
+                    {FORM_OPTIONS.musicThemes.map(theme => (
+                      <option key={theme} value={theme}>{theme}</option>
+                    ))}
+                  </select>
                 </div>
-
-                {/* Length */}
-                <div className="space-y-2">
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Length *
-                  </label>
-                  <div className="custom-select">
-                    <select
-                      value={params.lengthOption}
-                      onChange={(e) => handleInputChange('lengthOption', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      required
-                    >
-                      {FORM_OPTIONS.lengthOptions.map(length => (
-                        <option key={length} value={length}>{length}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {params.lengthOption === 'Other' && (
-                    <input
-                      type="text"
-                      placeholder="Enter custom length..."
-                      value={customInputs.lengthOption || ''}
-                      onChange={(e) => handleCustomInputChange('lengthOption', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                      maxLength={50}
-                      required
-                    />
-                  )}
-                </div>
+                {params.musicTheme === 'Other' && (
+                  <input
+                    type="text"
+                    placeholder="Enter custom music theme..."
+                    value={customInputs.musicTheme}
+                    onChange={(e) => handleCustomInputChange('musicTheme', e.target.value)}
+                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
+                    maxLength={50}
+                    required
+                  />
+                )}
               </div>
 
-              {/* Lyric Style */}
+              {/* Length Option */}
+              <div>
+                <label className="block text-base font-semibold text-gray-800 mb-3">
+                  Length *
+                </label>
+                <div className="custom-select">
+                  <select
+                    value={params.lengthOption}
+                    onChange={(e) => handleInputChange('lengthOption', e.target.value)}
+                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
+                    required
+                  >
+                    {FORM_OPTIONS.lengthOptions.map(length => (
+                      <option key={length} value={length}>{length}</option>
+                    ))}
+                  </select>
+                </div>
+                {params.lengthOption === 'Other' && (
+                  <input
+                    type="text"
+                    placeholder="Enter custom length..."
+                    value={customInputs.lengthOption}
+                    onChange={(e) => handleCustomInputChange('lengthOption', e.target.value)}
+                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
+                    maxLength={50}
+                    required
+                  />
+                )}
+              </div>
+
+              {/* Lyric Style and Song Structure */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2">
                   <label className="block text-base font-semibold text-gray-800 mb-3">
@@ -503,16 +530,17 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               {/* Rhyme Requirement */}
               <div>
                 <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Rhyme Requirements
+                  Rhyme Requirement *
                 </label>
                 <div className="custom-select">
                   <select
                     value={params.rhymeRequirement}
                     onChange={(e) => handleInputChange('rhymeRequirement', e.target.value)}
                     className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
+                    required
                   >
-                    {FORM_OPTIONS.rhymeRequirements.map(req => (
-                      <option key={req} value={req}>{req}</option>
+                    {FORM_OPTIONS.rhymeRequirements.map(rhyme => (
+                      <option key={rhyme} value={rhyme}>{rhyme}</option>
                     ))}
                   </select>
                 </div>
@@ -529,74 +557,45 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 )}
               </div>
 
-              {/* BPM and Melody */}
+              {/* BPM and Model Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
+                <div>
                   <label className="block text-base font-semibold text-gray-800 mb-3">
                     BPM (Optional)
                   </label>
-                  <div className="flex items-center mb-3">
+                  <div className="flex items-center space-x-4">
                     <input
                       type="checkbox"
                       id="useBpm"
                       checked={params.useBpm}
                       onChange={(e) => handleInputChange('useBpm', e.target.checked)}
-                      className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                     />
-                    <label htmlFor="useBpm" className="text-sm text-gray-600">
-                      生效
+                    <label htmlFor="useBpm" className="text-sm text-gray-700">
+                      Include BPM
                     </label>
                   </div>
-                  <input
-                    type="number"
-                    min="60"
-                    max="200"
-                    value={params.bpm}
-                    onChange={(e) => handleInputChange('bpm', parseInt(e.target.value) || 120)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                    placeholder="120"
-                  />
+                  {params.useBpm && (
+                    <input
+                      type="number"
+                      min="60"
+                      max="200"
+                      value={params.bpm}
+                      onChange={(e) => handleInputChange('bpm', parseInt(e.target.value))}
+                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
+                      placeholder="120"
+                    />
+                  )}
                 </div>
 
-                {/* Melody */}
-                <div className="space-y-2">
+                <div>
                   <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Melody (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={params.melody}
-                    onChange={(e) => handleInputChange('melody', e.target.value)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 placeholder-gray-500"
-                    placeholder="例如主歌轻快、缓缓升高，在副歌达到高潮..."
-                  />
-                </div>
-              </div>
-
-              {/* Syllable Pattern */}
-              <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Syllable Pattern (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={params.syllablePattern}
-                  onChange={(e) => handleInputChange('syllablePattern', e.target.value)}
-                  className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 placeholder-gray-500"
-                  placeholder="例如：8-8-6-8 或 主歌每句8个字，副歌每句6个字"
-                />
-              </div>
-
-              {/* Model Type */}
-              <div>
-                <div className="space-y-2">
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Model Type
+                    AI Model
                   </label>
                   <div className="custom-select">
                     <select
                       value={params.modelType}
-                      onChange={(e) => handleInputChange('modelType', e.target.value as 'basic' | 'pro')}
+                      onChange={(e) => handleInputChange('modelType', e.target.value)}
                       className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
                     >
                       <option value="basic">Basic Model (Free)</option>
@@ -698,45 +697,24 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       {showUpgrade && upgradeData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                <SparklesIcon className="h-6 w-6 text-yellow-600" />
-              </div>
-              
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Daily Limit Reached
-              </h3>
-              
-              <p className="text-gray-600 mb-4">
-                {upgradeData.message}
-              </p>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6">
-                <p className="text-sm font-medium text-gray-900 mb-2">
-                  {upgradeData.upgradeMessage}
-                </p>
-                <div className="text-xs text-gray-600">
-                  • Unlimited daily generations
-                  • Advanced AI models
-                  • Priority support
-                  • Export to multiple formats
-                </div>
-              </div>
-              
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowUpgrade(false)}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Maybe Later
-                </button>
-                <button
-                  onClick={handleUpgrade}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105"
-                >
-                  Upgrade Now
-                </button>
-              </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Upgrade to Pro</h3>
+            <p className="text-gray-600 mb-6">{upgradeData.message}</p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowUpgrade(false)}
+                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpgrade(false);
+                  router.push('/pricing');
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Upgrade Now
+              </button>
             </div>
           </div>
         </div>
@@ -745,14 +723,13 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   );
 }
 
-// 主导出组件，用 Suspense 包裹 useSearchParams
 export default function GeneratePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     }>
