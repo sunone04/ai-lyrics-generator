@@ -76,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
         
         if (event === 'SIGNED_IN' && session) {
           setSession(session);
@@ -101,9 +100,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      console.log('AuthContext: Starting sign out...');
+      
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Supabase sign out error:', error);
+        throw error;
+      }
+      
+      console.log('AuthContext: Supabase sign out successful, clearing local state...');
+      
+      // 手动清除本地状态
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      
+      console.log('AuthContext: Local state cleared successfully');
+      
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Error in signOut function:', error);
+      throw error; // 重新抛出错误，让调用者处理
     }
   };
 

@@ -1,26 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase';
+import { useAuth } from '@/lib/contexts/auth-context';
 import { Profile } from '@/lib/types';
-import { LoadingButton } from '@/components/ui/loading';
-import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { 
-  DocumentArrowUpIcon, 
+  ArrowUpTrayIcon,
+  PencilIcon,
+  ClockIcon,
+  SparklesIcon,
   ClipboardDocumentIcon,
   DocumentArrowDownIcon,
-  SparklesIcon,
-  PencilIcon,
-  ClockIcon
+  DocumentArrowUpIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import Breadcrumbs from '@/components/ui/breadcrumbs';
+import { LoadingButton } from '@/components/ui/loading';
 
 export default function EditPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user, profile, loading: authLoading } = useAuth();
   const [lyrics, setLyrics] = useState('');
   const [selectedText, setSelectedText] = useState('');
   const [rewriteRequest, setRewriteRequest] = useState('');
@@ -30,27 +29,13 @@ export default function EditPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const router = useRouter();
 
+  // 检查用户权限
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        try {
-          const response = await fetch('/api/user/profile');
-          if (response.ok) {
-            const data = await response.json();
-            setProfile(data.profile);
-          }
-        } catch (error) {
-          console.error('Failed to fetch user profile:', error);
-        }
-      }
-    };
-
-    checkAuth();
-  }, [router]);
+    if (!authLoading && (!user || profile?.status !== 'active')) {
+      toast.error('This feature requires a Pro subscription');
+      router.push('/pricing');
+    }
+  }, [user, profile, authLoading, router]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,20 +102,13 @@ export default function EditPage() {
 
     if (!profile || profile.status !== 'active') {
       toast.error('This feature requires a premium subscription');
-              router.push('/auth/signin');
+      router.push('/pricing');
       return;
     }
-
-    // The rewrite API will check usage limits, so we don't need to check here
 
     setIsRewriting(true);
 
     try {
-      // 检查用户是否登录
-      if (!user) {
-        throw new Error('Please sign in to use rewrite feature');
-      }
-
       const response = await fetch('/api/rewrite', {
         method: 'POST',
         headers: {

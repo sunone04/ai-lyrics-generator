@@ -455,6 +455,26 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                   </button>
                 </div>
 
+                {/* User Help Section */}
+                <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Need Help?</h3>
+                  <div className="text-xs text-gray-600 space-y-1">
+                    {isSignUp ? (
+                      <>
+                        <p>• Your account will be created immediately</p>
+                        <p>• Check your email for confirmation</p>
+                        <p>• Free tier includes 2 lyrics per day</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>• Use the email you signed up with</p>
+                        <p>• Can't sign in? Try resetting your password</p>
+                        <p>• Need help? Contact our support team</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {!isSignUp && (
                   <div className="mt-4 text-center space-y-2">
                     <div>

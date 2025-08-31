@@ -1,46 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useState } from 'react';
 import { usePaddle } from '@/lib/hooks/use-paddle';
-import { createClient } from '@/lib/supabase';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { CheckIcon } from '@heroicons/react/24/outline';
 
-interface Plan {
+interface PricingPlan {
   name: string;
+  description: string;
   price: string;
   period: string;
-  description: string;
   features: string[];
+  priceId?: string;
+  popular?: boolean;
   cta: string;
-  popular: boolean;
-  priceId: string | null;
 }
 
 interface PricingCardProps {
-  plan: Plan;
+  plan: PricingPlan;
 }
 
 export default function PricingCard({ plan }: PricingCardProps) {
-  const [isLoading] = useState(false);
   const { openCheckout, isLoaded } = usePaddle();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  // 获取当前用户邮箱
-  useEffect(() => {
-    const supabase = createClient();
-    let mounted = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!mounted) return;
-      setUserEmail(data.user?.email || null);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUserEmail(session?.user?.email || null);
-    });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
+  const { user } = useAuth();
 
   const handleSubscribe = async () => {
     if (!isLoaded) {
@@ -48,7 +30,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
       console.warn('Paddle is still loading');
     }
 
-    if (!userEmail) {
+    if (!user?.email) {
       alert('Please sign in to subscribe.');
       return;
     }
@@ -56,7 +38,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
     try {
       const checkoutPromise = openCheckout({
         priceId: plan.priceId || undefined,
-        customerEmail: userEmail,
+        customerEmail: user.email,
         successUrl: `${window.location.origin}/dashboard`,
         customData: { plan_name: plan.name }
       });

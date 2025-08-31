@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/contexts/auth-context';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 import { Generation, Profile } from '@/lib/types';
@@ -20,11 +21,14 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
 
 export default function ResultPage() {
+  return <GenerationResultContent />;
+}
+
+function GenerationResultContent() {
   const params = useParams();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, profile, loading: authLoading } = useAuth();
   const [generation, setGeneration] = useState<Generation | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -45,12 +49,8 @@ export default function ResultPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get user
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        // Allow viewing without login for SEO, but some features require auth
-        setUser(user);
-
+        
         // Get generation
         let generationData, genError;
         if (user) {
@@ -82,16 +82,6 @@ export default function ResultPage() {
 
         setGeneration(generationData);
 
-        // Get user profile (client-side to avoid server auth helpers)
-        if (user) {
-          const { data: profileRow } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-          if (profileRow) setProfile(profileRow as any);
-        }
-
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Failed to load generation');
@@ -101,8 +91,10 @@ export default function ResultPage() {
       }
     };
 
-    fetchData();
-  }, [generationId, router]);
+    if (!authLoading) {
+      fetchData();
+    }
+  }, [generationId, router, user, authLoading]);
 
   const handleCopy = async () => {
     if (!generation) return;

@@ -1,68 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const favoritesOnly = searchParams.get('favorites') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
-
     const supabase = await createServerComponentClient();
     
-    // Get current user with better error handling
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get user from session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (authError) {
-      console.error('Auth error in generations API:', authError);
-      return NextResponse.json(
-        { error: 'Authentication error', details: authError.message },
-        { status: 401 }
-      );
-    }
-    
-    if (!user) {
-      console.log('No user found in generations API');
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    if (userError || !user) {
+      console.log('User not authenticated in generations API');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     console.log('User authenticated in generations API:', user.id);
 
-    // Build query
+    // Check if user wants favorites only
+    const { searchParams } = new URL(request.url);
+    const favoritesOnly = searchParams.get('favorites') === 'true';
+
     let query = supabase
       .from('generations')
-      .select(`
-        id,
-        created_at,
-        language,
-        music_style,
-        music_theme,
-        length_option,
-        lyric_style,
-        intent_or_request,
-        artist_style,
-        emotion_intensity,
-        rhyme_requirement,
-        song_structure,
-        paragraph_length,
-        bpm,
-        melody,
-        syllable_pattern,
-        generated_lyrics,
-        model_used,
-        is_favorited,
-        generation_type,
-        parent_generation_id,
-        optimization_request
-      `)
+      .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order('created_at', { ascending: false });
 
-    // Filter by favorites if requested
     if (favoritesOnly) {
       query = query.eq('is_favorited', true);
     }
@@ -71,94 +33,92 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching generations:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch generations', details: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch generations' }, { status: 500 });
     }
 
-    console.log(`Successfully fetched ${generations?.length || 0} generations for user ${user.id}`);
+    console.log(`Successfully fetched ${generations.length} generations for user ${user.id}`);
 
-    return NextResponse.json({
+    return NextResponse.json({ 
       generations: generations || [],
-      total: generations?.length || 0
+      count: generations?.length || 0
     });
 
   } catch (error) {
-    console.error('Error in GET /api/user/generations:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error in generations API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { generationId, isFavorited } = await request.json();
-
-    if (typeof generationId !== 'number' || typeof isFavorited !== 'boolean') {
-      return NextResponse.json(
-        { error: 'Invalid parameters' },
-        { status: 400 }
-      );
-    }
-
     const supabase = await createServerComponentClient();
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Get user from session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify the generation belongs to the user
-    const { data: generation, error: fetchError } = await supabase
-      .from('generations')
-      .select('user_id, is_favorited')
-      .eq('id', generationId)
-      .single();
+    const { generationId, isFavorited } = await request.json();
 
-    if (fetchError || !generation) {
-      return NextResponse.json(
-        { error: 'Generation not found' },
-        { status: 404 }
-      );
+    if (!generationId || typeof isFavorited !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
     }
 
-    if (generation.user_id !== user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized to modify this generation' },
-        { status: 403 }
-      );
-    }
-
-    // Update favorite status
-    const { data: updatedGeneration, error: updateError } = await supabase
+    // Update the generation's favorite status
+    const { error } = await supabase
       .from('generations')
       .update({ is_favorited: isFavorited })
       .eq('id', generationId)
-      .select('id, is_favorited')
-      .single();
+      .eq('user_id', user.id);
 
-    if (updateError) {
-      console.error('Error updating generation:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update generation' },
-        { status: 500 }
-      );
+    if (error) {
+      console.error('Error updating favorite status:', error);
+      return NextResponse.json({ error: 'Failed to update favorite status' }, { status: 500 });
     }
 
-    return NextResponse.json(updatedGeneration);
+    return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error('Error in PATCH /api/user/generations:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error in generations PATCH API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createServerComponentClient();
+    
+    // Get user from session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { generationId } = await request.json();
+
+    if (!generationId) {
+      return NextResponse.json({ error: 'Generation ID is required' }, { status: 400 });
+    }
+
+    // Delete the generation (only if it belongs to the user)
+    const { error } = await supabase
+      .from('generations')
+      .delete()
+      .eq('id', generationId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error deleting generation:', error);
+      return NextResponse.json({ error: 'Failed to delete generation' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+
+  } catch (error) {
+    console.error('Error in generations DELETE API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

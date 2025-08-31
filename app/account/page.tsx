@@ -1,14 +1,75 @@
 'use client';
 
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { 
+  ArrowRightIcon, 
+  ArrowLeftIcon,
+  UserIcon,
+  KeyIcon,
+  ChartBarIcon,
+  ArrowRightOnRectangleIcon
+} from '@heroicons/react/24/outline';
 
 export default function AccountPage() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
+  const router = useRouter();
 
   const goResetPassword = async () => {
     // 这里可以添加重置密码的逻辑
-    toast.info('Reset password functionality coming soon');
+    toast.success('Reset password functionality coming soon');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      console.log('Starting sign out process...');
+      
+      // 显示加载状态
+      toast.loading('Signing out...', { id: 'signout' });
+      
+      // 调用AuthContext的signOut
+      await signOut();
+      
+      console.log('Sign out completed, updating toast...');
+      
+      // 成功提示
+      toast.success('Signed out successfully', { id: 'signout' });
+      
+      console.log('Redirecting to home page...');
+      
+      // 立即跳转，不需要延迟
+      router.push('/');
+      
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast.error('Failed to sign out. Please try again.', { id: 'signout' });
+      
+      // 即使出错也尝试跳转
+      setTimeout(() => {
+        router.push('/');
+      }, 2000);
+    }
+  };
+
+  // 备用登出方法
+  const handleForceSignOut = async () => {
+    try {
+      console.log('Using force sign out method...');
+      
+      // 直接清除本地状态
+      const { signOut: forceSignOut } = useAuth();
+      await forceSignOut();
+      
+      // 强制跳转
+      window.location.href = '/';
+      
+    } catch (error) {
+      console.error('Force sign out error:', error);
+      // 最后的备用方案：直接跳转
+      window.location.href = '/';
+    }
   };
 
   if (loading) {
@@ -35,26 +96,115 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow p-6 space-y-4">
-        <h1 className="text-2xl font-bold">Account</h1>
-        <div className="space-y-1">
-          <div><span className="text-gray-500">Email:</span> <span className="font-medium">{user.email}</span></div>
-          <div><span className="text-gray-500">Plan:</span> <span className="font-medium">{profile.status === 'active' ? 'Pro' : 'Free'}</span></div>
-          {profile.status === 'active' && (
-            <>
-              <div><span className="text-gray-500">Start:</span> <span className="font-medium">{profile.subscription_start_date ? new Date(profile.subscription_start_date).toLocaleString() : '-'}</span></div>
-              <div><span className="text-gray-500">End:</span> <span className="font-medium">{profile.subscription_end_date ? new Date(profile.subscription_end_date).toLocaleString() : '-'}</span></div>
-            </>
-          )}
-        </div>
-        
-        <div className="pt-4 space-y-3">
-          <button
-            onClick={goResetPassword}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header with navigation */}
+        <div className="flex items-center justify-between">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors"
           >
-            Reset Password
-          </button>
+            <ArrowLeftIcon className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
+        </div>
+
+        {/* Account Information Card */}
+        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+          <div className="flex items-center space-x-3">
+            <UserIcon className="w-6 h-6 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-gray-500">Email:</span>
+              <span className="font-medium text-gray-900">{user.email}</span>
+            </div>
+            
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-gray-500">Plan:</span>
+              <span className={`font-medium px-2 py-1 rounded-full text-sm ${
+                profile.status === 'active' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {profile.status === 'active' ? 'Pro' : 'Free'}
+              </span>
+            </div>
+            
+            {profile.status === 'active' && (
+              <>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-500">Start Date:</span>
+                  <span className="font-medium text-gray-900">
+                    {profile.subscription_start_date 
+                      ? new Date(profile.subscription_start_date).toLocaleDateString() 
+                      : '-'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-500">End Date:</span>
+                  <span className="font-medium text-gray-900">
+                    {profile.subscription_end_date 
+                      ? new Date(profile.subscription_end_date).toLocaleDateString() 
+                      : '-'
+                    }
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Actions Card */}
+        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
+          
+          <div className="space-y-3">
+            {/* Dashboard Link */}
+            <Link
+              href="/dashboard"
+              className="flex items-center justify-between w-full p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group"
+            >
+              <div className="flex items-center space-x-3">
+                <ChartBarIcon className="w-5 h-5 text-blue-600" />
+                <span className="font-medium text-gray-900">View Dashboard</span>
+              </div>
+              <ArrowRightIcon className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            {/* Reset Password */}
+            <button
+              onClick={goResetPassword}
+              className="flex items-center justify-between w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
+            >
+              <div className="flex items-center space-x-3">
+                <KeyIcon className="w-5 h-5 text-gray-600" />
+                <span className="font-medium text-gray-900">Reset Password</span>
+              </div>
+              <ArrowRightIcon className="w-5 h-5 text-gray-600 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        </div>
+
+        {/* Sign Out Card */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Sign Out</h2>
+              <p className="text-sm text-gray-500 mt-1">Sign out of your account</p>
+            </div>
+                         <button
+               onClick={handleSignOut}
+               className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+               title="Click to sign out of your account"
+             >
+               <ArrowRightOnRectangleIcon className="w-5 h-5" />
+               <span>Sign Out</span>
+             </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createServerComponentClient();
+    
+    const { id } = params;
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Generation ID is required' }, { status: 400 });
+    }
+
+    // Get the generation
+    const { data: generation, error } = await supabase
+      .from('generations')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Generation not found' }, { status: 404 });
+      }
+      console.error('Error fetching generation:', error);
+      return NextResponse.json({ error: 'Failed to fetch generation' }, { status: 500 });
+    }
+
+    return NextResponse.json({ generation });
+
+  } catch (error) {
+    console.error('Error in generation GET API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createServerComponentClient();
+    
+    const { id } = params;
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Generation ID is required' }, { status: 400 });
+    }
+
+    // Get user from session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Check if generation belongs to user
+    const { data: generation, error: fetchError } = await supabase
+      .from('generations')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !generation) {
+      return NextResponse.json({ error: 'Generation not found' }, { status: 404 });
+    }
+
+    if (generation.user_id !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized to delete this generation' }, { status: 403 });
+    }
+
+    // Delete the generation
+    const { error: deleteError } = await supabase
+      .from('generations')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('Error deleting generation:', deleteError);
+      return NextResponse.json({ error: 'Failed to delete generation' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+
+  } catch (error) {
+    console.error('Error in generation DELETE API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
