@@ -96,6 +96,18 @@ export default function Navbar() {
                                 <LanguageIcon className="w-4 h-4 mr-3 text-indigo-500" />
                                 Dashboard
                               </Link>
+                              <Link
+                                href="/personal-style"
+                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 hover:text-green-700 transition-all duration-200 rounded-lg mx-2"
+                              >
+                                <StarIcon className="w-4 h-4 mr-3 text-green-500" />
+                                Personal Style
+                                {!isPro && (
+                                  <span className="ml-auto bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full">
+                                    Pro
+                                  </span>
+                                )}
+                              </Link>
                             </div>
                           </div>
                         )}

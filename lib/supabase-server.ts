@@ -9,7 +9,8 @@ export function createServerComponentClient() {
     {
       cookies: {
         async getAll() {
-          return await cookies().getAll();
+          const cookieStore = await cookies();
+          return cookieStore.getAll();
         },
         async setAll(cookiesToSet) {
           const cookieStore = await cookies();
@@ -29,7 +30,8 @@ export function createAdminClient() {
     {
       cookies: {
         async getAll() {
-          return await cookies().getAll();
+          const cookieStore = await cookies();
+          return cookieStore.getAll();
         },
         async setAll(cookiesToSet) {
           const cookieStore = await cookies();

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { LyricsGenerationParams } from './types';
+import { LyricsGenerationParams, PersonalStyle } from './types';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -75,10 +75,10 @@ export class AIService {
    * Stream lyrics generation using Gemini streaming API
    * Yields incremental text chunks to enable real-time UI updates
    */
-  async *streamGenerateLyrics(params: LyricsGenerationParams, abortSignal?: AbortSignal): AsyncGenerator<string> {
+  async *streamGenerateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle, abortSignal?: AbortSignal): AsyncGenerator<string> {
 
     const model = this.getModel(params.modelType);
-    const prompt = this.buildGenerationPrompt(params);
+    const prompt = this.buildGenerationPrompt(params, personalStyle);
 
     // 生成流，整体调用设置软超时
     const result: any = await this.withTimeout(
@@ -110,7 +110,7 @@ export class AIService {
     }
   }
 
-  private buildGenerationPrompt(params: LyricsGenerationParams): string {
+  private buildGenerationPrompt(params: LyricsGenerationParams, personalStyle?: PersonalStyle): string {
     // Build dynamic specifications based on provided parameters
     let specifications = `CREATIVE SPECIFICATIONS:
 - Language: ${params.language}
@@ -151,6 +151,18 @@ export class AIService {
     
     if (params.intentOrRequest && params.intentOrRequest.trim()) {
       specifications += `\n- Additional Creative Direction: ${params.intentOrRequest}`;
+    }
+
+    // Add personal style example if provided
+    if (personalStyle) {
+      specifications += `\n\nPERSONAL STYLE EXAMPLE:
+Title: ${personalStyle.title}
+Music Style: ${personalStyle.music_style || 'Not specified'}
+Language: ${personalStyle.language}
+Lyrics:
+${personalStyle.lyrics}
+
+Please use this personal style as a reference for tone, vocabulary, and writing approach.`;
     }
 
     const prompt = `You are a world-class professional songwriter and lyricist. Create exceptional, original lyrics that avoid clichés and generic expressions.
@@ -214,11 +226,11 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     return prompt;
   }
 
-  async generateLyrics(params: LyricsGenerationParams): Promise<string> {
+  async generateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle): Promise<string> {
 
     return this.retryWithBackoff(async () => {
       const model = this.getModel(params.modelType);
-      const prompt = this.buildGenerationPrompt(params);
+      const prompt = this.buildGenerationPrompt(params, personalStyle);
       
       const result = await this.withTimeout(model.generateContent(prompt), NETWORK_SOFT_TIMEOUT_MS, 'AI request');
       const response = await result.response;
@@ -245,6 +257,45 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
       
       return lyrics.trim();
     }, 'generate lyrics');
+  }
+
+  async generateLyricsStream(
+    params: LyricsGenerationParams, 
+    personalStyle: PersonalStyle | null,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    return this.retryWithBackoff(async () => {
+      const model = this.getModel(params.modelType);
+      const prompt = this.buildGenerationPrompt(params, personalStyle || undefined);
+      
+      const result = await this.withTimeout(
+        (model as any).generateContentStream(prompt),
+        NETWORK_SOFT_TIMEOUT_MS,
+        'AI stream'
+      ) as any;
+
+      const iterator: AsyncIterator<any> = (result.stream as any)[Symbol.asyncIterator]();
+      let total = 0;
+      
+      while (true) {
+        const { value, done } = await iterator.next();
+        if (done) break;
+        
+        try {
+          const delta: string = typeof value.text === 'function' ? value.text() : '';
+          if (delta && delta.length > 0) {
+            const remaining = MAX_OUTPUT_CHARS - total;
+            if (remaining <= 0) break;
+            
+            const chunk = remaining < delta.length ? delta.slice(0, remaining) : delta;
+            total += chunk.length;
+            onChunk(chunk);
+          }
+        } catch (error) {
+          console.error('Error processing stream chunk:', error);
+        }
+      }
+    }, 'generate lyrics stream');
   }
 
   private async retryWithBackoff<T>(

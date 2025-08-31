@@ -18,8 +18,13 @@ export default function AccountPage() {
   const router = useRouter();
 
   const goResetPassword = async () => {
-    // 这里可以添加重置密码的逻辑
-    toast.success('Reset password functionality coming soon');
+    try {
+      // 跳转到重置密码页面
+      router.push('/auth/reset-password');
+    } catch (error) {
+      console.error('Reset password error:', error);
+      toast.error('Failed to navigate to reset password page');
+    }
   };
 
   const handleSignOut = async () => {
@@ -178,7 +183,7 @@ export default function AccountPage() {
             {/* Reset Password */}
             <button
               onClick={goResetPassword}
-              className="flex items-center justify-between w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
+              className="flex items-center justify-between w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group cursor-pointer"
             >
               <div className="flex items-center space-x-3">
                 <KeyIcon className="w-5 h-5 text-gray-600" />

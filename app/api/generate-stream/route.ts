@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
       useBpm, 
       melody, 
       syllablePattern, 
-      modelType 
+      modelType,
+      personalStyleId
     } = await request.json();
 
     // Validate required fields
@@ -47,6 +48,21 @@ export async function POST(request: NextRequest) {
 
       if (profileError || !profile || profile.status !== 'active') {
         return new Response('Pro model requires active subscription', { status: 403 });
+      }
+    }
+
+    // Fetch personal style if provided
+    let personalStyle = null;
+    if (personalStyleId && profile?.status === 'active') {
+      const { data: style, error: styleError } = await supabase
+        .from('personal_styles')
+        .select('*')
+        .eq('id', personalStyleId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!styleError && style) {
+        personalStyle = style;
       }
     }
 
@@ -74,6 +90,7 @@ export async function POST(request: NextRequest) {
               syllablePattern,
               modelType: modelType || 'basic'
             },
+            personalStyle,
             (chunk) => {
               controller.enqueue(new TextEncoder().encode(chunk));
             }

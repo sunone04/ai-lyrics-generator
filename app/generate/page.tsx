@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/contexts/auth-context';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 import { LoadingButton } from '@/components/ui/loading';
+import { Button } from '@/components/ui/button';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { 
   DocumentArrowUpIcon, 
@@ -38,6 +39,7 @@ interface LyricsGenerationParams {
   melody: string;
   syllablePattern: string;
   modelType: 'basic' | 'pro';
+  personalStyleId?: number; // 新增：个人风格ID
 }
 
 // 独立的组件来处理 useSearchParams
@@ -66,7 +68,8 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     useBpm: false,
     melody: '',
     syllablePattern: '',
-    modelType: 'basic'
+    modelType: 'basic',
+    personalStyleId: undefined
   });
   
   // Custom input states for "Other" options
@@ -79,6 +82,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     rhymeRequirement: '',
     songStructure: ''
   });
+
+  // Personal styles state
+  const [personalStyles, setPersonalStyles] = useState<Array<{id: number, title: string, music_style?: string, language: string}>>([]);
+  const [showPersonalStyles, setShowPersonalStyles] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
@@ -173,7 +180,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
         'language', 'musicStyle', 'musicTheme', 'lengthOption', 
         'lyricStyle', 'intentOrRequest', 'artistStyle', 'emotionIntensity',
         'rhymeRequirement', 'songStructure', 'paragraphLength', 'bpm', 'modelType',
-        'useBpm', 'melody', 'syllablePattern'
+        'useBpm', 'melody', 'syllablePattern', 'personalStyleId'
       ];
       
       paramKeys.forEach(key => {
@@ -187,6 +194,11 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
             }
           } else if (key === 'useBpm') {
             (urlParams as any)[key] = value === 'true';
+          } else if (key === 'personalStyleId') {
+            const numValue = parseInt(value);
+            if (!isNaN(numValue)) {
+              (urlParams as any)[key] = numValue;
+            }
           } else {
             (urlParams as any)[key] = value;
           }
@@ -199,6 +211,25 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       }
     }
   }, [searchParams]);
+
+  // Fetch personal styles for premium users
+  useEffect(() => {
+    if (user && profile?.status === 'active') {
+      fetchPersonalStyles();
+    }
+  }, [user, profile]);
+
+  const fetchPersonalStyles = async () => {
+    try {
+      const response = await fetch('/api/personal-styles/user');
+      const data = await response.json();
+      if (data.success) {
+        setPersonalStyles(data.personalStyles || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch personal styles:', error);
+    }
+  };
 
   const handleInputChange = (field: keyof LyricsGenerationParams, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -655,6 +686,70 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                   <p className="text-sm text-amber-600 mt-1">
                     Pro model requires a premium subscription
                   </p>
+                )}
+              </div>
+
+              {/* Personal Style Selection */}
+              <div>
+                <label className="block text-base font-semibold text-gray-800 mb-3">
+                  Personal Style (Optional)
+                </label>
+                
+                {profile?.status === 'active' && personalStyles.length > 0 ? (
+                  <>
+                    <div className="custom-select">
+                      <select
+                        value={formData.personalStyleId || ''}
+                        onChange={(e) => handleInputChange('personalStyleId', e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
+                      >
+                        <option value="">No personal style</option>
+                        {personalStyles.map((style) => (
+                          <option key={style.id} value={style.id}>
+                            {style.title} {style.music_style ? `(${style.music_style})` : ''} - {style.language}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Select your personal style to help AI understand your writing preferences
+                    </p>
+                    {formData.personalStyleId && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          <strong>Selected:</strong> {personalStyles.find(s => s.id === formData.personalStyleId)?.title}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : profile?.status === 'active' && personalStyles.length === 0 ? (
+                  <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+                    <p className="text-sm text-yellow-800 mb-3">
+                      <strong>No personal styles yet.</strong> Upload your own lyrics to create a personal style that AI can learn from.
+                    </p>
+                    <Button 
+                      asChild 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                    >
+                      <a href="/personal-style">Create Personal Style</a>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4">
+                    <p className="text-sm text-purple-800 mb-3">
+                      <strong>Personal Style Library</strong> - Upload your own lyrics to train AI with your unique writing style.
+                    </p>
+                    <Button 
+                      asChild 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-purple-700 border-purple-300 hover:bg-purple-100"
+                    >
+                      <a href="/personal-style">Learn More</a>
+                    </Button>
+                  </div>
                 )}
               </div>
 

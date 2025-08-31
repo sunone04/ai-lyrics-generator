@@ -51,6 +51,18 @@ export interface Generation {
   optimization_request?: string;
 }
 
+export interface PersonalStyle {
+  id: number;
+  user_id: string;
+  title: string;
+  lyrics: string;
+  music_style?: string;
+  language: string;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Category {
   id: number;
   created_at: string;
@@ -98,6 +110,14 @@ export interface LyricsGenerationParams {
   melody?: string;
   syllablePattern?: string;
   modelType: 'basic' | 'pro';
+  personalStyleId?: number; // 新增：个人风格ID
+}
+
+export interface PersonalStyleFormData {
+  title: string;
+  lyrics: string;
+  music_style?: string;
+  language: string;
 }
 
 // API response types
@@ -106,6 +126,18 @@ export interface RewriteResponse {
   rewrittenLyrics?: string;
   error?: string;
   remainingRewrites?: number;
+}
+
+export interface PersonalStyleResponse {
+  success: boolean;
+  personalStyles?: PersonalStyle[];
+  error?: string;
+}
+
+export interface PersonalStyleCreateResponse {
+  success: boolean;
+  personalStyle?: PersonalStyle;
+  error?: string;
 }
 
 

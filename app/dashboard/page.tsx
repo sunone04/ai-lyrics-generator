@@ -134,16 +134,28 @@ function DashboardContent() {
   // 如果用户未登录，显示登录提示
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h1>
-          <p className="text-gray-600 mb-6">Please sign in to access your dashboard.</p>
-          <button
-            onClick={() => router.push('/auth/signin?returnTo=/dashboard')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Sign In
-          </button>
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Breadcrumbs />
+          
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Dashboard</h1>
+            <p className="text-gray-600 mb-6">
+              View your AI lyrics generation history, manage favorites, and track your usage.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-blue-800 mb-2">Login Required</h3>
+              <p className="text-blue-700 mb-4">
+                Please sign in to access your dashboard and view your generation history.
+              </p>
+              <button
+                onClick={() => router.push('/auth/signin?returnTo=/dashboard')}
+                className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Sign In to Continue
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
