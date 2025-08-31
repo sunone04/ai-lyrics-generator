@@ -10,14 +10,26 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createServerComponentClient();
     
-    // Get current user
+    // Get current user with better error handling
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    
+    if (authError) {
+      console.error('Auth error in generations API:', authError);
+      return NextResponse.json(
+        { error: 'Authentication error', details: authError.message },
+        { status: 401 }
+      );
+    }
+    
+    if (!user) {
+      console.log('No user found in generations API');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
+
+    console.log('User authenticated in generations API:', user.id);
 
     // Build query
     let query = supabase
@@ -60,10 +72,12 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching generations:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch generations' },
+        { error: 'Failed to fetch generations', details: error.message },
         { status: 500 }
       );
     }
+
+    console.log(`Successfully fetched ${generations?.length || 0} generations for user ${user.id}`);
 
     return NextResponse.json({
       generations: generations || [],

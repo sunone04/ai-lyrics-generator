@@ -8,20 +8,14 @@ export function createServerComponentClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async getAll() {
-          const cookieStore = await cookies();
-          return cookieStore.getAll();
+        getAll() {
+          return cookies().getAll();
         },
-        async setAll(cookiesToSet) {
-          try {
-            const cookieStore = await cookies();
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have multiple React roots in your app.
-          }
+        setAll(cookiesToSet) {
+          const cookieStore = cookies();
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
         },
       },
     }
@@ -34,20 +28,14 @@ export function createAdminClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       cookies: {
-        async getAll() {
-          const cookieStore = await cookies();
-          return cookieStore.getAll();
+        getAll() {
+          return cookies().getAll();
         },
-        async setAll(cookiesToSet) {
-          try {
-            const cookieStore = await cookies();
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have multiple React roots in your app.
-          }
+        setAll(cookiesToSet) {
+          const cookieStore = cookies();
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
         },
       },
     }
@@ -55,13 +43,23 @@ export function createAdminClient() {
 }
 
 export async function getServerSession() {
-  const supabase = createServerComponentClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
+  try {
+    const supabase = createServerComponentClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  } catch (error) {
+    console.error('Error getting server session:', error);
+    return null;
+  }
 }
 
 export async function getServerUser() {
-  const supabase = createServerComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  try {
+    const supabase = createServerComponentClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  } catch (error) {
+    console.error('Error getting server user:', error);
+    return null;
+  }
 }

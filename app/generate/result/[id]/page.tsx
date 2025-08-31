@@ -128,15 +128,20 @@ export default function ResultPage() {
     
     setIsToggling(true);
     try {
-      const response = await fetch('/api/user/favorite', {
-        method: 'POST',
+      const newFavoriteStatus = !generation.is_favorited;
+      
+      const response = await fetch('/api/user/generations', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ generationId: generation.id })
+        body: JSON.stringify({ 
+          generationId: generation.id,
+          isFavorited: newFavoriteStatus
+        })
       });
       
       if (response.ok) {
-        setGeneration(prev => prev ? { ...prev, is_favorited: !prev.is_favorited } : null);
-        toast.success(generation.is_favorited ? 'Removed from favorites' : 'Added to favorites');
+        setGeneration(prev => prev ? { ...prev, is_favorited: newFavoriteStatus } : null);
+        toast.success(newFavoriteStatus ? 'Added to favorites' : 'Removed from favorites');
       } else {
         throw new Error('Failed to toggle favorite');
       }

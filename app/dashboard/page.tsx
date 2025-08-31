@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
-import { Generation, Profile } from '@/lib/types';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { Generation } from '@/lib/types';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { LoadingPage } from '@/components/ui/loading';
@@ -26,10 +26,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const supabase = createClient();
-  const [user, setUser] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user, profile, loading: authLoading, signOut } = useAuth();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [favorites, setFavorites] = useState<Generation[]>([]);
   const [activeTab, setActiveTab] = useState<'recent' | 'favorites'>('recent');
@@ -37,21 +34,66 @@ function DashboardContent() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; generationId: number | null }>({ show: false, generationId: null });
   const router = useRouter();
 
-  useEffect(() => {
-    let mounted = true;
-    const initAuth = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!mounted) return;
-      setUser(data.user ?? null);
-      setAuthLoading(false);
-      if (!data.user) {
-        const returnTo = encodeURIComponent('/dashboard');
-        router.replace(`/auth/signin?returnTo=${returnTo}`);
+  // 使用useCallback来稳定函数引用
+  const fetchGenerations = useCallback(async () => {
+    try {
+      const generationsResponse = await fetch('/api/user/generations', {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
+      if (generationsResponse.ok) {
+        const generationsResult = await generationsResponse.json();
+        setGenerations(generationsResult.generations || []);
+        return true;
+      } else if (generationsResponse.status === 401) {
+        console.warn('Authentication failed, redirecting to login');
+        await signOut();
+        router.push('/auth/signin?returnTo=/dashboard');
+        return false;
+      } else {
+        console.error('Failed to fetch generations:', generationsResponse.status);
+        toast.error('Failed to load generation history');
+        return false;
       }
-    };
-    initAuth();
-    return () => { mounted = false; };
-  }, [supabase, router]);
+    } catch (error) {
+      console.error('Error fetching generations:', error);
+      toast.error('Failed to load generation history');
+      return false;
+    }
+  }, [router, signOut]);
+
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const favoritesResponse = await fetch('/api/user/generations?favorites=true', {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
+      if (favoritesResponse.ok) {
+        const favoritesResult = await favoritesResponse.json();
+        setFavorites(favoritesResult.generations || []);
+        return true;
+      } else if (favoritesResponse.status === 401) {
+        console.warn('Authentication failed while fetching favorites, redirecting to login');
+        await signOut();
+        router.push('/auth/signin?returnTo=/dashboard');
+        return false;
+      } else {
+        console.error('Failed to fetch favorites:', favoritesResponse.status);
+        toast.error('Failed to load favorites');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      toast.error('Failed to load favorites');
+      return false;
+    }
+  }, [router, signOut]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,43 +106,11 @@ function DashboardContent() {
           if (payment === 'success') toast.success('Payment successful. Your membership will be activated shortly.');
           if (payment === 'failed') toast.error('Payment failed or canceled. Please try again.');
           
-          // Get user profile directly via Supabase
-          const { data: prof } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-          if (prof) setProfile(prof as any);
-
-          // Get recent generations
-          const generationsResponse = await fetch('/api/user/generations');
-          if (generationsResponse.ok) {
-            const generationsResult = await generationsResponse.json();
-            setGenerations(generationsResult.generations || []);
-          } else if (generationsResponse.status === 401) {
-            // 认证失败，重定向到登录页面
-            console.warn('Authentication failed, redirecting to login');
-            router.push('/auth/signin?returnTo=/dashboard');
-            return;
-          } else {
-            console.error('Failed to fetch generations:', generationsResponse.status);
-            toast.error('Failed to load generation history');
-          }
-
-          // Get favorites
-          const favoritesResponse = await fetch('/api/user/generations?favorites=true');
-          if (favoritesResponse.ok) {
-            const favoritesResult = await favoritesResponse.json();
-            setFavorites(favoritesResult.generations || []);
-          } else if (favoritesResponse.status === 401) {
-            // 认证失败，重定向到登录页面
-            console.warn('Authentication failed while fetching favorites, redirecting to login');
-            router.push('/auth/signin?returnTo=/dashboard');
-            return;
-          } else {
-            console.error('Failed to fetch favorites:', favoritesResponse.status);
-            toast.error('Failed to load favorites');
-          }
+          // 获取最近生成
+          await fetchGenerations();
+          
+          // 获取收藏
+          await fetchFavorites();
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -111,10 +121,10 @@ function DashboardContent() {
     };
 
     // 只有在认证状态确定后才执行数据获取
-    if (!authLoading) {
+    if (!authLoading && user) {
       fetchData();
     }
-  }, [user, authLoading, supabase, router]);
+  }, [user, authLoading, fetchGenerations, fetchFavorites]);
 
   // 如果正在认证加载中，显示加载页面
   if (authLoading) {
@@ -147,12 +157,19 @@ function DashboardContent() {
     }
     
     try {
-      const response = await fetch('/api/user/favorite', {
-        method: 'POST',
+      // 先获取当前的favorite状态
+      const currentGeneration = generations.find(gen => gen.id === generationId);
+      const newFavoriteStatus = !currentGeneration?.is_favorited;
+      
+      const response = await fetch('/api/user/generations', {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ generationId }),
+        body: JSON.stringify({ 
+          generationId, 
+          isFavorited: newFavoriteStatus 
+        }),
       });
 
       if (!response.ok) {
@@ -162,16 +179,12 @@ function DashboardContent() {
       
       // Update both lists
       const updatedGenerations = generations.map(gen => 
-        gen.id === generationId ? { ...gen, is_favorited: !gen.is_favorited } : gen
+        gen.id === generationId ? { ...gen, is_favorited: newFavoriteStatus } : gen
       );
       setGenerations(updatedGenerations);
 
       // Refresh favorites list
-      const favoritesResponse = await fetch('/api/user/generations?favorites=true');
-      if (favoritesResponse.ok) {
-        const favoritesResult = await favoritesResponse.json();
-        setFavorites(favoritesResult.generations || []);
-      }
+      await fetchFavorites();
 
       toast.success('Favorite updated');
     } catch (error: any) {

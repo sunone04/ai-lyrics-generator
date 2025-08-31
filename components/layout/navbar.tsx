@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NAVIGATION_ITEMS, BLOG_CATEGORIES } from '@/lib/constants';
@@ -14,41 +14,27 @@ import {
   StarIcon,
   UserIcon
 } from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase';
-import { useSubscription } from '@/lib/hooks/use-subscription';
+import { useAuth } from '@/lib/contexts/auth-context';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
-  const { subscription, isPro, isFree } = useSubscription();
+  const { user, profile, signOut } = useAuth();
 
   const handleSignIn = () => {
     router.push('/auth/signin');
   };
 
-  useEffect(() => {
-    const supabase = createClient();
-    let mounted = true;
-    const sync = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!mounted) return;
-      setIsSignedIn(!!data.user);
-      setUserEmail(data.user?.email ?? null);
-    };
-    sync();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsSignedIn(!!session?.user);
-      setUserEmail(session?.user?.email ?? null);
-    });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
+
+  // 从profile中获取订阅状态
+  const isPro = profile?.status === 'active';
+  const isFree = !isPro;
 
   return (
     <nav className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
@@ -175,7 +161,7 @@ export default function Navbar() {
           {/* User Menu */}
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
-              {isSignedIn ? (
+              {user ? (
                 <div className="flex items-center gap-3">
                   {/* Subscription Status Badge */}
                   <div className="flex items-center gap-2">
@@ -198,8 +184,8 @@ export default function Navbar() {
                     className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer flex items-center gap-2"
                   >
                     <span>Account</span>
-                    {userEmail && (
-                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{userEmail.split('@')[0]}</span>
+                    {user.email && (
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{user.email.split('@')[0]}</span>
                     )}
                   </Link>
                 </div>
@@ -262,7 +248,7 @@ export default function Navbar() {
 
             {/* User actions for mobile */}
             <div className="border-t border-gray-200 pt-4">
-              {isSignedIn ? (
+              {user ? (
                 <Link
                   href="/account"
                   onClick={() => setIsMenuOpen(false)}
