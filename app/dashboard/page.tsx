@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useTrial } from '@/lib/hooks/use-trial';
 import { Generation } from '@/lib/types';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { LoadingPage } from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
+import { TrialActivation, TrialStatus } from '@/components/ui/trial-activation';
 import { 
   HeartIcon, 
   ClockIcon, 
@@ -27,11 +29,13 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { isActiveUser, refreshData: refreshTrialData } = useTrial();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [favorites, setFavorites] = useState<Generation[]>([]);
   const [activeTab, setActiveTab] = useState<'recent' | 'favorites'>('recent');
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; generationId: number | null }>({ show: false, generationId: null });
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const router = useRouter();
 
   // 使用useCallback来稳定函数引用
@@ -47,6 +51,7 @@ function DashboardContent() {
       if (generationsResponse.ok) {
         const generationsResult = await generationsResponse.json();
         setGenerations(generationsResult.generations || []);
+        setLastFetchTime(Date.now());
         return true;
       } else if (generationsResponse.status === 401) {
         console.warn('Authentication failed, redirecting to login');
@@ -106,11 +111,15 @@ function DashboardContent() {
           if (payment === 'success') toast.success('Payment successful. Your membership will be activated shortly.');
           if (payment === 'failed') toast.error('Payment failed or canceled. Please try again.');
           
-          // 获取最近生成
-          await fetchGenerations();
-          
-          // 获取收藏
-          await fetchFavorites();
+          // 避免重复请求：如果距离上次请求不到5秒，跳过
+          const now = Date.now();
+          if (now - lastFetchTime > 5000) {
+            // 获取最近生成
+            await fetchGenerations();
+            
+            // 获取收藏
+            await fetchFavorites();
+          }
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -124,7 +133,7 @@ function DashboardContent() {
     if (!authLoading && user) {
       fetchData();
     }
-  }, [user, authLoading, fetchGenerations, fetchFavorites]);
+  }, [user, authLoading, fetchGenerations, fetchFavorites, lastFetchTime]);
 
   // 如果正在认证加载中，显示加载页面
   if (authLoading) {
@@ -250,7 +259,8 @@ function DashboardContent() {
   const getUsageStats = () => {
     if (!profile) return { generations: 0, rewrites: 0, maxGenerations: 1, maxRewrites: 0 };
     
-    const limits = profile.status === 'active' ? SUBSCRIPTION_LIMITS.paid : SUBSCRIPTION_LIMITS.free;
+    // Use isActiveUser to determine limits (includes trial users)
+    const limits = isActiveUser ? SUBSCRIPTION_LIMITS.paid : SUBSCRIPTION_LIMITS.free;
     return {
       generations: profile.generation_count,
       rewrites: profile.rewrite_count,
@@ -354,6 +364,20 @@ function DashboardContent() {
             </div>
           </div>
 
+          {/* Trial Status */}
+          <TrialStatus className="mb-6" />
+          
+          {/* Trial Activation */}
+          <TrialActivation 
+            className="mb-6" 
+            onActivated={() => {
+              refreshTrialData();
+              toast.success('Free trial activated! Enjoy 3 days of premium features.');
+            }}
+          />
+
+
+
           {/* Subscription Status */}
           {profile && (
             <div className="bg-white rounded-lg shadow p-6 mb-8">
@@ -363,12 +387,14 @@ function DashboardContent() {
                     Subscription Status
                   </h3>
                   <p className="text-gray-600">
-                    {profile.status === 'active' ? 'Premium Member' : 'Free Plan'}
+                    {isActiveUser ? 'Premium Access' : 'Free Plan'}
+                    {profile.status === 'active' && ' (Paid)'}
+                    {profile.status === 'free' && profile.trial_start_date && ' (Trial)'}
                   </p>
                 </div>
-                {profile.status !== 'active' && (
+                {!isActiveUser && (
                   <button
-                    onClick={() => router.push('/auth/signin')}
+                    onClick={() => router.push('/pricing')}
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                   >
                     Upgrade to Premium

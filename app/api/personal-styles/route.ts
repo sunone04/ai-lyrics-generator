@@ -15,10 +15,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 检查用户是否为会员
+    // 检查用户是否为会员（含试用期字段，一次查询内推断）
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('status')
+      .select('status, trial_start_date, trial_end_date, is_trial_used')
       .eq('id', user.id)
       .single();
 
@@ -29,19 +29,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (profile.status !== 'active') {
+    // 本地推断试用期
+    const now = new Date();
+    const ts = profile.trial_start_date ? new Date(profile.trial_start_date as unknown as string) : null;
+    const te = profile.trial_end_date ? new Date(profile.trial_end_date as unknown as string) : null;
+    const isInTrial = !!(ts && te && now >= ts && now <= te);
+
+    if (profile.status !== 'active' && !isInTrial) {
       return NextResponse.json(
-        { success: false, error: 'Premium membership required' },
+        { success: false, error: 'Premium membership or free trial required' },
         { status: 403 }
       );
     }
 
-    // 获取用户的个人风格
-    const { data: personalStyles, error: fetchError } = await supabase
+    // 解析分页参数
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '20', 10), 1), 50);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    // 获取用户的个人风格（字段裁剪 + 分页 + 计数）
+    const { data: personalStyles, error: fetchError, count } = await supabase
       .from('personal_styles')
-      .select('*')
+      .select('id, title, music_style, language, word_count, created_at', { count: 'exact' })
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (fetchError) {
       console.error('Error fetching personal styles:', fetchError);
@@ -53,7 +67,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      personalStyles: personalStyles || []
+      personalStyles: personalStyles || [],
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: count ? Math.ceil(count / pageSize) : 0,
+      }
     });
 
   } catch (error) {
@@ -78,10 +98,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查用户是否为会员
+    // 检查用户是否为会员（含试用字段）
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('status')
+      .select('status, trial_start_date, trial_end_date, is_trial_used')
       .eq('id', user.id)
       .single();
 
@@ -92,17 +112,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (profile.status !== 'active') {
+    // 本地推断试用期
+    const now = new Date();
+    const ts = profile.trial_start_date ? new Date(profile.trial_start_date as unknown as string) : null;
+    const te = profile.trial_end_date ? new Date(profile.trial_end_date as unknown as string) : null;
+    const isInTrial = !!(ts && te && now >= ts && now <= te);
+
+    if (profile.status !== 'active' && !isInTrial) {
       return NextResponse.json(
-        { success: false, error: 'Premium membership required' },
+        { success: false, error: 'Premium membership or free trial required' },
         { status: 403 }
       );
     }
 
-    // 检查用户是否已达到5首限制
+    // 检查用户是否已达到5首限制（轻量化计数）
     const { count: existingCount, error: countError } = await supabase
       .from('personal_styles')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id);
 
     if (countError) {

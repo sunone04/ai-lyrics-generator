@@ -29,13 +29,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
     }
 
-    if (profile.status !== 'active') {
-      return NextResponse.json({ error: 'Premium subscription required' }, { status: 403 });
+    // Check if user is in trial period
+    const { data: isInTrial, error: trialCheckError } = await supabase
+      .rpc('is_user_in_trial_period', { user_uuid: user.id });
+
+    if (trialCheckError) {
+      console.error('Error checking trial status:', trialCheckError);
+      return NextResponse.json({ error: 'Failed to check trial status' }, { status: 500 });
+    }
+
+    // Allow rewrite if user has active subscription OR is in trial period
+    if (profile.status !== 'active' && !isInTrial) {
+      return NextResponse.json({ error: 'Premium subscription or free trial required' }, { status: 403 });
+    }
+
+    // Check user usage limits before proceeding
+    const { data: canRewrite, error: limitCheckError } = await supabase
+      .rpc('check_user_usage_limit_with_trial', { 
+        user_uuid: user.id, 
+        operation_type: 'rewrite' 
+      });
+
+    if (limitCheckError) {
+      console.error('Error checking usage limit:', limitCheckError);
+      return NextResponse.json({ error: 'Failed to check usage limit' }, { status: 500 });
+    }
+
+    if (!canRewrite) {
+      return NextResponse.json({ error: 'Daily rewrite limit reached. Please upgrade to premium or wait until tomorrow.' }, { status: 429 });
     }
 
     // TODO: Implement actual rewrite logic
     // For now, return a placeholder response
     const rewrittenText = `[Rewritten version of: "${selectedText}"]\n\nBased on your request: "${rewriteRequest}"\n\nThis is a placeholder response. The actual rewrite functionality will be implemented here.`;
+
+    // Increment user's rewrite count after successful rewrite
+    const { error: incrementError } = await supabase
+      .from('profiles')
+      .update({ 
+        rewrite_count: supabase.sql`rewrite_count + 1`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id);
+
+    if (incrementError) {
+      console.error('Error incrementing rewrite count:', incrementError);
+    }
 
     return NextResponse.json({ 
       success: true, 

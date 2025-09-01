@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useTrial } from '@/lib/hooks/use-trial';
 import { PersonalStyle, PersonalStyleFormData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import Breadcrumbs from '@/components/ui/breadcrumbs';
 
 export default function PersonalStylePage() {
   const { user, profile } = useAuth();
+  const { isActiveUser } = useTrial();
   const [personalStyles, setPersonalStyles] = useState<PersonalStyle[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -23,8 +25,8 @@ export default function PersonalStylePage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // 检查用户是否为会员
-  const isMember = profile?.status === 'active';
+  // 检查用户是否为会员（包含试用期）
+  const isMember = isActiveUser;
 
   useEffect(() => {
     if (user && isMember) {
@@ -35,12 +37,20 @@ export default function PersonalStylePage() {
     }
   }, [user, isMember]);
 
-  const fetchPersonalStyles = async () => {
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const fetchPersonalStyles = async (nextPage = page) => {
     try {
-      const response = await fetch('/api/personal-styles');
+      const response = await fetch(`/api/personal-styles?page=${nextPage}&pageSize=${pageSize}`);
       const data = await response.json();
       if (data.success) {
         setPersonalStyles(data.personalStyles || []);
+        if (data.pagination) {
+          setTotal(data.pagination.total || 0);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch personal styles:', error);
@@ -69,7 +79,7 @@ export default function PersonalStylePage() {
         setShowForm(false);
         setEditingId(null);
         resetForm();
-        fetchPersonalStyles();
+        fetchPersonalStyles(1);
       } else {
         alert(data.error || 'Failed to save personal style');
       }
@@ -100,11 +110,10 @@ export default function PersonalStylePage() {
         method: 'DELETE'
       });
 
-      const data = await response.json();
-      if (data.success) {
-        fetchPersonalStyles();
+      if (response.ok) {
+        fetchPersonalStyles(1);
       } else {
-        alert(data.error || 'Failed to delete personal style');
+        alert('Failed to delete personal style');
       }
     } catch (error) {
       console.error('Failed to delete personal style:', error);
@@ -119,114 +128,44 @@ export default function PersonalStylePage() {
       music_style: '',
       language: 'English'
     });
-    setEditingId(null);
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    resetForm();
+  const handleInputChange = (field: keyof PersonalStyleFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // 渲染页面头部和功能介绍
-  const renderHeader = () => (
-    <div className="mb-8">
-      <h1 className="text-3xl font-bold mb-4">Personal Style Library</h1>
-      
-      {/* 功能介绍 */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold text-blue-800 mb-3">🎵 Transform Your Lyrics into AI Training Data</h2>
-        <p className="text-gray-700 mb-4 leading-relaxed">
-          The Personal Style Library allows you to upload your own original lyrics as sample examples for AI training. 
-          This enables our AI to learn from your unique writing style, vocabulary preferences, and creative approach, 
-          resulting in high-quality lyrics that match your personal artistic voice.
-        </p>
-        
-        <div className="grid md:grid-cols-2 gap-4 mb-4">
-          <div className="bg-white p-4 rounded-lg border">
-            <h3 className="font-semibold text-gray-800 mb-2">✨ How It Works</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Upload up to 5 of your original lyrics</li>
-              <li>• Each lyric can be up to 500 words</li>
-              <li>• AI learns your style and vocabulary</li>
-              <li>• Generate lyrics that match your voice</li>
-            </ul>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <h3 className="font-semibold text-gray-800 mb-2">🎯 Perfect For</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Songwriters with unique styles</li>
-              <li>• Artists wanting consistent voice</li>
-              <li>• Musicians with specific themes</li>
-              <li>• Anyone seeking personalized AI</li>
-            </ul>
-          </div>
-        </div>
-        
-        <div className="bg-blue-100 p-4 rounded-lg">
-          <h3 className="font-semibold text-blue-800 mb-2">💡 Pro Tip</h3>
-          <p className="text-blue-700 text-sm">
-            Upload diverse lyrics across different themes and emotions to give AI a comprehensive understanding of your style. 
-            The more variety you provide, the better the AI can adapt to different creative contexts.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  if (loading) {
+    return <Loading />;
+  }
 
-  // 非登录用户显示
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs />
-        {renderHeader()}
-        
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-2xl mx-auto">
-            <h3 className="text-xl font-semibold text-blue-800 mb-4">Ready to Create Your Personal AI Style?</h3>
-            <p className="text-blue-700 mb-6 leading-relaxed">
-              Sign in to start uploading your original lyrics and train our AI to understand your unique creative voice. 
-              Your personal style library will help generate lyrics that truly reflect your artistic identity.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild size="lg">
-                <a href="/auth/signin">Sign In to Get Started</a>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <a href="/pricing">View Premium Plans</a>
-              </Button>
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Authentication Required</h1>
+          <p className="text-gray-600 mb-6">Please sign in to access your personal styles.</p>
+          <Button asChild>
+            <a href="/auth/signin">Sign In</a>
+          </Button>
         </div>
       </div>
     );
   }
 
-  // 非会员用户显示
   if (!isMember) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs />
-        {renderHeader()}
-        
-        <div className="text-center">
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-8 max-w-2xl mx-auto">
-            <h3 className="text-xl font-semibold text-purple-800 mb-4">Unlock Your Personal Style Library</h3>
-            <p className="text-purple-700 mb-6 leading-relaxed">
-              Personal Style Library is a premium feature that allows you to train our AI with your own lyrics. 
-              Upgrade to premium to upload up to 5 of your original songs and create truly personalized AI-generated lyrics.
-            </p>
-            <div className="bg-white p-4 rounded-lg mb-6">
-              <h4 className="font-semibold text-gray-800 mb-2">Premium Benefits:</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>✓ Upload up to 5 personal lyrics</li>
-                <li>✓ AI learns your unique style</li>
-                <li>✓ Generate personalized lyrics</li>
-                <li>✓ Unlimited generations</li>
-                <li>✓ Priority support</li>
-              </ul>
-            </div>
-            <Button asChild size="lg" className="bg-purple-600 hover:bg-purple-700">
-              <a href="/pricing">Upgrade to Premium</a>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Premium Feature</h1>
+          <p className="text-gray-600 mb-6">
+            Personal Style Library is a premium feature. Upgrade to create and manage your own lyric styles that AI can learn from.
+          </p>
+          <div className="space-y-3">
+            <Button asChild className="w-full">
+              <a href="/pricing">View Pricing</a>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <a href="/generate">Back to Generator</a>
             </Button>
           </div>
         </div>
@@ -234,175 +173,273 @@ export default function PersonalStylePage() {
     );
   }
 
-  if (loading) {
-    return <Loading />;
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Breadcrumbs />
-      {renderHeader()}
-
-      {/* Upload Button */}
-      {personalStyles.length < 5 && !showForm && (
-        <div className="mb-6">
-          <Button onClick={() => setShowForm(true)}>
-            Upload New Style
-          </Button>
-        </div>
-      )}
-
-      {/* Upload/Edit Form */}
-      {showForm && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>
-              {editingId ? 'Edit Personal Style' : 'Upload New Personal Style'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={100}
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter song title"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Music Style
-                </label>
-                <input
-                  type="text"
-                  value={formData.music_style}
-                  onChange={(e) => setFormData({ ...formData, music_style: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Hip Hop, Pop, Rock"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Language *
-                </label>
-                <select
-                  required
-                  value={formData.language}
-                  onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="English">English</option>
-                  <option value="Spanish">Spanish</option>
-                  <option value="French">French</option>
-                  <option value="German">German</option>
-                  <option value="Italian">Italian</option>
-                  <option value="Portuguese">Portuguese</option>
-                  <option value="Russian">Russian</option>
-                  <option value="Japanese">Japanese</option>
-                  <option value="Korean">Korean</option>
-                  <option value="Chinese">Chinese</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Lyrics *
-                </label>
-                                 <textarea
-                   required
-                   maxLength={500}
-                   rows={8}
-                   value={formData.lyrics}
-                   onChange={(e) => setFormData({ ...formData, lyrics: e.target.value })}
-                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   placeholder="Enter your lyrics here (max 500 words)"
-                 />
-                 <div className="text-sm text-sm text-gray-500 mt-1">
-                   {formData.lyrics.split(/\s+/).filter(word => word.length > 0).length} / 500 words
-                 </div>
-              </div>
-
-              <div className="flex space-x-3">
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? 'Saving...' : (editingId ? 'Update' : 'Upload')}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Personal Styles List */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">
-          Your Personal Styles ({personalStyles.length}/5)
-        </h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+      <div className="container mx-auto px-4 py-8">
+        <Breadcrumbs 
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Personal Style Library', href: '/personal-style' }
+          ]} 
+        />
         
-        {personalStyles.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-gray-500">
-              No personal styles uploaded yet. Start by uploading your first style!
-            </CardContent>
-          </Card>
-        ) : (
-          personalStyles.map((style) => (
-            <Card key={style.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{style.title}</CardTitle>
-                    <div className="flex items-center space-x-2 mt-2">
-                      {style.music_style && (
-                        <Badge variant="secondary">{style.music_style}</Badge>
-                      )}
-                      <Badge variant="outline">{style.language}</Badge>
-                      <span className="text-sm text-gray-500">
-                        {style.word_count} words
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(style)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(style.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-800 mb-4">
+              Personal Style Library
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Upload your own lyrics to train AI with your unique writing style. 
+              Create up to 5 personal styles that will influence future AI generations.
+            </p>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card>
+              <CardContent className="text-center p-6">
+                <div className="text-3xl font-bold text-blue-600 mb-2">
+                  {personalStyles.length}/5
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <pre className="whitespace-pre-wrap text-sm font-mono">
-                    {style.lyrics}
-                  </pre>
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Uploaded: {new Date(style.created_at).toLocaleDateString()}
-                </div>
+                <div className="text-gray-600">Personal Styles</div>
               </CardContent>
             </Card>
-          ))
+            <Card>
+              <CardContent className="text-center p-6">
+                <div className="text-3xl font-bold text-green-600 mb-2">
+                  {total}
+                </div>
+                <div className="text-gray-600">Total Styles</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center p-6">
+                <div className="text-3xl font-bold text-purple-600 mb-2">
+                  {isMember ? 'Active' : 'Inactive'}
+                </div>
+                <div className="text-gray-600">Membership</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-gray-800">
+              Your Personal Styles
+            </h2>
+            <Button 
+              onClick={() => setShowForm(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              + Add New Style
+            </Button>
+          </div>
+
+          {/* Personal Styles List */}
+          {personalStyles.length === 0 ? (
+            <Card>
+              <CardContent className="text-center p-12">
+                <div className="text-gray-400 mb-4">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Personal Styles Yet</h3>
+                <p className="text-gray-500 mb-6">
+                  Start building your personal style library by uploading your own lyrics.
+                </p>
+                <Button onClick={() => setShowForm(true)}>
+                  Create Your First Style
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {personalStyles.map((style) => (
+                <Card key={style.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg font-semibold text-gray-800 line-clamp-2">
+                        {style.title}
+                      </CardTitle>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(style)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(style.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {style.music_style || 'No style'}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {style.language}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-3">
+                        {style.lyrics}
+                      </p>
+                      <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span>{style.word_count} words</span>
+                        <span>{new Date(style.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-8">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => fetchPersonalStyles(page - 1)}
+                  disabled={page <= 1}
+                >
+                  Previous
+                </Button>
+                <span className="px-4 py-2 text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => fetchPersonalStyles(page + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Form Modal */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                  {editingId ? 'Edit Personal Style' : 'Create New Personal Style'}
+                </h3>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => handleInputChange('title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter a descriptive title"
+                      maxLength={100}
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formData.title.length}/100 characters
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Music Style (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.music_style}
+                      onChange={(e) => handleInputChange('music_style', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="e.g., Pop, Rock, Hip Hop"
+                      maxLength={50}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Language *
+                    </label>
+                    <select
+                      value={formData.language}
+                      onChange={(e) => handleInputChange('language', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="English">English</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                      <option value="German">German</option>
+                      <option value="Italian">Italian</option>
+                      <option value="Portuguese">Portuguese</option>
+                      <option value="Russian">Russian</option>
+                      <option value="Chinese">Chinese</option>
+                      <option value="Japanese">Japanese</option>
+                      <option value="Korean">Korean</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Lyrics *
+                    </label>
+                    <textarea
+                      value={formData.lyrics}
+                      onChange={(e) => handleInputChange('lyrics', e.target.value)}
+                      rows={8}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Paste your lyrics here... (max 500 characters)"
+                      maxLength={500}
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formData.lyrics.length}/500 characters
+                    </p>
+                  </div>
+
+                  <div className="flex space-x-3 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowForm(false);
+                        setEditingId(null);
+                        resetForm();
+                      }}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    >
+                      {submitting ? 'Saving...' : (editingId ? 'Update Style' : 'Create Style')}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

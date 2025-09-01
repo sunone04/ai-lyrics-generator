@@ -1,5 +1,6 @@
-import { createServerComponentClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerComponentClient } from '@/lib/supabase-server';
+import { LyricsGenerationParams } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,11 +10,8 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
-      console.log('User not authenticated in generations API');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    console.log('User authenticated in generations API:', user.id);
 
     // Check if user wants favorites only
     const { searchParams } = new URL(request.url);
@@ -36,8 +34,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch generations' }, { status: 500 });
     }
 
-    console.log(`Successfully fetched ${generations.length} generations for user ${user.id}`);
-
     return NextResponse.json({ 
       generations: generations || [],
       count: generations?.length || 0
@@ -45,6 +41,88 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error in generations API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createServerComponentClient();
+    
+    // Get user from session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const {
+      language,
+      musicStyle,
+      musicTheme,
+      lengthOption,
+      lyricStyle,
+      intentOrRequest,
+      artistStyle,
+      emotionIntensity,
+      rhymeRequirement,
+      songStructure,
+      paragraphLength,
+      bpm,
+      melody,
+      syllablePattern,
+      generatedLyrics,
+      modelUsed,
+      personalStyleId
+    } = body;
+
+    // Validate required fields
+    if (!generatedLyrics || !modelUsed) {
+      return NextResponse.json({ error: 'Generated lyrics and model used are required' }, { status: 400 });
+    }
+
+    // Insert the generation record
+    const { data: generation, error: insertError } = await supabase
+      .from('generations')
+      .insert({
+        user_id: user.id,
+        language: language || null,
+        music_style: musicStyle || null,
+        music_theme: musicTheme || null,
+        length_option: lengthOption || null,
+        lyric_style: lyricStyle || null,
+        intent_or_request: intentOrRequest || null,
+        artist_style: artistStyle || null,
+        emotion_intensity: emotionIntensity || null,
+        rhyme_requirement: rhymeRequirement || null,
+        song_structure: songStructure || null,
+        paragraph_length: paragraphLength || null,
+        bpm: bpm || null,
+        melody: melody || null,
+        syllable_pattern: syllablePattern || null,
+        generated_lyrics: generatedLyrics,
+        model_used: modelUsed,
+        generation_type: 'full',
+        personal_style_id: personalStyleId || null,
+        is_favorited: false
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error inserting generation:', insertError);
+      return NextResponse.json({ error: 'Failed to save generation' }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      generation,
+      message: 'Generation saved successfully'
+    });
+
+  } catch (error) {
+    console.error('Error in generations POST API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

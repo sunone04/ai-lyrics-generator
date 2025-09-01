@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useTrial } from '@/lib/hooks/use-trial';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 import { LoadingButton } from '@/components/ui/loading';
@@ -52,6 +53,7 @@ function GenerateContent() {
 // 主要的生成表单组件
 function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const { user, profile, loading: authLoading } = useAuth();
+  const { isActiveUser } = useTrial();
   const [formData, setFormData] = useState<LyricsGenerationParams>({
     language: 'English',
     musicStyle: 'Pop',
@@ -79,8 +81,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     musicTheme: '',
     lengthOption: '',
     lyricStyle: '',
+    artistStyle: '',
     rhymeRequirement: '',
-    songStructure: ''
+    songStructure: '',
+    paragraphLength: ''
   });
 
   // Personal styles state
@@ -100,7 +104,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   // 检查用户权限和设置模型类型
   useEffect(() => {
     if (!authLoading && user && profile) {
-      const canUseProModel = profile.status === 'active';
+      const canUseProModel = isActiveUser;
       setFormData(prev => ({
         ...prev,
         modelType: canUseProModel ? 'pro' : 'basic'
@@ -684,7 +688,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
                 {formData.modelType === 'pro' && (
                   <p className="text-sm text-amber-600 mt-1">
-                    Pro model requires a premium subscription
+                    Pro model available with premium subscription or free trial
                   </p>
                 )}
               </div>

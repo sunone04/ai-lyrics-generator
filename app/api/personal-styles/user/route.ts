@@ -28,9 +28,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (profile.status !== 'active') {
+    // Check if user is in trial period
+    const { data: isInTrial, error: trialCheckError } = await supabase
+      .rpc('is_user_in_trial_period', { user_uuid: user.id });
+
+    if (trialCheckError) {
+      console.error('Error checking trial status:', trialCheckError);
       return NextResponse.json(
-        { success: false, error: 'Premium membership required' },
+        { success: false, error: 'Failed to check trial status' },
+        { status: 500 }
+      );
+    }
+
+    if (profile.status !== 'active' && !isInTrial) {
+      return NextResponse.json(
+        { success: false, error: 'Premium membership or free trial required' },
         { status: 403 }
       );
     }

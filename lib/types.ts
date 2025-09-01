@@ -22,6 +22,10 @@ export interface Profile {
   subscription_canceled_at?: string;
   subscription_plan_name?: string;
   subscription_billing_cycle?: string;
+  // trial period fields
+  trial_start_date?: string;
+  trial_end_date?: string;
+  is_trial_used: boolean;
 }
 
 export interface Generation {

@@ -18,10 +18,10 @@ export async function PUT(
       );
     }
 
-    // 检查用户是否为会员
+    // 检查用户是否为会员（含试用字段）
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('status')
+      .select('status, trial_start_date, trial_end_date, is_trial_used')
       .eq('id', user.id)
       .single();
 
@@ -32,9 +32,15 @@ export async function PUT(
       );
     }
 
-    if (profile.status !== 'active') {
+    // 本地推断试用期
+    const now = new Date();
+    const ts = profile.trial_start_date ? new Date(profile.trial_start_date as unknown as string) : null;
+    const te = profile.trial_end_date ? new Date(profile.trial_end_date as unknown as string) : null;
+    const isInTrial = !!(ts && te && now >= ts && now <= te);
+
+    if (profile.status !== 'active' && !isInTrial) {
       return NextResponse.json(
-        { success: false, error: 'Premium membership required' },
+        { success: false, error: 'Premium membership or free trial required' },
         { status: 403 }
       );
     }
@@ -42,7 +48,7 @@ export async function PUT(
     // 检查个人风格是否存在且属于当前用户
     const { data: existingStyle, error: fetchError } = await supabase
       .from('personal_styles')
-      .select('*')
+      .select('id')
       .eq('id', params.id)
       .eq('user_id', user.id)
       .single();
@@ -96,7 +102,7 @@ export async function PUT(
       })
       .eq('id', params.id)
       .eq('user_id', user.id)
-      .select()
+      .select('id, title, music_style, language, word_count, created_at, updated_at, lyrics')
       .single();
 
     if (updateError) {
@@ -151,9 +157,21 @@ export async function DELETE(
       );
     }
 
-    if (profile.status !== 'active') {
+    // Check if user is in trial period
+    const { data: isInTrial, error: trialCheckError } = await supabase
+      .rpc('is_user_in_trial_period', { user_uuid: user.id });
+
+    if (trialCheckError) {
+      console.error('Error checking trial status:', trialCheckError);
       return NextResponse.json(
-        { success: false, error: 'Premium membership required' },
+        { success: false, error: 'Failed to check trial status' },
+        { status: 500 }
+      );
+    }
+
+    if (profile.status !== 'active' && !isInTrial) {
+      return NextResponse.json(
+        { success: false, error: 'Premium membership or free trial required' },
         { status: 403 }
       );
     }
