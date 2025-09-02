@@ -90,7 +90,7 @@ export default function EditCategoryPage() {
     }
   };
 
-  const handleInputChange = (field: keyof Category, value: string | boolean) => {
+  const handleInputChange = (field: keyof Category, value: string | boolean | number) => {
     if (category) {
       setCategory({ ...category, [field]: value });
     }

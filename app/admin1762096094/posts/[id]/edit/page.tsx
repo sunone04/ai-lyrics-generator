@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 interface Category {
   id: number;
@@ -32,6 +33,16 @@ export default function EditPostPage() {
   const router = useRouter();
   const params = useParams();
   const postId = params.id as string;
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     checkAdminAuth();
@@ -103,7 +114,7 @@ export default function EditPostPage() {
 
       if (response.ok) {
         setSuccess('文章更新成功！');
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           setSuccess('');
         }, 3000);
       } else {

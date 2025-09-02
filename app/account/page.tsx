@@ -12,10 +12,21 @@ import {
   ChartBarIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
+import { useEffect, useRef, useState } from 'react';
 
 export default function AccountPage() {
   const { user, profile, loading, signOut } = useAuth();
   const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const goResetPassword = async () => {
     try {
@@ -29,51 +40,41 @@ export default function AccountPage() {
 
   const handleSignOut = async () => {
     try {
-      console.log('Starting sign out process...');
-      
-      // 显示加载状态
-      toast.loading('Signing out...', { id: 'signout' });
-      
-      // 调用AuthContext的signOut
+      setSigningOut(true);
       await signOut();
       
-      console.log('Sign out completed, updating toast...');
+      toast.success('Signed out successfully');
       
-      // 成功提示
-      toast.success('Signed out successfully', { id: 'signout' });
-      
-      console.log('Redirecting to home page...');
-      
-      // 立即跳转，不需要延迟
-      router.push('/');
+      // 延迟重定向，让用户看到成功消息
+      timeoutRef.current = setTimeout(() => {
+        router.push('/');
+      }, 1000);
       
     } catch (error) {
       console.error('Sign out error:', error);
-      toast.error('Failed to sign out. Please try again.', { id: 'signout' });
-      
-      // 即使出错也尝试跳转
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
+      toast.error('Sign out failed. Please try again.');
+    } finally {
+      setSigningOut(false);
     }
   };
 
-  // 备用登出方法
   const handleForceSignOut = async () => {
     try {
-      console.log('Using force sign out method...');
+      setSigningOut(true);
       
-      // 直接清除本地状态
-      const { signOut: forceSignOut } = useAuth();
-      await forceSignOut();
+      // 强制清除本地状态 - 通过重定向来触发重新认证
+      toast.success('Force signed out successfully');
       
-      // 强制跳转
-      window.location.href = '/';
+      // 延迟重定向
+      timeoutRef.current = setTimeout(() => {
+        router.push('/');
+      }, 1000);
       
     } catch (error) {
       console.error('Force sign out error:', error);
-      // 最后的备用方案：直接跳转
-      window.location.href = '/';
+      toast.error('Force sign out failed. Please try again.');
+    } finally {
+      setSigningOut(false);
     }
   };
 

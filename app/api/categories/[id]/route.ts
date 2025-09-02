@@ -94,21 +94,12 @@ export async function PATCH(
       );
     }
 
-    // Clear cache and revalidate
+    // Clear blog cache after update
     try {
-      await cacheService.clearCategoryCache(parseInt(id));
-      console.log('Blog cache cleared after category update');
-      
-      // Trigger ISR invalidation
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: '/blog', secret: process.env.REVALIDATE_SECRET })
-        });
-      } catch {}
-    } catch (cacheErr) {
-      console.warn('Cache clear after category update failed:', cacheErr);
+      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate?secret=${process.env.REVALIDATE_SECRET}`);
+    } catch (error) {
+      // Cache revalidation failed, but don't fail the request
+      console.error('Failed to revalidate cache:', error);
     }
 
     return NextResponse.json({

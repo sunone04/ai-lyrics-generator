@@ -77,7 +77,7 @@ export function usePaddle() {
         window.Paddle.Checkout.open({
           ...checkoutOptions,
           onLoaded: () => {
-            console.log('Paddle checkout loaded');
+            // Paddle checkout loaded
           },
           onError: (error: any) => {
             console.error('Paddle checkout error:', error);
@@ -85,7 +85,7 @@ export function usePaddle() {
             resolve();
           },
           onComplete: (data: any) => {
-            console.log('Paddle checkout completed:', data);
+            // Paddle checkout completed
             resolve();
           },
           onClose: () => {

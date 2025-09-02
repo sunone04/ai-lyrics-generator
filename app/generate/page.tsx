@@ -92,12 +92,11 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const [showPersonalStyles, setShowPersonalStyles] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [liveLyrics, setLiveLyrics] = useState('');
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState<string>('');
+  const [upgradeReason, setUpgradeReason] = useState('');
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -110,7 +109,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
         modelType: canUseProModel ? 'pro' : 'basic'
       }));
     }
-  }, [user, profile, authLoading]);
+  }, [user, profile, authLoading, isActiveUser]);
 
   // Simple arrow animation handlers
   useEffect(() => {
@@ -216,14 +215,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     }
   }, [searchParams]);
 
-  // Fetch personal styles for premium users
-  useEffect(() => {
-    if (user && profile?.status === 'active') {
-      fetchPersonalStyles();
-    }
-  }, [user, profile]);
-
-  const fetchPersonalStyles = async () => {
+  const fetchPersonalStyles = useCallback(async () => {
     try {
       const response = await fetch('/api/personal-styles/user');
       const data = await response.json();
@@ -233,7 +225,14 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     } catch (error) {
       console.error('Failed to fetch personal styles:', error);
     }
-  };
+  }, []);
+
+  // Fetch personal styles for premium users
+  useEffect(() => {
+    if (user && profile?.status === 'active') {
+      fetchPersonalStyles();
+    }
+  }, [user, profile, fetchPersonalStyles]);
 
   const handleInputChange = (field: keyof LyricsGenerationParams, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -314,7 +313,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
           <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <h3 className="text-xl font-semibold text-gray-800 mb-2">Creating Your Lyrics</h3>
-            <p className="text-gray-600 mb-4">{loadingStep || 'Processing your request...'}</p>
+            <p className="text-gray-600 mb-4">Processing your request...</p>
             {isStreaming && (
               <div className="mt-4 max-h-64 overflow-auto text-left bg-gray-50 border border-gray-200 rounded-lg p-3 font-mono text-sm whitespace-pre-wrap">
                 {liveLyrics || 'Waiting for AI to respond...'}
@@ -782,14 +781,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                   isLoading={isLoading}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-5 px-8 rounded-2xl hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-blue-500/50 font-semibold text-xl shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 cursor-pointer"
                 >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center space-x-3">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>{loadingStep || 'Generating...'}</span>
-                    </div>
-                  ) : (
-                    '🎵 Generate Lyrics'
-                  )}
+                  🎵 Generate Lyrics
                 </LoadingButton>
                 
                 {/* Loading Progress Indicator */}

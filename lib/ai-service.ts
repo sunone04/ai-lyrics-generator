@@ -7,8 +7,6 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 const MAX_OUTPUT_CHARS: number = parseInt(process.env.AI_MAX_OUTPUT_CHARS || '6000');
 // 外部网络软超时（毫秒），默认 45000ms；用于首个响应或整体请求
 const NETWORK_SOFT_TIMEOUT_MS: number = parseInt(process.env.AI_NETWORK_SOFT_TIMEOUT_MS || '45000');
-// 注意：不再对“单个数据块的空闲间隔”设置强制超时，避免中断长思考或网络抖动下的正常流
-
 
 export class AIService {
   private getModel(modelType: 'basic' | 'pro', isRegeneration: boolean = false) {
@@ -80,33 +78,38 @@ export class AIService {
     const model = this.getModel(params.modelType);
     const prompt = this.buildGenerationPrompt(params, personalStyle);
 
-    // 生成流，整体调用设置软超时
-    const result: any = await this.withTimeout(
-      (model as any).generateContentStream(prompt),
-      NETWORK_SOFT_TIMEOUT_MS,
-      'AI stream'
-    );
+    try {
+      // 生成流，整体调用设置软超时
+      const result: any = await this.withTimeout(
+        (model as any).generateContentStream(prompt),
+        NETWORK_SOFT_TIMEOUT_MS,
+        'AI stream'
+      );
 
-    // 逐块读取，设置空闲超时与最大字数截断
-    const iterator: AsyncIterator<any> = (result.stream as any)[Symbol.asyncIterator]();
-    let total = 0;
-    while (true) {
-      if (abortSignal?.aborted) break;
-      const { value, done } = await iterator.next();
-      if (done) break;
-      try {
-        const delta: string = typeof value.text === 'function' ? value.text() : '';
-        if (delta && delta.length > 0) {
-          const remaining = MAX_OUTPUT_CHARS - total;
-          if (remaining <= 0) break;
-          const chunk = delta.length > remaining ? delta.slice(0, remaining) : delta;
-          total += chunk.length;
-          yield chunk;
-          if (total >= MAX_OUTPUT_CHARS) break;
+      // 逐块读取，设置空闲超时与最大字数截断
+      const iterator: AsyncIterator<any> = (result.stream as any)[Symbol.asyncIterator]();
+      let total = 0;
+      while (true) {
+        if (abortSignal?.aborted) break;
+        const { value, done } = await iterator.next();
+        if (done) break;
+        try {
+          const delta: string = typeof value.text === 'function' ? value.text() : '';
+          if (delta && delta.length > 0) {
+            const remaining = MAX_OUTPUT_CHARS - total;
+            if (remaining <= 0) break;
+            const chunk = delta.length > remaining ? delta.slice(0, remaining) : delta;
+            total += chunk.length;
+            yield chunk;
+            if (total >= MAX_OUTPUT_CHARS) break;
+          }
+        } catch (_err) {
+          // 忽略无法解析的块
         }
-      } catch (_err) {
-        // 忽略无法解析的块
       }
+    } catch (error) {
+      console.error('Error in stream generation:', error);
+      throw new Error(`Failed to generate lyrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -227,7 +230,6 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
   }
 
   async generateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle): Promise<string> {
-
     return this.retryWithBackoff(async () => {
       const model = this.getModel(params.modelType);
       const prompt = this.buildGenerationPrompt(params, personalStyle);
@@ -310,7 +312,6 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
         return await operation();
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        // 静默：避免生产环境下频繁重试日志
         
         // Don't retry on certain errors
         if (this.isNonRetryableError(lastError)) {
@@ -346,7 +347,6 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     rewriteRequest: string,
     modelType: 'basic' | 'pro' = 'basic'
   ): Promise<string> {
-
     return this.retryWithBackoff(async () => {
       const model = this.getModel(modelType);
       const prompt = this.buildRewritePrompt(originalLyrics, selectedPortion, rewriteRequest);
@@ -370,7 +370,6 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
   }
 
   async regenerateLyrics(params: LyricsGenerationParams, previousLyrics: string): Promise<string> {
-
     return this.retryWithBackoff(async () => {
       const model = this.getModel(params.modelType, true); // Pass true for regeneration
       const prompt = this.buildGenerationPrompt(params);

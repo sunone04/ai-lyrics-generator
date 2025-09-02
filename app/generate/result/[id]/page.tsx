@@ -381,21 +381,25 @@ function GenerationResultContent() {
   }, [showRewriteModal, selectedText, showRewriteButton]);
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/generate/result/${generationId}`;
-    const shareText = `Check out these amazing AI-generated lyrics! 🎵\n\n"${generation?.generated_lyrics?.substring(0, 100)}..."\n\nGenerated with AI Lyrics Generator`;
-    
-    if (navigator.share) {
-      try {
+    try {
+      if (navigator.share) {
         await navigator.share({
           title: 'AI Generated Lyrics',
-          text: shareText,
-          url: shareUrl,
+          text: generation?.generated_lyrics || '',
+          url: `${window.location.origin}/generate/result/${generationId}`,
         });
-      } catch (error) {
-        console.log('Share cancelled');
+      } else {
+        // Fallback to copying to clipboard
+        await navigator.clipboard.writeText(generation?.generated_lyrics || '');
+        toast.success('Lyrics copied to clipboard!');
       }
-    } else {
-      setShowShareModal(true);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // User cancelled sharing
+        return;
+      }
+      console.error('Failed to copy:', error);
+      toast.error('Failed to share lyrics');
     }
   };
 

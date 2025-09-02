@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { Profile } from '@/lib/types';
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -40,13 +40,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error in fetchProfile:', error);
     }
-  };
+  }, [supabase]);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       await fetchProfile(user.id);
     }
-  };
+  }, [user, fetchProfile]);
 
   useEffect(() => {
     // 获取初始session
@@ -96,12 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, [supabase.auth, fetchProfile]);
 
   const signOut = async () => {
     try {
-      console.log('AuthContext: Starting sign out...');
-      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -109,14 +107,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
-      console.log('AuthContext: Supabase sign out successful, clearing local state...');
-      
       // 手动清除本地状态
       setSession(null);
       setUser(null);
       setProfile(null);
-      
-      console.log('AuthContext: Local state cleared successfully');
       
     } catch (error) {
       console.error('Error in signOut function:', error);

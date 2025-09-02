@@ -1,17 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 export default function NewCategoryPage() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  const [seoTitle, setSeoTitle] = useState('');
   const [metaDescription, setMetaDescription] = useState('');
+  const [sortOrder, setSortOrder] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const router = useRouter();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     checkAdminAuth();
@@ -57,14 +70,15 @@ export default function NewCategoryPage() {
         body: JSON.stringify({
           name,
           slug,
-          seo_title: name, // 使用名称作为SEO标题
+          seo_title: seoTitle,
           meta_description: metaDescription,
+          sort_order: sortOrder,
         }),
       });
 
       if (response.ok) {
         setSuccess('分类创建成功！正在跳转...');
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           router.push('/admin1762096094/categories');
         }, 1500);
       } else {

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 interface Category {
   id: number;
@@ -11,17 +12,29 @@ interface Category {
 }
 
 export default function NewPostPage() {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [content, setContent] = useState('');
-  const [metaDescription, setMetaDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [publishedAt, setPublishedAt] = useState('');
+  const [seoTitle, setSeoTitle] = useState('');
+  const [metaDescription, setMetaDescription] = useState('');
+  const [excerpt, setExcerpt] = useState('');
+  const [publishedAt, setPublishedAt] = useState(new Date().toISOString().split('T')[0]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const router = useRouter();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     checkAdminAuth();
@@ -85,8 +98,6 @@ export default function NewPostPage() {
           title,
           slug,
           content,
-          seo_title: title, // 使用标题作为SEO标题
-          meta_description: metaDescription,
           category_id: parseInt(categoryId),
           status: 'published',
           published_at: publishedAt,
@@ -95,7 +106,7 @@ export default function NewPostPage() {
 
       if (response.ok) {
         setSuccess('文章创建成功！正在跳转...');
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           router.push('/admin1762096094/posts');
         }, 1500);
       } else {

@@ -33,7 +33,6 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
           token: config.clientId
         });
         
-        console.log(`Paddle initialized in ${config.environment} mode`);
       }
     };
     

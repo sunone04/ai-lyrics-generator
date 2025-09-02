@@ -105,25 +105,12 @@ export async function PATCH(
       );
     }
 
-    // 用内部 API 触发按需刷新，尽量减少当前函数工作量
+    // Clear blog cache after update
     try {
-      const payloads = [
-        { path: '/blog' },
-        { path: '/sitemap.xml' },
-        ...(post.slug && post.status === 'published' ? [{ path: `/blog/${post.slug}` }] : [])
-      ]
-      await Promise.all(
-        payloads.map(p => fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...p, secret: process.env.REVALIDATE_SECRET })
-        }))
-      )
-
-      await cacheService.clearPostCache(parseInt(id))
-      console.log('Blog cache cleared after post update')
-    } catch (reErr) {
-      console.warn('Revalidate after post update failed:', reErr)
+      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate?secret=${process.env.REVALIDATE_SECRET}`);
+    } catch (error) {
+      // Cache revalidation failed, but don't fail the request
+      console.error('Failed to revalidate cache:', error);
     }
 
     return NextResponse.json({
