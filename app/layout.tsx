@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import { SITE_CONFIG } from "@/lib/constants";
 import { PaddleProvider } from "@/components/ui/paddle-provider";
 import { AuthProvider } from "@/lib/contexts/auth-context";
+import { DataProvider } from "@/lib/contexts/data-context";
  
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
@@ -148,21 +149,23 @@ export default function RootLayout({
       >
         <PaddleProvider>
           <AuthProvider>
-            <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-              }}
-            />
+            <DataProvider>
+              <Navbar />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Footer />
+              <Toaster 
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
+                  },
+                }}
+              />
+            </DataProvider>
           </AuthProvider>
         </PaddleProvider>
       </body>

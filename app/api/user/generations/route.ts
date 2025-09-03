@@ -12,12 +12,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Get user's generations
-    const { data: generations, error: generationsError } = await supabase
+    // Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const favorites = searchParams.get('favorites') === 'true';
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '20', 10), 1), 50);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    // Build query
+    let query = supabase
       .from('generations')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .select('id, created_at, music_style, music_theme, model_used, is_favorited, generated_lyrics', { count: 'exact' })
+      .eq('user_id', user.id);
+
+    // Add favorites filter if needed
+    if (favorites) {
+      query = query.eq('is_favorited', true);
+    }
+
+    // Add pagination and ordering
+    const { data: generations, error: generationsError, count } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (generationsError) {
       console.error('Error fetching generations:', generationsError);
@@ -26,7 +43,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      generations: generations || [] 
+      generations: generations || [],
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: count ? Math.ceil(count / pageSize) : 0,
+      }
     });
 
   } catch (error) {
@@ -55,7 +78,7 @@ export async function PATCH(request: NextRequest) {
     // Check favorite limit when adding to favorites
     if (isFavorited) {
       const { data: canFavorite, error: limitCheckError } = await supabase
-        .rpc('check_favorite_limit_with_trial', { user_uuid: user.id });
+        .rpc('check_favorite_limit_optimized', { user_uuid: user.id });
 
       if (limitCheckError) {
         console.error('Error checking favorite limit:', limitCheckError);

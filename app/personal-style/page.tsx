@@ -1,447 +1,398 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/contexts/auth-context';
-import { useTrial } from '@/lib/hooks/use-trial';
-import { PersonalStyle, PersonalStyleFormData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import Loading from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
+import { PlusIcon, PencilIcon, TrashIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 
+// Types to match the new database structure
+interface StyleGroup {
+  id: number;
+  name: string;
+  created_at: string;
+  personal_style_lyrics: { count: number }[];
+}
+
+interface Lyric {
+  id: number;
+  title: string;
+  lyrics: string;
+  word_count: number;
+  created_at: string;
+}
+
+// Main Page Component
 export default function PersonalStylePage() {
-  const { user, profile } = useAuth();
-  const { isActiveUser } = useTrial();
-  const [personalStyles, setPersonalStyles] = useState<PersonalStyle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<PersonalStyleFormData>({
-    title: '',
-    lyrics: '',
-    music_style: '',
-    language: 'English'
-  });
-  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+  const [styleGroups, setStyleGroups] = useState<StyleGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 检查用户是否为会员（包含试用期）
-  const isMember = isActiveUser;
+  // Modal States
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [isLyricsModalOpen, setIsLyricsModalOpen] = useState(false);
+  const [isLyricFormModalOpen, setIsLyricFormModalOpen] = useState(false);
+
+  // Data States
+  const [editingGroup, setEditingGroup] = useState<StyleGroup | null>(null);
+  const [currentGroup, setCurrentGroup] = useState<StyleGroup | null>(null);
+  const [lyrics, setLyrics] = useState<Lyric[]>([]);
+  const [editingLyric, setEditingLyric] = useState<Lyric | null>(null);
+
+  const fetchStyleGroups = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/personal-styles');
+      const data = await response.json();
+      if (data.success) {
+        setStyleGroups(data.styleGroups || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch style groups:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (user && isMember) {
-      fetchPersonalStyles();
-    } else {
-      // 非会员用户也需要设置loading为false
-      setLoading(false);
+    if (user) {
+      fetchStyleGroups();
     }
-  }, [user, isMember]);
-
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
-  const [total, setTotal] = useState(0);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const fetchPersonalStyles = async (nextPage = page) => {
-    try {
-      const response = await fetch(`/api/personal-styles?page=${nextPage}&pageSize=${pageSize}`);
-      const data = await response.json();
-      if (data.success) {
-        setPersonalStyles(data.personalStyles || []);
-        if (data.pagination) {
-          setTotal(data.pagination.total || 0);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch personal styles:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !isMember) return;
-
-    setSubmitting(true);
-    try {
-      const url = editingId ? `/api/personal-styles/${editingId}` : '/api/personal-styles';
-      const method = editingId ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setShowForm(false);
-        setEditingId(null);
-        resetForm();
-        fetchPersonalStyles(1);
-      } else {
-        alert(data.error || 'Failed to save personal style');
-      }
-    } catch (error) {
-      console.error('Failed to save personal style:', error);
-      alert('Failed to save personal style');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEdit = (style: PersonalStyle) => {
-    setFormData({
-      title: style.title,
-      lyrics: style.lyrics,
-      music_style: style.music_style || '',
-      language: style.language
-    });
-    setEditingId(style.id);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this personal style?')) return;
-
-    try {
-      const response = await fetch(`/api/personal-styles/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        fetchPersonalStyles(1);
-      } else {
-        alert('Failed to delete personal style');
-      }
-    } catch (error) {
-      console.error('Failed to delete personal style:', error);
-      alert('Failed to delete personal style');
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      lyrics: '',
-      music_style: '',
-      language: 'English'
-    });
-  };
-
-  const handleInputChange = (field: keyof PersonalStyleFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  if (loading) {
-    return <Loading />;
-  }
+  }, [user, fetchStyleGroups]);
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">Authentication Required</h1>
-          <p className="text-gray-600 mb-6">Please sign in to access your personal styles.</p>
-          <Button asChild>
-            <a href="/auth/signin">Sign In</a>
-          </Button>
-        </div>
-      </div>
-    );
+    return <div className="text-center p-8">Please sign in to view your personal styles.</div>;
   }
 
-  if (!isMember) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">Premium Feature</h1>
-          <p className="text-gray-600 mb-6">
-            Personal Style Library is a premium feature. Upgrade to create and manage your own lyric styles that AI can learn from.
-          </p>
-          <div className="space-y-3">
-            <Button asChild className="w-full">
-              <a href="/pricing">View Pricing</a>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <a href="/generate">Back to Generator</a>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+  if (isLoading) {
+    return <Loading />;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs 
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'Personal Style Library', href: '/personal-style' }
-          ]} 
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Personal Style Library' }]} />
+        <Header onAddNew={() => {
+          setEditingGroup(null);
+          setIsGroupModalOpen(true);
+        }} />
+        <StyleGroupGrid 
+          styleGroups={styleGroups} 
+          onEdit={(group) => {
+            setEditingGroup(group);
+            setIsGroupModalOpen(true);
+          }}
+          onDelete={fetchStyleGroups}
+          onView={(group) => {
+            setCurrentGroup(group);
+            setIsLyricsModalOpen(true);
+          }}
         />
-        
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-4">
-              Personal Style Library
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Upload your own lyrics to train AI with your unique writing style. 
-              Create up to 5 personal styles that will influence future AI generations.
-            </p>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardContent className="text-center p-6">
-                <div className="text-3xl font-bold text-blue-600 mb-2">
-                  {personalStyles.length}/5
-                </div>
-                <div className="text-gray-600">Personal Styles</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="text-center p-6">
-                <div className="text-3xl font-bold text-green-600 mb-2">
-                  {total}
-                </div>
-                <div className="text-gray-600">Total Styles</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="text-center p-6">
-                <div className="text-3xl font-bold text-purple-600 mb-2">
-                  {isMember ? 'Active' : 'Inactive'}
-                </div>
-                <div className="text-gray-600">Membership</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Action Bar */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Your Personal Styles
-            </h2>
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              + Add New Style
-            </Button>
-          </div>
-
-          {/* Personal Styles List */}
-          {personalStyles.length === 0 ? (
-            <Card>
-              <CardContent className="text-center p-12">
-                <div className="text-gray-400 mb-4">
-                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Personal Styles Yet</h3>
-                <p className="text-gray-500 mb-6">
-                  Start building your personal style library by uploading your own lyrics.
-                </p>
-                <Button onClick={() => setShowForm(true)}>
-                  Create Your First Style
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {personalStyles.map((style) => (
-                <Card key={style.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg font-semibold text-gray-800 line-clamp-2">
-                        {style.title}
-                      </CardTitle>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(style)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(style.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {style.music_style || 'No style'}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {style.language}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 line-clamp-3">
-                        {style.lyrics}
-                      </p>
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span>{style.word_count} words</span>
-                        <span>{new Date(style.created_at).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-8">
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => fetchPersonalStyles(page - 1)}
-                  disabled={page <= 1}
-                >
-                  Previous
-                </Button>
-                <span className="px-4 py-2 text-gray-600">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() => fetchPersonalStyles(page + 1)}
-                  disabled={page >= totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Form Modal */}
-        {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                  {editingId ? 'Edit Personal Style' : 'Create New Personal Style'}
-                </h3>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Title *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter a descriptive title"
-                      maxLength={100}
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formData.title.length}/100 characters
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Music Style (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.music_style}
-                      onChange={(e) => handleInputChange('music_style', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g., Pop, Rock, Hip Hop"
-                      maxLength={50}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Language *
-                    </label>
-                    <select
-                      value={formData.language}
-                      onChange={(e) => handleInputChange('language', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="English">English</option>
-                      <option value="Spanish">Spanish</option>
-                      <option value="French">French</option>
-                      <option value="German">German</option>
-                      <option value="Italian">Italian</option>
-                      <option value="Portuguese">Portuguese</option>
-                      <option value="Russian">Russian</option>
-                      <option value="Chinese">Chinese</option>
-                      <option value="Japanese">Japanese</option>
-                      <option value="Korean">Korean</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lyrics *
-                    </label>
-                    <textarea
-                      value={formData.lyrics}
-                      onChange={(e) => handleInputChange('lyrics', e.target.value)}
-                      rows={8}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Paste your lyrics here... (max 500 characters)"
-                      maxLength={500}
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formData.lyrics.length}/500 characters
-                    </p>
-                  </div>
-
-                  <div className="flex space-x-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setShowForm(false);
-                        setEditingId(null);
-                        resetForm();
-                      }}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700"
-                    >
-                      {submitting ? 'Saving...' : (editingId ? 'Update Style' : 'Create Style')}
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Modals */}
+      {isGroupModalOpen && (
+        <GroupFormModal 
+          group={editingGroup}
+          onClose={() => setIsGroupModalOpen(false)}
+          onSuccess={() => {
+            setIsGroupModalOpen(false);
+            fetchStyleGroups();
+          }}
+        />
+      )}
+      {isLyricsModalOpen && currentGroup && (
+        <LyricsViewerModal 
+          group={currentGroup}
+          onClose={() => setIsLyricsModalOpen(false)}
+          onAddLyric={() => {
+            setEditingLyric(null);
+            setIsLyricFormModalOpen(true);
+          }}
+          onEditLyric={(lyric) => {
+            setEditingLyric(lyric);
+            setIsLyricFormModalOpen(true);
+          }}
+        />
+      )}
+      {isLyricFormModalOpen && currentGroup && (
+        <LyricFormModal 
+          group={currentGroup}
+          lyric={editingLyric}
+          onClose={() => setIsLyricFormModalOpen(false)}
+          onSuccess={() => {
+            setIsLyricFormModalOpen(false);
+            setIsLyricsModalOpen(false); // Close the viewer to force a refresh
+          }}
+        />
+      )}
     </div>
   );
 }
+
+// Sub-components for clarity
+
+const Header = ({ onAddNew }: { onAddNew: () => void }) => (
+  <div className="flex justify-between items-center mb-8">
+    <div>
+      <h1 className="text-4xl font-bold text-gray-800">Personal Style Library</h1>
+      <p className="text-xl text-gray-600 mt-2">Create style groups and add lyric samples to train the AI.</p>
+    </div>
+    <Button onClick={onAddNew} className="bg-blue-600 hover:bg-blue-700">
+      <PlusIcon className="w-5 h-5 mr-2" />
+      Create New Style
+    </Button>
+  </div>
+);
+
+const StyleGroupGrid = ({ styleGroups, onEdit, onDelete, onView }: { 
+  styleGroups: StyleGroup[],
+  onEdit: (group: StyleGroup) => void,
+  onDelete: () => void,
+  onView: (group: StyleGroup) => void
+}) => {
+  if (styleGroups.length === 0) {
+    return (
+      <Card className="text-center p-12">
+        <BookOpenIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+        <h3 className="text-xl font-semibold text-gray-600">No Style Groups Yet</h3>
+        <p className="text-gray-500 mt-2">Click 'Create New Style' to get started.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {styleGroups.map(group => (
+        <Card key={group.id} className="hover:shadow-lg transition-shadow flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800">{group.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            <p className="text-gray-600">{group.personal_style_lyrics[0]?.count || 0} lyric samples</p>
+            <p className="text-xs text-gray-400 mt-2">Created: {new Date(group.created_at).toLocaleDateString()}</p>
+          </CardContent>
+          <div className="p-4 border-t flex justify-end space-x-2">
+            <Button variant="outline" size="sm" onClick={() => onView(group)}>View Lyrics</Button>
+            <Button variant="ghost" size="sm" onClick={() => onEdit(group)}><PencilIcon className="w-4 h-4" /></Button>
+            <DeleteButton id={group.id} onSuccess={onDelete} apiPath="/api/personal-styles" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+// Modal Components
+
+const Modal = ({ children, onClose }: { children: React.ReactNode, onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="p-6">
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
+const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | null, onClose: () => void, onSuccess: () => void }) => {
+  const [name, setName] = useState(group?.name || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const url = group ? `/api/personal-styles/${group.id}` : '/api/personal-styles';
+    const method = group ? 'PUT' : 'POST';
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        onSuccess();
+      } else {
+        alert(data.error || 'An error occurred.');
+      }
+    } catch (error) {
+      console.error('Failed to save style group:', error);
+      alert('An error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <h3 className="text-xl font-semibold mb-4">{group ? 'Edit Style Group' : 'Create New Style Group'}</h3>
+      <form onSubmit={handleSubmit}>
+        <input 
+          type="text" 
+          value={name} 
+          onChange={e => setName(e.target.value)}
+          placeholder="Enter style name (e.g., Dark Folk)"
+          className="w-full p-2 border rounded mb-4"
+          required
+          maxLength={100}
+        />
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save'}</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const LyricsViewerModal = ({ group, onClose, onAddLyric, onEditLyric }: { 
+  group: StyleGroup,
+  onClose: () => void,
+  onAddLyric: () => void,
+  onEditLyric: (lyric: Lyric) => void
+}) => {
+  const [lyrics, setLyrics] = useState<Lyric[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchLyrics = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/personal-styles/${group.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setLyrics(data.styleGroup.personal_style_lyrics || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch lyrics:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [group.id]);
+
+  useEffect(() => {
+    fetchLyrics();
+  }, [fetchLyrics]);
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold">Lyrics for "{group.name}"</h3>
+        <Button onClick={onAddLyric}><PlusIcon className="w-5 h-5 mr-2" /> Add Lyric</Button>
+      </div>
+      {isLoading ? <Loading /> : (
+        <div className="space-y-4">
+          {lyrics.length === 0 ? <p>No lyric samples yet.</p> : lyrics.map(lyric => (
+            <div key={lyric.id} className="p-4 border rounded-lg">
+              <div className="flex justify-between items-start">
+                <h4 className="font-semibold text-lg">{lyric.title}</h4>
+                <div className="flex space-x-2">
+                  <Button variant="ghost" size="sm" onClick={() => onEditLyric(lyric)}><PencilIcon className="w-4 h-4" /></Button>
+                  <DeleteButton id={lyric.id} onSuccess={fetchLyrics} apiPath="/api/personal-styles/lyrics" />
+                </div>
+              </div>
+              <p className="text-gray-600 mt-2 whitespace-pre-wrap">{lyric.lyrics}</p>
+              <p className="text-xs text-gray-400 mt-2">{lyric.word_count} words</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+const LyricFormModal = ({ group, lyric, onClose, onSuccess }: { 
+  group: StyleGroup,
+  lyric: Lyric | null,
+  onClose: () => void,
+  onSuccess: () => void
+}) => {
+  const [title, setTitle] = useState(lyric?.title || '');
+  const [lyrics, setLyrics] = useState(lyric?.lyrics || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const url = lyric ? `/api/personal-styles/lyrics/${lyric.id}` : '/api/personal-styles/lyrics';
+    const method = lyric ? 'PUT' : 'POST';
+    const body = JSON.stringify({ style_group_id: group.id, title, lyrics });
+
+    try {
+      const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body });
+      const data = await response.json();
+      if (data.success) {
+        onSuccess();
+      } else {
+        alert(data.error || 'An error occurred.');
+      }
+    } catch (error) {
+      console.error('Failed to save lyric:', error);
+      alert('An error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <h3 className="text-xl font-semibold mb-4">{lyric ? 'Edit Lyric Sample' : 'Add New Lyric Sample'}</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input 
+          type="text" 
+          value={title} 
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Title (e.g., Verse 1 Sample)"
+          className="w-full p-2 border rounded"
+          required
+          maxLength={100}
+        />
+        <textarea 
+          value={lyrics} 
+          onChange={e => setLyrics(e.target.value)}
+          placeholder="Paste lyrics here..."
+          className="w-full p-2 border rounded"
+          rows={10}
+          required
+          maxLength={500}
+        />
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save'}</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const DeleteButton = ({ id, onSuccess, apiPath }: { id: number, onSuccess: () => void, apiPath: string }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure?')) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${apiPath}/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        onSuccess();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to delete.');
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('Failed to delete.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting}>
+      {isDeleting ? '...' : <TrashIcon className="w-4 h-4 text-red-500" />}
+    </Button>
+  );
+};

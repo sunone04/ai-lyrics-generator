@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useData } from '@/lib/contexts/data-context';
 import { useTrial } from '@/lib/hooks/use-trial';
 import { Generation } from '@/lib/types';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
@@ -30,110 +31,41 @@ export default function DashboardPage() {
 function DashboardContent() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const { isActiveUser, refreshData: refreshTrialData } = useTrial();
-  const [generations, setGenerations] = useState<Generation[]>([]);
-  const [favorites, setFavorites] = useState<Generation[]>([]);
+  const { 
+    generations, 
+    favorites, 
+    loadingGenerations, 
+    loadingFavorites,
+    updateGeneration,
+    removeGeneration,
+    fetchGenerations,
+    fetchFavorites
+  } = useData();
   const [activeTab, setActiveTab] = useState<'recent' | 'favorites'>('recent');
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; generationId: number | null }>({ show: false, generationId: null });
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const router = useRouter();
 
-  // 使用useCallback来稳定函数引用
-  const fetchGenerations = useCallback(async () => {
-    try {
-      const generationsResponse = await fetch('/api/user/generations', {
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
-      
-      if (generationsResponse.ok) {
-        const generationsResult = await generationsResponse.json();
-        setGenerations(generationsResult.generations || []);
-        setLastFetchTime(Date.now());
-        return true;
-      } else if (generationsResponse.status === 401) {
-        console.warn('Authentication failed, redirecting to login');
-        await signOut();
-        router.push('/auth/signin?returnTo=/dashboard');
-        return false;
-      } else {
-        console.error('Failed to fetch generations:', generationsResponse.status);
-        toast.error('Failed to load generation history');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error fetching generations:', error);
-      toast.error('Failed to load generation history');
-      return false;
-    }
-  }, [router, signOut]);
-
-  const fetchFavorites = useCallback(async () => {
-    try {
-      const favoritesResponse = await fetch('/api/user/generations?favorites=true', {
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
-      
-      if (favoritesResponse.ok) {
-        const favoritesResult = await favoritesResponse.json();
-        setFavorites(favoritesResult.generations || []);
-        return true;
-      } else if (favoritesResponse.status === 401) {
-        console.warn('Authentication failed while fetching favorites, redirecting to login');
-        await signOut();
-        router.push('/auth/signin?returnTo=/dashboard');
-        return false;
-      } else {
-        console.error('Failed to fetch favorites:', favoritesResponse.status);
-        toast.error('Failed to load favorites');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-      toast.error('Failed to load favorites');
-      return false;
-    }
-  }, [router, signOut]);
+  // 数据获取现在由useData context处理
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // 只有在用户已登录且认证加载完成时才获取数据
-        if (user && !authLoading) {
-          // Payment feedback via query
-          const params = new URLSearchParams(window.location.search);
-          const payment = params.get('payment');
-          if (payment === 'success') toast.success('Payment successful. Your membership will be activated shortly.');
-          if (payment === 'failed') toast.error('Payment failed or canceled. Please try again.');
-          
-          // 避免重复请求：如果距离上次请求不到5秒，跳过
-          const now = Date.now();
-          if (now - lastFetchTime > 5000) {
-            // 获取最近生成
-            await fetchGenerations();
-            
-            // 获取收藏
-            await fetchFavorites();
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        toast.error('Failed to load dashboard');
-      } finally {
-        setIsLoading(false);
-      }
+    const handlePaymentFeedback = () => {
+      // Payment feedback via query
+      const params = new URLSearchParams(window.location.search);
+      const payment = params.get('payment');
+      if (payment === 'success') toast.success('Payment successful. Your membership will be activated shortly.');
+      if (payment === 'failed') toast.error('Payment failed or canceled. Please try again.');
     };
 
     // 只有在认证状态确定后才执行数据获取
     if (!authLoading && user) {
-      fetchData();
+      handlePaymentFeedback();
+      // 数据获取现在由useData context自动处理
+      setIsLoading(false);
+    } else if (!authLoading && !user) {
+      setIsLoading(false);
     }
-  }, [user, authLoading, fetchGenerations, fetchFavorites, lastFetchTime]);
+  }, [user, authLoading]);
 
   // 如果正在认证加载中，显示加载页面
   if (authLoading) {
@@ -198,14 +130,11 @@ function DashboardContent() {
         throw new Error(result.error || 'Failed to update favorite');
       }
       
-      // Update both lists
-      const updatedGenerations = generations.map(gen => 
-        gen.id === generationId ? { ...gen, is_favorited: newFavoriteStatus } : gen
-      );
-      setGenerations(updatedGenerations);
+      // 使用context的updateGeneration方法更新状态
+      updateGeneration(generationId, { is_favorited: newFavoriteStatus });
 
-      // Refresh favorites list
-      await fetchFavorites();
+      // 刷新收藏列表
+      await fetchFavorites(true);
 
       toast.success('Favorite updated');
     } catch (error: any) {
@@ -241,9 +170,8 @@ function DashboardContent() {
         throw new Error(result.error || 'Failed to delete generation');
       }
       
-      // Remove from both lists
-      setGenerations(prev => prev.filter(gen => gen.id !== generationId));
-      setFavorites(prev => prev.filter(gen => gen.id !== generationId));
+      // 使用context的removeGeneration方法移除数据
+      removeGeneration(generationId);
       
       toast.success('Generation deleted');
       setDeleteConfirm({ show: false, generationId: null });
@@ -269,7 +197,7 @@ function DashboardContent() {
     };
   };
 
-  if (isLoading) {
+  if (isLoading || loadingGenerations || loadingFavorites) {
     return <LoadingPage text="Loading your dashboard..." />;
   }
 

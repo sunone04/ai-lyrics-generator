@@ -50,10 +50,22 @@ function GenerateContent() {
   return <GenerateForm searchParams={searchParams} />;
 }
 
-// 主要的生成表单组件
+// Types for the new data structure
+interface StyleGroup {
+  id: number;
+  name: string;
+}
+
+// Main Form Component
 function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const { user, profile, loading: authLoading } = useAuth();
   const { isActiveUser } = useTrial();
+
+
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState('');
+  
+  // Form data state
   const [formData, setFormData] = useState<LyricsGenerationParams>({
     language: 'English',
     musicStyle: 'Pop',
@@ -71,9 +83,12 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     melody: '',
     syllablePattern: '',
     modelType: 'basic',
-    personalStyleId: undefined
+    personalStyleId: undefined, // This will now be personalStyleGroupId
   });
-  
+
+  // State for personal style groups
+  const [styleGroups, setStyleGroups] = useState<StyleGroup[]>([]);
+
   // Custom input states for "Other" options
   const [customInputs, setCustomInputs] = useState({
     language: '',
@@ -81,158 +96,71 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     musicTheme: '',
     lengthOption: '',
     lyricStyle: '',
-    artistStyle: '',
     rhymeRequirement: '',
     songStructure: '',
     paragraphLength: ''
   });
 
-  // Personal styles state
-  const [personalStyles, setPersonalStyles] = useState<Array<{id: number, title: string, music_style?: string, language: string}>>([]);
-  const [showPersonalStyles, setShowPersonalStyles] = useState(false);
-  
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [liveLyrics, setLiveLyrics] = useState('');
-  const [generationId, setGenerationId] = useState<string | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState('');
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
-  // 检查用户权限和设置模型类型
+  // Set model type based on user status
   useEffect(() => {
     if (!authLoading && user && profile) {
-      const canUseProModel = isActiveUser;
-      setFormData(prev => ({
-        ...prev,
-        modelType: canUseProModel ? 'pro' : 'basic'
-      }));
+      setFormData(prev => ({ ...prev, modelType: isActiveUser ? 'pro' : 'basic' }));
     }
   }, [user, profile, authLoading, isActiveUser]);
 
-  // Simple arrow animation handlers
+  // Fetch personal style groups for premium users
+  const fetchStyleGroups = useCallback(async () => {
+    if (!isActiveUser) return;
+    try {
+      const response = await fetch('/api/personal-styles');
+      const data = await response.json();
+      if (data.success) {
+        setStyleGroups(data.styleGroups || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch personal style groups:', error);
+    }
+  }, [isActiveUser]);
+
   useEffect(() => {
-    const form = formRef.current;
-    if (!form) return;
+    fetchStyleGroups();
+  }, [fetchStyleGroups]);
 
-    // Force reset all arrows to default state on mount
-    const resetAllArrows = () => {
-      form.querySelectorAll('.custom-select').forEach(select => {
-        select.classList.remove('open');
-      });
-    };
-
-    const handleSelectFocus = (e: Event) => {
-      const select = e.target as HTMLSelectElement;
-      const customSelect = select.closest('.custom-select');
-      if (customSelect) {
-        // Close ALL dropdowns first
-        resetAllArrows();
-        // Then open this one
-        customSelect.classList.add('open');
-      }
-    };
-
-    const handleSelectBlur = (e: Event) => {
-      const select = e.target as HTMLSelectElement;
-      const customSelect = select.closest('.custom-select');
-      if (customSelect) {
-        // Small delay to allow selection to complete
-        setTimeout(() => {
-          customSelect.classList.remove('open');
-        }, 150);
-      }
-    };
-
-    const handleSelectChange = (e: Event) => {
-      const select = e.target as HTMLSelectElement;
-      const customSelect = select.closest('.custom-select');
-      if (customSelect) {
-        // Close dropdown after selection
-        setTimeout(() => {
-          customSelect.classList.remove('open');
-        }, 100);
-      }
-    };
-
-    // Add event listeners
-    form.querySelectorAll('select').forEach(select => {
-      select.addEventListener('focus', handleSelectFocus);
-      select.addEventListener('blur', handleSelectBlur);
-      select.addEventListener('change', handleSelectChange);
-    });
-
-    return () => {
-      // Cleanup event listeners
-      form.querySelectorAll('select').forEach(select => {
-        select.removeEventListener('focus', handleSelectFocus);
-        select.removeEventListener('blur', handleSelectBlur);
-        select.removeEventListener('change', handleSelectChange);
-      });
-    };
-  }, []);
-
-  // Load parameters from URL if present (for regeneration)
+  // Load parameters from URL (for regeneration)
   useEffect(() => {
     if (searchParams) {
       const urlParams: Partial<LyricsGenerationParams> = {};
-      
-      // Parse all possible parameters from URL
-      const paramKeys = [
-        'language', 'musicStyle', 'musicTheme', 'lengthOption', 
-        'lyricStyle', 'intentOrRequest', 'artistStyle', 'emotionIntensity',
-        'rhymeRequirement', 'songStructure', 'paragraphLength', 'bpm', 'modelType',
-        'useBpm', 'melody', 'syllablePattern', 'personalStyleId'
+      const paramKeys: (keyof LyricsGenerationParams)[] = [
+        'language', 'musicStyle', 'musicTheme', 'lengthOption', 'lyricStyle', 
+        'intentOrRequest', 'artistStyle', 'emotionIntensity', 'rhymeRequirement', 
+        'songStructure', 'paragraphLength', 'bpm', 'modelType', 'useBpm', 
+        'melody', 'syllablePattern', 'personalStyleId'
       ];
       
       paramKeys.forEach(key => {
         const value = searchParams.get(key);
-        if (value) {
-          // Handle type conversion for specific fields
-          if (key === 'emotionIntensity' || key === 'bpm') {
-            const numValue = parseInt(value);
-            if (!isNaN(numValue)) {
-              (urlParams as any)[key] = numValue;
-            }
+        if (value !== null) {
+          if (key === 'emotionIntensity' || key === 'bpm' || key === 'personalStyleId') {
+            (urlParams as any)[key] = parseInt(value, 10);
           } else if (key === 'useBpm') {
             (urlParams as any)[key] = value === 'true';
-          } else if (key === 'personalStyleId') {
-            const numValue = parseInt(value);
-            if (!isNaN(numValue)) {
-              (urlParams as any)[key] = numValue;
-            }
           } else {
             (urlParams as any)[key] = value;
           }
         }
       });
       
-      // Update params if any URL parameters were found
       if (Object.keys(urlParams).length > 0) {
         setFormData(prev => ({ ...prev, ...urlParams }));
       }
     }
   }, [searchParams]);
-
-  const fetchPersonalStyles = useCallback(async () => {
-    try {
-      const response = await fetch('/api/personal-styles/user');
-      const data = await response.json();
-      if (data.success) {
-        setPersonalStyles(data.personalStyles || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch personal styles:', error);
-    }
-  }, []);
-
-  // Fetch personal styles for premium users
-  useEffect(() => {
-    if (user && profile?.status === 'active') {
-      fetchPersonalStyles();
-    }
-  }, [user, profile, fetchPersonalStyles]);
 
   const handleInputChange = (field: keyof LyricsGenerationParams, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -390,10 +318,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                   )}
                 </div>
 
-                {/* Music Style */}
+                {/* Music Genre */}
                 <div className="space-y-2">
                   <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Music Style *
+                    Music Genre *
                   </label>
                   <div className="custom-select">
                     <select
@@ -402,8 +330,6 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                       className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
                       required
                     >
-                      {/* Assuming FORM_OPTIONS is defined elsewhere or removed if not needed */}
-                      {/* For now, using placeholder options */}
                       <option value="Pop">Pop</option>
                       <option value="Rock">Rock</option>
                       <option value="Hip Hop">Hip Hop</option>
@@ -581,6 +507,45 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 />
               </div>
 
+              {/* Personal Style Library (Premium Feature) */}
+              <div>
+                <label className="block text-base font-semibold text-gray-800 mb-3">
+                  Personal Style Library (Optional)
+                </label>
+                {isActiveUser ? (
+                  styleGroups.length > 0 ? (
+                    <div className="custom-select">
+                      <select
+                        value={formData.personalStyleId || ''}
+                        onChange={(e) => handleInputChange('personalStyleId', e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
+                      >
+                        <option value="">None</option>
+                        {styleGroups.map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="text-center p-4 bg-gray-50 rounded-lg border">
+                      <p className="text-sm text-gray-600 mb-2">You haven't created any personal styles yet.</p>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/personal-style">Create a Style</Link>
+                      </Button>
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border">
+                    <p className="text-sm text-gray-600 mb-2">The Personal Style Library is a premium feature.</p>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/pricing">Upgrade to Premium</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               {/* Emotion Intensity */}
               <div>
                 <label className="block text-base font-semibold text-gray-800 mb-3">
@@ -692,69 +657,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 )}
               </div>
 
-              {/* Personal Style Selection */}
-              <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Personal Style (Optional)
-                </label>
-                
-                {profile?.status === 'active' && personalStyles.length > 0 ? (
-                  <>
-                    <div className="custom-select">
-                      <select
-                        value={formData.personalStyleId || ''}
-                        onChange={(e) => handleInputChange('personalStyleId', e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      >
-                        <option value="">No personal style</option>
-                        {personalStyles.map((style) => (
-                          <option key={style.id} value={style.id}>
-                            {style.title} {style.music_style ? `(${style.music_style})` : ''} - {style.language}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Select your personal style to help AI understand your writing preferences
-                    </p>
-                    {formData.personalStyleId && (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          <strong>Selected:</strong> {personalStyles.find(s => s.id === formData.personalStyleId)?.title}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                ) : profile?.status === 'active' && personalStyles.length === 0 ? (
-                  <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
-                    <p className="text-sm text-yellow-800 mb-3">
-                      <strong>No personal styles yet.</strong> Upload your own lyrics to create a personal style that AI can learn from.
-                    </p>
-                    <Button 
-                      asChild 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
-                    >
-                      <a href="/personal-style">Create Personal Style</a>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4">
-                    <p className="text-sm text-purple-800 mb-3">
-                      <strong>Personal Style Library</strong> - Upload your own lyrics to train AI with your unique writing style.
-                    </p>
-                    <Button 
-                      asChild 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-purple-700 border-purple-300 hover:bg-purple-100"
-                    >
-                      <a href="/personal-style">Learn More</a>
-                    </Button>
-                  </div>
-                )}
-              </div>
+
 
               {/* Additional Requirements */}
               <div>
