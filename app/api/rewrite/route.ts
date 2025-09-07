@@ -65,12 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Increment user's rewrite count after successful rewrite
     const { error: incrementError } = await supabase
-      .from('profiles')
-      .update({ 
-        rewrite_count: supabase.sql`rewrite_count + 1`,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id);
+      .rpc('increment_user_rewrite_count', { user_uuid: user.id });
 
     if (incrementError) {
       console.error('Error incrementing rewrite count:', incrementError);

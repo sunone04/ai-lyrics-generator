@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { cacheService } from '@/lib/cache-service';
-import { createServerComponentClient } from '@/lib/supabase-server';
 import { BLOG_CATEGORIES } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
@@ -139,7 +138,7 @@ export default async function BlogPage() {
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {posts.map((post) => (
+                    {posts.map((post: Post) => (
                       <article key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                         <div className="p-6">
                           <div className="flex items-center space-x-2 mb-3">

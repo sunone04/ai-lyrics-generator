@@ -176,7 +176,7 @@ LYRIC REQUIREMENTS:
 
 1. Adopt the singer's perspective with authentic and concrete emotions
 
-2. Use fresh and meaningful imagery when appropriate
+2. Use fresh and meaningful imagery when appropriate  
 
 3. Concise and powerful language, avoiding verbosity and repetition
 

@@ -1,28 +1,27 @@
-'use client';
+'use client'; // <= 让 Next.js 13+ 知道这是客户端组件，可使用 hooks（useState、useEffect…）
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useTrial } from '@/lib/hooks/use-trial';
-import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 import { LoadingButton } from '@/components/ui/loading';
-import { Button } from '@/components/ui/button';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
-import { 
-  DocumentArrowUpIcon, 
-  ClipboardDocumentIcon,
-  DocumentArrowDownIcon,
+import {
+  MusicalNoteIcon,
+  LanguageIcon,
   SparklesIcon,
-  PencilIcon,
   ClockIcon,
-  StarIcon,
-  UserIcon
+  HeartIcon,
+  MicrophoneIcon,
+  PaintBrushIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import Link from 'next/link';
+import { FORM_OPTIONS } from '@/lib/constants';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 
+/* ---------- 类型定义 ---------- */
 interface LyricsGenerationParams {
   language: string;
   musicStyle: string;
@@ -40,56 +39,31 @@ interface LyricsGenerationParams {
   melody: string;
   syllablePattern: string;
   modelType: 'basic' | 'pro';
-  personalStyleId?: number; // 新增：个人风格ID
+  personalStyleId?: number;
 }
 
-// 独立的组件来处理 useSearchParams
+interface PersonalStyleGroup {
+  id: number;
+  name: string;
+  user_id: string;
+  created_at: string;
+}
+
+/* ========== 子组件：真正使用 searchParams ========== */
 function GenerateContent() {
   const searchParams = useSearchParams();
-  
   return <GenerateForm searchParams={searchParams} />;
 }
 
-// Types for the new data structure
-interface StyleGroup {
-  id: number;
-  name: string;
-}
-
-// Main Form Component
+/* ========== 表单主组件 ========== */
 function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
-  const { user, profile, loading: authLoading } = useAuth();
-  const { isActiveUser } = useTrial();
+  const { user, loading: userLoading } = useAuth();
+  const { isInTrial, isActiveUser } = useTrial();
+  const router = useRouter();
 
+  const [personalStyles, setPersonalStyles] = useState<PersonalStyleGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState('');
-  
-  // Form data state
-  const [formData, setFormData] = useState<LyricsGenerationParams>({
-    language: 'English',
-    musicStyle: 'Pop',
-    musicTheme: 'Love',
-    lengthOption: 'Short',
-    lyricStyle: 'Modern',
-    intentOrRequest: '',
-    artistStyle: '',
-    emotionIntensity: 50,
-    rhymeRequirement: 'Standard',
-    songStructure: 'Verse-Chorus',
-    paragraphLength: 'Standard',
-    bpm: 120,
-    useBpm: false,
-    melody: '',
-    syllablePattern: '',
-    modelType: 'basic',
-    personalStyleId: undefined, // This will now be personalStyleGroupId
-  });
-
-  // State for personal style groups
-  const [styleGroups, setStyleGroups] = useState<StyleGroup[]>([]);
-
-  // Custom input states for "Other" options
   const [customInputs, setCustomInputs] = useState({
     language: '',
     musicStyle: '',
@@ -97,681 +71,331 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     lengthOption: '',
     lyricStyle: '',
     rhymeRequirement: '',
-    songStructure: '',
-    paragraphLength: ''
+    songStructure: ''
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [liveLyrics, setLiveLyrics] = useState('');
-  const router = useRouter();
-  const formRef = useRef<HTMLFormElement>(null);
+  const [params, setParams] = useState<LyricsGenerationParams>({
+    language: 'English',
+    musicStyle: 'Pop',
+    musicTheme: 'Love & Romance',
+    lengthOption: 'Medium (2-3 verses + chorus)',
+    lyricStyle: 'Narrative',
+    intentOrRequest: '',
+    artistStyle: '',
+    emotionIntensity: 50,
+    rhymeRequirement: 'Perfect rhymes',
+    songStructure: 'Verse-Chorus',
+    paragraphLength: '',
+    bpm: 120,
+    useBpm: false,
+    melody: '',
+    syllablePattern: '',
+    modelType: 'basic'
+  });
 
-  // Set model type based on user status
+  /* 仅高级用户拉取个人风格库 */
   useEffect(() => {
-    if (!authLoading && user && profile) {
-      setFormData(prev => ({ ...prev, modelType: isActiveUser ? 'pro' : 'basic' }));
-    }
-  }, [user, profile, authLoading, isActiveUser]);
+    if (user && isActiveUser) loadPersonalStyles();
+  }, [user, isActiveUser]);
 
-  // Fetch personal style groups for premium users
-  const fetchStyleGroups = useCallback(async () => {
-    if (!isActiveUser) return;
+  const loadPersonalStyles = async () => {
     try {
-      const response = await fetch('/api/personal-styles');
-      const data = await response.json();
-      if (data.success) {
-        setStyleGroups(data.styleGroups || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch personal style groups:', error);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('personal_style_groups')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) setPersonalStyles(data);
+    } catch (e) {
+      console.error(e);
     }
-  }, [isActiveUser]);
-
-  useEffect(() => {
-    fetchStyleGroups();
-  }, [fetchStyleGroups]);
-
-  // Load parameters from URL (for regeneration)
-  useEffect(() => {
-    if (searchParams) {
-      const urlParams: Partial<LyricsGenerationParams> = {};
-      const paramKeys: (keyof LyricsGenerationParams)[] = [
-        'language', 'musicStyle', 'musicTheme', 'lengthOption', 'lyricStyle', 
-        'intentOrRequest', 'artistStyle', 'emotionIntensity', 'rhymeRequirement', 
-        'songStructure', 'paragraphLength', 'bpm', 'modelType', 'useBpm', 
-        'melody', 'syllablePattern', 'personalStyleId'
-      ];
-      
-      paramKeys.forEach(key => {
-        const value = searchParams.get(key);
-        if (value !== null) {
-          if (key === 'emotionIntensity' || key === 'bpm' || key === 'personalStyleId') {
-            (urlParams as any)[key] = parseInt(value, 10);
-          } else if (key === 'useBpm') {
-            (urlParams as any)[key] = value === 'true';
-          } else {
-            (urlParams as any)[key] = value;
-          }
-        }
-      });
-      
-      if (Object.keys(urlParams).length > 0) {
-        setFormData(prev => ({ ...prev, ...urlParams }));
-      }
-    }
-  }, [searchParams]);
-
-  const handleInputChange = (field: keyof LyricsGenerationParams, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleCustomInputChange = (field: keyof typeof customInputs, value: string) => {
-    setCustomInputs(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleShowUpgradeModal = (data: any) => {
-    setUpgradeReason(data.message);
-    setShowUpgradeModal(true);
-  };
-
-  const handleUpgrade = () => {
-            router.push('/auth/signin');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // 检查用户是否已登录
+  /* ---------- 提交 ---------- */
+  const handleSubmit = async () => {
     if (!user) {
       toast.error('Please sign in to generate lyrics');
       router.push('/auth/signin?returnTo=/generate');
       return;
     }
+    /* 校验自定义 Other 输入 */
+    const errors: string[] = [];
+    (Object.keys(customInputs) as Array<keyof typeof customInputs>).forEach((key) => {
+      if ((params as any)[key] === 'Other' && !customInputs[key].trim()) {
+        errors.push(`Please specify your ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+      }
+    });
+    if (errors.length) { toast.error(errors[0]); return; }
 
-    // 检查用户配额
-    // 纯前端：不再请求用户配额
-
+    setIsLoading(true);
     try {
-      // Prepare params for submission, replacing "Other" values with custom inputs
-      const submissionParams = { ...formData };
-      
-      // Replace "Other" values with actual custom inputs and validate
-      Object.keys(customInputs).forEach(key => {
-        if (formData[key as keyof LyricsGenerationParams] === 'Other') {
-          const customValue = customInputs[key as keyof typeof customInputs];
-          if (!customValue || !customValue.trim()) {
-            throw new Error(`Please enter a custom ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
-          }
-          (submissionParams as any)[key] = customValue.trim();
-        }
+      const final = {
+        ...params,
+        language: params.language === 'Other' ? customInputs.language : params.language,
+        musicStyle: params.musicStyle === 'Other' ? customInputs.musicStyle : params.musicStyle,
+        musicTheme: params.musicTheme === 'Other' ? customInputs.musicTheme : params.musicTheme,
+        lengthOption: params.lengthOption === 'Other' ? customInputs.lengthOption : params.lengthOption,
+        lyricStyle: params.lyricStyle === 'Other' ? customInputs.lyricStyle : params.lyricStyle,
+        rhymeRequirement: params.rhymeRequirement === 'Other' ? customInputs.rhymeRequirement : params.rhymeRequirement,
+        songStructure: params.songStructure === 'Other' ? customInputs.songStructure : params.songStructure
+      };
+      const res = await fetch('/api/generate-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(final)
       });
+      if (!res.ok) throw new Error(await res.text());
 
-      // Redirect to live result page to handle streaming UI via SSE
-      const search = new URLSearchParams();
-      (Object.keys(submissionParams) as (keyof LyricsGenerationParams)[]).forEach((key) => {
-        const value = (submissionParams as any)[key];
-        if (value !== undefined && value !== null && value !== '') search.set(String(key), String(value));
-      });
-      router.push(`/generate/result/live?${search.toString()}`);
-      return;
-    } catch (error: any) {
-      console.error('Generation error:', error);
-      toast.error(error.message || 'Failed to generate lyrics');
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let lyrics = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        lyrics += decoder.decode(value, { stream: true });
+      }
+      sessionStorage.setItem('generatedLyrics', lyrics);
+      sessionStorage.setItem('generationParams', JSON.stringify(final));
+      router.push('/generate/result/live');
+    } catch (e: any) {
+      toast.error(e.message || 'Generation failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // 如果正在加载认证状态，显示加载页面
-  if (authLoading) {
+  /* ---------- loading 态 ---------- */
+  if (userLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading…</p>
         </div>
       </div>
     );
   }
 
+  /* ---------- 渲染 ---------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-12 relative">
-      {/* Loading Overlay */}
-      {(isLoading || isStreaming) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Creating Your Lyrics</h3>
-            <p className="text-gray-600 mb-4">Processing your request...</p>
-            {isStreaming && (
-              <div className="mt-4 max-h-64 overflow-auto text-left bg-gray-50 border border-gray-200 rounded-lg p-3 font-mono text-sm whitespace-pre-wrap">
-                {liveLyrics || 'Waiting for AI to respond...'}
-              </div>
-            )}
-            <div className="flex justify-center space-x-1 mb-4">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            </div>
-            <p className="text-sm text-gray-500">Please wait while our AI crafts your lyrics...</p>
-          </div>
-        </div>
-      )}
-      
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+      <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         <Breadcrumbs />
-        
-        <div className="mt-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center px-4 py-2 bg-blue-100 rounded-full text-blue-800 text-sm font-medium mb-6">
-              <SparklesIcon className="w-4 h-4 mr-2" />
-              AI Lyrics Generator
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
-              Generate Professional Lyrics
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-6">
-              Create original, high-quality lyrics with our advanced AI lyrics generator. 
-              Set your preferences below and let our AI craft the perfect lyrics for your music.
-            </p>
+        {/* Header */}
+        <div className="text-center mb-12 pt-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <span className="block">AI Lyrics Generator - Create Perfect</span>
+            <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Song Lyrics & Rap Lyrics</span>
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            Generate professional song lyrics and rap lyrics with our advanced AI lyrics generator. Create custom lyrics in any style, language, and theme with our powerful lyric generator tool.
+          </p>
+        </div>
 
+        {/* Form Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          {/* -------- Basic Information -------- */}
+          <div className="mb-10">
+            <div className="flex items-center mb-6">
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">1</div>
+              <h2 className="text-base font-semibold text-gray-900">Basic Information</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-11">
+              {/* Language */}
+              <div>
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><LanguageIcon className="w-5 h-5 mr-2 text-blue-600" />Language *</label>
+                <select value={params.language} onChange={(e) => setParams({ ...params, language: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {FORM_OPTIONS.languages.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+                {params.language === 'Other' && <input type="text" value={customInputs.language} onChange={(e) => setCustomInputs({ ...customInputs, language: e.target.value })} placeholder="Specify language" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+              </div>
+              {/* Music Style */}
+              <div>
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MusicalNoteIcon className="w-5 h-5 mr-2 text-blue-600" />Music Style *</label>
+                <select value={params.musicStyle} onChange={(e) => setParams({ ...params, musicStyle: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {FORM_OPTIONS.musicStyles.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {params.musicStyle === 'Other' && <input type="text" value={customInputs.musicStyle} onChange={(e) => setCustomInputs({ ...customInputs, musicStyle: e.target.value })} placeholder="Specify style" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+              </div>
+              {/* Theme */}
+              <div>
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><HeartIcon className="w-5 h-5 mr-2 text-blue-600" />Theme *</label>
+                <select value={params.musicTheme} onChange={(e) => setParams({ ...params, musicTheme: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {FORM_OPTIONS.musicThemes.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                {params.musicTheme === 'Other' && <input type="text" value={customInputs.musicTheme} onChange={(e) => setCustomInputs({ ...customInputs, musicTheme: e.target.value })} placeholder="Specify theme" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+              </div>
+              {/* Length */}
+              <div>
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><ClockIcon className="w-5 h-5 mr-2 text-blue-600" />Length *</label>
+                <select value={params.lengthOption} onChange={(e) => setParams({ ...params, lengthOption: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {FORM_OPTIONS.lengthOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+                {params.lengthOption === 'Other' && <input type="text" value={customInputs.lengthOption} onChange={(e) => setCustomInputs({ ...customInputs, lengthOption: e.target.value })} placeholder="Specify length" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl p-8 md:p-10 border border-white/20">
-            <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
-              {/* Language */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="flex items-center text-base font-semibold text-gray-800 mb-3">
-                    <UserIcon className="w-5 h-5 mr-2 text-blue-600" />
-                    Language *
-                  </label>
-                  <div className="custom-select">
-                    <select
-                      value={formData.language}
-                      onChange={(e) => handleInputChange('language', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      required
-                    >
-                      {/* Assuming FORM_OPTIONS is defined elsewhere or removed if not needed */}
-                      {/* For now, using placeholder options */}
-                      <option value="English">English</option>
-                      <option value="Spanish">Spanish</option>
-                      <option value="French">French</option>
-                      <option value="German">German</option>
-                      <option value="Italian">Italian</option>
-                      <option value="Japanese">Japanese</option>
-                      <option value="Korean">Korean</option>
-                      <option value="Chinese">Chinese</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  {formData.language === 'Other' && (
-                    <input
-                      type="text"
-                      placeholder="Enter custom language..."
-                      value={customInputs.language}
-                      onChange={(e) => handleCustomInputChange('language', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                      maxLength={50}
-                      required
-                    />
-                  )}
-                </div>
-
-                {/* Music Genre */}
-                <div className="space-y-2">
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Music Genre *
-                  </label>
-                  <div className="custom-select">
-                    <select
-                      value={formData.musicStyle}
-                      onChange={(e) => handleInputChange('musicStyle', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      required
-                    >
-                      <option value="Pop">Pop</option>
-                      <option value="Rock">Rock</option>
-                      <option value="Hip Hop">Hip Hop</option>
-                      <option value="Jazz">Jazz</option>
-                      <option value="Classical">Classical</option>
-                      <option value="Country">Country</option>
-                      <option value="Electronic">Electronic</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  {formData.musicStyle === 'Other' && (
-                    <input
-                      type="text"
-                      placeholder="Enter custom music style..."
-                      value={customInputs.musicStyle}
-                      onChange={(e) => handleCustomInputChange('musicStyle', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                      maxLength={50}
-                      required
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Music Theme */}
+          {/* -------- Style & Creative Direction -------- */}
+          <div className="mb-10">
+            <div className="flex items-center mb-6">
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">2</div>
+              <h2 className="text-base font-semibold text-gray-900">Style & Creative Direction</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-11">
+              {/* Lyric Style */}
               <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Music Theme *
-                </label>
-                <div className="custom-select">
-                  <select
-                    value={formData.musicTheme}
-                    onChange={(e) => handleInputChange('musicTheme', e.target.value)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                    required
-                  >
-                    {/* Assuming FORM_OPTIONS is defined elsewhere or removed if not needed */}
-                    {/* For now, using placeholder options */}
-                    <option value="Love">Love</option>
-                    <option value="Sadness">Sadness</option>
-                    <option value="Anger">Anger</option>
-                    <option value="Joy">Joy</option>
-                    <option value="Hope">Hope</option>
-                    <option value="Fear">Fear</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                {formData.musicTheme === 'Other' && (
-                  <input
-                    type="text"
-                    placeholder="Enter custom music theme..."
-                    value={customInputs.musicTheme}
-                    onChange={(e) => handleCustomInputChange('musicTheme', e.target.value)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                    maxLength={50}
-                    required
-                  />
-                )}
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><PaintBrushIcon className="w-5 h-5 mr-2 text-purple-600" />Lyric Style *</label>
+                <select value={params.lyricStyle} onChange={(e) => setParams({ ...params, lyricStyle: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  {FORM_OPTIONS.lyricStyles.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {params.lyricStyle === 'Other' && <input type="text" value={customInputs.lyricStyle} onChange={(e) => setCustomInputs({ ...customInputs, lyricStyle: e.target.value })} placeholder="Specify lyric style" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
               </div>
-
-              {/* Length Option */}
+              {/* Song Structure */}
               <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Length *
-                </label>
-                <div className="custom-select">
-                  <select
-                    value={formData.lengthOption}
-                    onChange={(e) => handleInputChange('lengthOption', e.target.value)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                    required
-                  >
-                    {/* Assuming FORM_OPTIONS is defined elsewhere or removed if not needed */}
-                    {/* For now, using placeholder options */}
-                    <option value="Short">Short (1-2 verses)</option>
-                    <option value="Medium">Medium (2-3 verses + chorus)</option>
-                    <option value="Long">Long (4-5 verses + chorus)</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                {formData.lengthOption === 'Other' && (
-                  <input
-                    type="text"
-                    placeholder="Enter custom length..."
-                    value={customInputs.lengthOption}
-                    onChange={(e) => handleCustomInputChange('lengthOption', e.target.value)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                    maxLength={50}
-                    required
-                  />
-                )}
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MusicalNoteIcon className="w-5 h-5 mr-2 text-purple-600" />Song Structure *</label>
+                <select value={params.songStructure} onChange={(e) => setParams({ ...params, songStructure: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  {FORM_OPTIONS.songStructures.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {params.songStructure === 'Other' && <input type="text" value={customInputs.songStructure} onChange={(e) => setCustomInputs({ ...customInputs, songStructure: e.target.value })} placeholder="Specify structure" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
               </div>
-
-              {/* Lyric Style and Song Structure */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Lyric Style *
-                  </label>
-                  <div className="custom-select">
-                    <select
-                      name="lyricStyle"
-                      value={formData.lyricStyle}
-                      onChange={(e) => handleInputChange('lyricStyle', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      required
-                    >
-                      {/* Assuming FORM_OPTIONS is defined elsewhere or removed if not needed */}
-                      {/* For now, using placeholder options */}
-                      <option value="Conversational">Conversational</option>
-                      <option value="Poetic">Poetic</option>
-                      <option value="Modern">Modern</option>
-                      <option value="Traditional">Traditional</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  {formData.lyricStyle === 'Other' && (
-                    <input
-                      type="text"
-                      placeholder="Enter custom lyric style..."
-                      value={customInputs.lyricStyle}
-                      onChange={(e) => handleCustomInputChange('lyricStyle', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                      maxLength={50}
-                      required
-                    />
-                  )}
-                </div>
-
-                {/* Song Structure */}
-                <div className="space-y-2">
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    Song Structure *
-                  </label>
-                  <div className="custom-select">
-                    <select
-                      value={formData.songStructure}
-                      onChange={(e) => handleInputChange('songStructure', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      required
-                    >
-                      {/* Assuming FORM_OPTIONS is defined elsewhere or removed if not needed */}
-                      {/* For now, using placeholder options */}
-                      <option value="Verse-Chorus">Verse-Chorus</option>
-                      <option value="Verse-Bridge-Chorus">Verse-Bridge-Chorus</option>
-                      <option value="Intro-Verse-Chorus-Outro">Intro-Verse-Chorus-Outro</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  {formData.songStructure === 'Other' && (
-                    <input
-                      type="text"
-                      placeholder="Enter custom song structure..."
-                      value={customInputs.songStructure}
-                      onChange={(e) => handleCustomInputChange('songStructure', e.target.value)}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                      maxLength={50}
-                      required
-                    />
-                  )}
-                </div>
+              {/* Rhyme */}
+              <div>
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><SparklesIcon className="w-5 h-5 mr-2 text-purple-600" />Rhyme Requirements</label>
+                <select value={params.rhymeRequirement} onChange={(e) => setParams({ ...params, rhymeRequirement: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  {FORM_OPTIONS.rhymeRequirements.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                {params.rhymeRequirement === 'Other' && <input type="text" value={customInputs.rhymeRequirement} onChange={(e) => setCustomInputs({ ...customInputs, rhymeRequirement: e.target.value })} placeholder="Specify rhyme" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
               </div>
-
               {/* Artist Style */}
               <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Reference Artist Style (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.artistStyle}
-                  onChange={(e) => handleInputChange('artistStyle', e.target.value)}
-                  className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 placeholder-gray-500"
-                  placeholder="e.g., Taylor Swift, Drake, Ed Sheeran"
-                />
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MicrophoneIcon className="w-5 h-5 mr-2 text-purple-600" />Artist Style Reference</label>
+                <input type="text" value={params.artistStyle} onChange={(e) => setParams({ ...params, artistStyle: e.target.value })} placeholder="e.g., Taylor Swift, Drake" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
               </div>
+            </div>
 
-              {/* Personal Style Library (Premium Feature) */}
-              <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Personal Style Library (Optional)
-                </label>
-                {isActiveUser ? (
-                  styleGroups.length > 0 ? (
-                    <div className="custom-select">
-                      <select
-                        value={formData.personalStyleId || ''}
-                        onChange={(e) => handleInputChange('personalStyleId', e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                      >
-                        <option value="">None</option>
-                        {styleGroups.map((group) => (
-                          <option key={group.id} value={group.id}>
-                            {group.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border">
-                      <p className="text-sm text-gray-600 mb-2">You haven't created any personal styles yet.</p>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href="/personal-style">Create a Style</Link>
-                      </Button>
-                    </div>
-                  )
-                ) : (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border">
-                    <p className="text-sm text-gray-600 mb-2">The Personal Style Library is a premium feature.</p>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/pricing">Upgrade to Premium</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
+            {/* Creative Direction */}
+            <div className="pl-11 mt-6">
+              <label className="block text-base font-semibold text-gray-700 mb-2">Creative Direction & Special Requirements</label>
+              <textarea value={params.intentOrRequest} onChange={(e) => setParams({ ...params, intentOrRequest: e.target.value })} placeholder="Describe mood, direction…" rows={3} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
+            </div>
 
-              {/* Emotion Intensity */}
-              <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Emotion Intensity: {formData.emotionIntensity}
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  value={formData.emotionIntensity}
-                  onChange={(e) => {
-                    const newValue = parseInt(e.target.value);
-                    handleInputChange('emotionIntensity', newValue);
-                  }}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  style={{
-                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${formData.emotionIntensity}%, #e5e7eb ${formData.emotionIntensity}%, #e5e7eb 100%)`
-                  }}
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Subtle (1)</span>
-                  <span>Intense (100)</span>
-                </div>
-              </div>
-
-              {/* Rhyme Requirement */}
-              <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Rhyme Requirement *
-                </label>
-                <div className="custom-select">
-                  <select
-                    value={formData.rhymeRequirement}
-                    onChange={(e) => handleInputChange('rhymeRequirement', e.target.value)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                    required
-                  >
-                    {/* Assuming FORM_OPTIONS is defined elsewhere or removed if not needed */}
-                    {/* For now, using placeholder options */}
-                    <option value="Perfect rhymes">Perfect rhymes</option>
-                    <option value="Standard rhymes">Standard rhymes</option>
-                    <option value="No rhymes">No rhymes</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                {formData.rhymeRequirement === 'Other' && (
-                  <input
-                    type="text"
-                    placeholder="Enter custom rhyme requirement..."
-                    value={customInputs.rhymeRequirement}
-                    onChange={(e) => handleCustomInputChange('rhymeRequirement', e.target.value)}
-                    className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                    maxLength={50}
-                    required
-                  />
-                )}
-              </div>
-
-              {/* BPM and Model Type */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    BPM (Optional)
-                  </label>
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="checkbox"
-                      id="useBpm"
-                      checked={formData.useBpm}
-                      onChange={(e) => handleInputChange('useBpm', e.target.checked)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                    />
-                    <label htmlFor="useBpm" className="text-sm text-gray-700">
-                      Include BPM
-                    </label>
-                  </div>
-                  {formData.useBpm && (
-                    <input
-                      type="number"
-                      min="60"
-                      max="200"
-                      value={formData.bpm}
-                      onChange={(e) => handleInputChange('bpm', parseInt(e.target.value))}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 mt-3"
-                      placeholder="120"
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-base font-semibold text-gray-800 mb-3">
-                    AI Model
-                  </label>
-                  <div className="custom-select">
-                    <select
-                      value={formData.modelType}
-                      onChange={(e) => handleInputChange('modelType', e.target.value as 'basic' | 'pro')}
-                      className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200"
-                    >
-                      <option value="basic">Basic Model (Free)</option>
-                      <option value="pro">Pro Model (Premium)</option>
-                    </select>
-                  </div>
-                </div>
-                {formData.modelType === 'pro' && (
-                  <p className="text-sm text-amber-600 mt-1">
-                    Pro model available with premium subscription or free trial
-                  </p>
-                )}
-              </div>
-
-
-
-              {/* Additional Requirements */}
-              <div>
-                <label className="block text-base font-semibold text-gray-800 mb-3">
-                  Additional Requirements (Optional)
-                </label>
-                <textarea
-                  value={formData.intentOrRequest}
-                  onChange={(e) => handleInputChange('intentOrRequest', e.target.value)}
-                  rows={4}
-                  className="w-full px-5 py-4 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base shadow-sm hover:border-gray-300 transition-all duration-200 placeholder-gray-500"
-                  placeholder="Any specific requirements, mood, or creative direction..."
-                  maxLength={500}
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  {formData.intentOrRequest.length}/500 characters
-                </p>
-              </div>
-
-              {/* Submit Button */}
-              <div className="pt-8">
-                <LoadingButton
-                  type="submit"
-                  isLoading={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-5 px-8 rounded-2xl hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-blue-500/50 font-semibold text-xl shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-                >
-                  🎵 Generate Lyrics
-                </LoadingButton>
-                
-                {/* Loading Progress Indicator */}
-                {isLoading && (
-                  <div className="mt-4 text-center">
-                    <div className="inline-flex items-center space-x-2 text-sm text-gray-600">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                      <span>AI is crafting your lyrics...</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">This usually takes 10-30 seconds</p>
-                  </div>
-                )}
-              </div>
-            </form>
+            {/* Emotion Intensity */}
+            <div className="pl-11 mt-6">
+              <label className="block text-base font-semibold text-gray-700 mb-2">Emotion Intensity: <span className="text-purple-600 font-bold">{params.emotionIntensity}%</span></label>
+              <input type="range" min={1} max={100} value={params.emotionIntensity} onChange={(e) => setParams({ ...params, emotionIntensity: Number(e.target.value) })} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+              <div className="flex justify-between text-sm text-gray-600 mt-1"><span>Subtle</span><span>Intense</span></div>
+            </div>
           </div>
 
-          {/* Privacy Notice */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              🔒 Based on privacy protection, your lyrics will be stored for a maximum of 24 hours. 
-              Please download or favorite them in time.
+          {/* -------- Advanced Options -------- */}
+          <div className="mb-8">
+            <div className="flex items-center mb-6">
+              <div className="bg-gradient-to-r from-pink-500 to-pink-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">3</div>
+              <h2 className="text-base font-semibold text-gray-900">Advanced Options</h2>
+            </div>
+
+            {/* BPM */}
+            <div className="flex items-center space-x-3 pl-11 mb-6">
+              <input id="useBpm" type="checkbox" checked={params.useBpm} onChange={(e) => setParams({ ...params, useBpm: e.target.checked })} className="w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500" />
+              <label htmlFor="useBpm" className="text-base font-semibold text-gray-700">Specify BPM</label>
+              {params.useBpm && <input type="number" min={60} max={200} value={params.bpm} onChange={(e) => setParams({ ...params, bpm: Number(e.target.value) })} className="w-24 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />}
+            </div>
+
+            {/* Advanced Inputs */}
+            <div className="grid grid-cols-1 gap-6 pl-11">
+              <div>
+                <label className="block text-base font-semibold text-gray-700 mb-2">Melody Description</label>
+                <input type="text" value={params.melody} onChange={(e) => setParams({ ...params, melody: e.target.value })} placeholder="Describe melody…" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+              </div>
+              <div>
+                <label className="block text-base font-semibold text-gray-700 mb-2">Syllable Pattern</label>
+                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8-8-6-6" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+              </div>
+              <div>
+                <label className="block text-base font-semibold text-gray-700 mb-2">Paragraph Length Preference</label>
+                <input type="text" value={params.paragraphLength} onChange={(e) => setParams({ ...params, paragraphLength: e.target.value })} placeholder="e.g., 4 lines per verse" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+              </div>
+            </div>
+
+            {/* Personal Style */}
+            {user && isActiveUser && personalStyles.length > 0 && (
+              <div className="pl-11 mt-6">
+                <label className="block text-base font-semibold text-gray-700 mb-2">Personal Style Reference (Optional)</label>
+                <select value={params.personalStyleId || ''} onChange={(e) => setParams({ ...params, personalStyleId: e.target.value ? Number(e.target.value) : undefined })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500">
+                  <option value="">None selected</option>
+                  {personalStyles.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* 非高级用户提示 */}
+            {(!user || !isActiveUser) && (
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg ml-11 mt-6">
+                <h3 className="text-base font-bold text-purple-900 mb-1">Personal Style Library</h3>
+                <p className="text-sm text-purple-700 mb-2">Train AI to write in your unique style by uploading your existing lyrics.</p>
+                {!user ? (
+                  <button onClick={() => router.push('/auth/signin?returnTo=/generate')} className="text-sm text-purple-600 hover:text-purple-800 font-semibold underline">Sign in to access</button>
+                ) : (
+                  <Link href="/pricing" className="text-sm text-purple-600 hover:text-purple-800 font-semibold underline">Upgrade to Premium</Link>
+                )}
+              </div>
+            )}
+
+            {/* Model Selection */}
+            <div className="pl-11 mt-8 pt-6 border-t border-gray-200">
+              <label className="block text-base font-semibold text-gray-700 mb-3">AI Model Quality</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div onClick={() => setParams({ ...params, modelType: 'basic' })} className={`p-4 border rounded-xl cursor-pointer transition-all ${params.modelType === 'basic' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
+                  <div className="flex items-center justify-between mb-1"><h3 className="text-base font-bold text-gray-900">Standard Quality</h3><span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">Free</span></div>
+                  <p className="text-sm text-gray-600">Great quality for everyday lyrics creation</p>
+                </div>
+                <div onClick={() => {
+                  if (!user) { toast.error('Please sign in'); router.push('/auth/signin?returnTo=/generate'); return; }
+                  if (!isInTrial && !isActiveUser) { toast.error('Pro model requires subscription'); return; }
+                  setParams({ ...params, modelType: 'pro' });
+                }} className={`p-4 border rounded-xl cursor-pointer transition-all ${params.modelType === 'pro' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'} ${!user || (!isInTrial && !isActiveUser) ? 'opacity-75' : ''}`}>
+                  <div className="flex items-center justify-between mb-1"><h3 className="text-base font-bold text-gray-900">Premium Quality</h3><span className="text-sm bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold">Premium</span></div>
+                  <p className="text-sm text-gray-600">Advanced creativity & superior results</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* -------- Generate Button -------- */}
+          <div className="flex justify-center pt-6 border-t border-gray-200">
+            <LoadingButton isLoading={isLoading} onClick={handleSubmit} className="px-10 py-3 text-base font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer">
+              {!user ? 'Sign In to Generate Lyrics ✨' : 'Generate AI Lyrics Now ✨'}
+            </LoadingButton>
+          </div>
+
+          {/* SEO & Sign-in Tip */}
+          <div className="mt-10 p-4 bg-gray-50 rounded-lg border">
+            <h2 className="text-base font-bold text-gray-900 mb-2">🎵 Professional AI Lyrics Generator</h2>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              Our AI lyrics generator uses advanced artificial intelligence to create professional song lyrics and rap lyrics. Whether you need a <strong>rap lyrics generator</strong>, <strong>song lyrics generator</strong>, or custom <strong>lyric generator</strong> for any music style, our AI lyric generator delivers high-quality results instantly.
             </p>
           </div>
-          
-          {/* Navigation Links - Moved to bottom */}
-          <div className="mt-12 text-center">
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link
-                href="/edit"
-                className="inline-flex items-center px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors cursor-pointer"
-              >
-                <PencilIcon className="w-4 h-4 mr-2" />
-                Edit Lyrics
-              </Link>
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
-              >
-                <ClockIcon className="w-4 h-4 mr-2" />
-                View History
-              </Link>
+          {!user && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center"><InformationCircleIcon className="w-5 h-5 text-blue-600 mr-2" /><p className="text-base text-blue-800">Ready to create amazing lyrics? <Link href="/auth/signin?returnTo=/generate" className="underline font-semibold">Sign in</Link> to access our professional AI lyrics generator!</p></div>
             </div>
-          </div>
+          )}
         </div>
       </div>
-
-      {/* Upgrade Modal */}
-      {showUpgradeModal && upgradeReason && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Upgrade to Pro</h3>
-            <p className="text-gray-600 mb-6">{upgradeReason}</p>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowUpgradeModal(false)}
-                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowUpgradeModal(false);
-                  router.push('/pricing');
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Upgrade Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
+/* ---------- 页面壳 ---------- */
 export default function GeneratePage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading…</p>
         </div>
       </div>
     }>

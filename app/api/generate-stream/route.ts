@@ -5,16 +5,16 @@ import { aiService } from '@/lib/ai-service';
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
-    
+
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const { 
-      language, musicStyle, musicTheme, lengthOption, lyricStyle, 
-      intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, 
-      songStructure, paragraphLength, bpm, useBpm, melody, 
+    const {
+      language, musicStyle, musicTheme, lengthOption, lyricStyle,
+      intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement,
+      songStructure, paragraphLength, bpm, useBpm, melody,
       syllablePattern, modelType, personalStyleId: personalStyleGroupId // Renamed for clarity
     } = await request.json();
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     if (limitCheckError || !canGenerate) {
       const message = limitCheckError ? 'Failed to check usage limit' : 'Daily generation limit reached.';
-      if(limitCheckError) console.error('Error checking usage limit:', limitCheckError);
+      if (limitCheckError) console.error('Error checking usage limit:', limitCheckError);
       return new Response(message, { status: limitCheckError ? 500 : 429 });
     }
 
@@ -40,17 +40,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the selected personal style as a sample
-    let styleSamples = [];
+    let personalStyleSample = null;
     if (personalStyleGroupId) {
       const { data: style, error: styleError } = await supabase
-        .from('personal_styles')
-        .select('title, lyrics')
-        .eq('id', personalStyleGroupId)
+        .from('personal_style_lyrics')
+        .select('title, lyrics, language, music_style')
+        .eq('style_group_id', personalStyleGroupId)
         .eq('user_id', user.id)
         .single();
 
       if (!styleError && style) {
-        styleSamples = [style]; // Pass as an array with one item
+        personalStyleSample = {
+          id: 0, // temporary id for interface compatibility
+          user_id: user.id,
+          title: style.title,
+          lyrics: style.lyrics,
+          language: style.language,
+          music_style: style.music_style || '',
+          word_count: 0, // will be calculated if needed
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
       }
     }
 
@@ -58,16 +68,16 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         try {
           let fullLyrics = '';
-          
+
           await aiService.generateLyricsStream(
             { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: modelType || 'basic' },
-            styleSamples, // Pass the array of lyric samples
+            personalStyleSample,
             (chunk) => {
               fullLyrics += chunk;
               controller.enqueue(new TextEncoder().encode(chunk));
             }
           );
-          
+
           // Save generation record
           await supabase.from('generations').insert({
             user_id: user.id,
@@ -83,8 +93,8 @@ export async function POST(request: NextRequest) {
           });
 
           // Increment usage count
-          await supabase.from('profiles').update({ generation_count: supabase.sql`generation_count + 1` }).eq('id', user.id);
-          
+          await supabase.rpc('increment_user_generation_count', { user_uuid: user.id });
+
           controller.close();
         } catch (error) {
           console.error('Error in lyrics generation stream:', error);
@@ -102,5 +112,3 @@ export async function POST(request: NextRequest) {
     return new Response('Internal server error', { status: 500 });
   }
 }
-
-

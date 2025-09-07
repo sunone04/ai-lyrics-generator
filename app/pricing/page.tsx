@@ -23,9 +23,9 @@ const plans = [
     period: 'forever',
     description: 'Start your songwriting journey with AI-powered lyrics',
     features: [
-      '2 AI lyrics generations per day',
+      '1 AI lyrics generation per day',
       '1 partial optimization per day',
-      'Basic AI model',
+      'Basic AI model ',
       'Up to 3 favorite lyrics',
       '24-hour storage for generated lyrics',
       'Community support',
@@ -42,15 +42,15 @@ const plans = [
     features: [
       '30 AI lyrics generations per day',
       '30 partial optimizations per day',
-      'Advanced AI model',
-      'Personal Style Library (upload up to 5 lyrics)',
+      'Advanced AI model ',
+      'Personal Style Library (Your unique style)',
       'AI learns your unique writing style',
-      'Up to 1000 favorite lyrics',
+      'Up to 300 favorite lyrics',
       'Commercial usage rights',
       'Manual lyrics editing',
       'Audio preview feature',
       'Priority support',
-      'Total of 1,800 generations per month',
+      'Total of 900 generations per month',
     ],
     cta: 'Start Monthly',
     popular: false,
@@ -64,16 +64,16 @@ const plans = [
     features: [
       '30 AI lyrics generations per day',
       '30 partial optimizations per day',
-      'Advanced AI model',
-      'Personal Style Library (upload up to 5 lyrics)',
+      'Advanced AI model ',
+      'Personal Style Library (Your unique style)',
       'AI learns your unique writing style',
-      'Up to 1000 favorite lyrics',
+      'Up to 300 favorite lyrics',
       'Commercial usage rights',
       'Manual lyrics editing',
       'Audio preview feature',
       'Priority support',
       '18% discount compared to monthly',
-      'Total of 21,600 generations per year',
+      'Total of 10,800 generations per year',
     ],
     cta: 'Start Annual',
     popular: true,
@@ -145,116 +145,114 @@ export default function PricingPage() {
   };
 
   return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
-        {/* JSON-LD Schema */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-        />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+      {/* JSON-LD Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
 
-        {/* Header */}
-        <div className="pt-24 pb-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-              Simple, Transparent
-              <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Pricing
-              </span>
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Choose the perfect plan for your songwriting needs. Start free and upgrade when you're ready to unlock unlimited creativity.
+      {/* Header */}
+      <div className="pt-32 pb-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+            Simple, Transparent
+            <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mt-2">
+              Pricing
+            </span>
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+            Choose the perfect plan for your songwriting needs. Start free and upgrade when you're ready to unlock unlimited creativity.
+          </p>
+        </div>
+      </div>
+
+      {/* Pricing Cards */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {plans.map((plan) => (
+            <PricingCard key={plan.name} plan={plan} />
+          ))}
+        </div>
+      </div>
+
+      {/* FAQ Section */}
+      <div className="bg-white py-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-gray-600">
+              Everything you need to know about our pricing and plans
             </p>
-            
-            {/* No billing toggle */}
           </div>
-        </div>
 
-        {/* Pricing Cards */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {plans.map((plan) => (
-              <PricingCard key={plan.name} plan={plan} />
-            ))}
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="bg-white py-24">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Frequently Asked Questions
-              </h2>
-              <p className="text-xl text-gray-600">
-                Everything you need to know about our pricing and plans
+          <div className="space-y-8">
+            <div className="bg-gray-50 rounded-xl p-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                About Our Payment System
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                Our payment system and pages are completely provided by international payment service provider Paddle.
+                It has excellent security and stability guarantees, and in order to comply with global tax and financial
+                compliance requirements, its system lists all countries and regions according to international standards,
+                which aims to comply with payment and tax regulations in different regions.
               </p>
             </div>
 
-            <div className="space-y-8">
-              <div className="bg-gray-50 rounded-xl p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  About Our Payment System
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Our payment system and pages are completely provided by international payment service provider Paddle. 
-                  It has excellent security and stability guarantees, and in order to comply with global tax and financial 
-                  compliance requirements, its system lists all countries and regions according to international standards, 
-                  which aims to comply with payment and tax regulations in different regions.
-                </p>
-              </div>
+            <div className="bg-gray-50 rounded-xl p-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Can I cancel my subscription anytime?
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                Yes, you can cancel your subscription at any time. You'll continue to have access to your plan features
+                until the end of your current billing period.
+              </p>
+            </div>
 
-              <div className="bg-gray-50 rounded-xl p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  Can I cancel my subscription anytime?
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Yes, you can cancel your subscription at any time. You'll continue to have access to your plan features 
-                  until the end of your current billing period.
-                </p>
-              </div>
+            <div className="bg-gray-50 rounded-xl p-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                What happens to my generated lyrics if I cancel?
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                Your favorite lyrics will be permanently saved. Non-favorited lyrics will be automatically deleted after
+                24 hours for privacy protection.
+              </p>
+            </div>
 
-              <div className="bg-gray-50 rounded-xl p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  What happens to my generated lyrics if I cancel?
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Your favorite lyrics will be permanently saved. Non-favorited lyrics will be automatically deleted after 
-                  24 hours for privacy protection.
-                </p>
-              </div>
+            <div className="bg-gray-50 rounded-xl p-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Can I upgrade or downgrade my plan?
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                Yes, you can upgrade or downgrade your plan at any time. Changes will take effect at the start of your
+                next billing cycle.
+              </p>
+            </div>
 
-              <div className="bg-gray-50 rounded-xl p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  Can I upgrade or downgrade my plan?
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Yes, you can upgrade or downgrade your plan at any time. Changes will take effect at the start of your 
-                  next billing cycle.
-                </p>
-              </div>
+            <div className="bg-gray-50 rounded-xl p-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Do you offer refunds?
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                We offer a 30-day money-back guarantee. If you're not satisfied with our service, contact us within
+                30 days of your purchase for a full refund.
+              </p>
+            </div>
 
-              <div className="bg-gray-50 rounded-xl p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  Do you offer refunds?
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  We offer a 30-day money-back guarantee. If you're not satisfied with our service, contact us within 
-                  30 days of your purchase for a full refund.
-                </p>
-              </div>
-
-              <div className="bg-gray-50 rounded-xl p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  What payment methods do you accept?
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  We accept all major credit cards, debit cards, and PayPal. All payments are processed securely through 
-                  Paddle, a trusted payment processor.
-                </p>
-              </div>
+            <div className="bg-gray-50 rounded-xl p-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                What payment methods do you accept?
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                We accept all major credit cards, debit cards, and PayPal. All payments are processed securely through
+                Paddle, a trusted payment processor.
+              </p>
             </div>
           </div>
         </div>
       </div>
+    </div>
   );
 }

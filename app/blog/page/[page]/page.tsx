@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { BLOG_CATEGORIES } from '@/lib/constants';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { formatDate } from '@/lib/utils';
-import { Category } from '@/lib/types';
+import { Category, Post } from '@/lib/types';
 import { cacheService } from '@/lib/cache-service';
 
 interface BlogPageProps {
@@ -222,7 +222,7 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
       name: 'AI Lyrics Generator',
       url: 'https://ai-lyrics-generator.net'
     },
-    blogPost: posts.map(post => ({
+    blogPost: posts.map((post: Post) => ({
       '@type': 'BlogPosting',
       headline: post.title,
       description: post.excerpt, // Use excerpt for description
@@ -279,7 +279,7 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                 ) : (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {posts.map((post) => (
+                      {posts.map((post: Post) => (
                         <article key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                           <div className="p-6">
                             <div className="flex items-center space-x-2 mb-3">

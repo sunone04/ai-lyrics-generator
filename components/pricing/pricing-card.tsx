@@ -11,7 +11,7 @@ interface PricingPlan {
   price: string;
   period: string;
   features: string[];
-  priceId?: string;
+  priceId: string | null;
   popular?: boolean;
   cta: string;
 }
@@ -46,7 +46,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
       Promise.race([
         checkoutPromise,
         new Promise((resolve) => setTimeout(resolve, 10000))
-      ]).catch(() => {});
+      ]).catch(() => { });
     } catch (error) {
       console.error('Failed to open checkout:', error);
       alert('Failed to open payment page. Please try again.');
@@ -54,11 +54,10 @@ export default function PricingCard({ plan }: PricingCardProps) {
   };
 
   return (
-    <div className={`relative bg-white rounded-2xl shadow-xl border-2 transition-transform duration-200 hover:-translate-y-1 ${
-      plan.popular 
-        ? 'border-blue-500 ring-4 ring-blue-500/20' 
+    <div className={`relative bg-white rounded-2xl shadow-xl border-2 transition-transform duration-200 hover:-translate-y-1 ${plan.popular
+        ? 'border-blue-500 ring-4 ring-blue-500/20'
         : 'border-gray-200'
-    }`}>
+      }`}>
       {plan.popular && (
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
           <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
@@ -84,7 +83,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
               <span className="text-gray-700">{feature}</span>
             </div>
           ))}
-          
+
           {/* no negative list */}
         </div>
 

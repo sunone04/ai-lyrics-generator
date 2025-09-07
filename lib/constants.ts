@@ -28,7 +28,7 @@ export const SITE_CONFIG = {
 
 export const SUBSCRIPTION_LIMITS = {
   free: {
-    maxGenerations: 2,
+    maxGenerations: 1,
     maxLyricOptimizations: 1,
     canEditLyrics: false,
     canUseProModel: false,
@@ -39,7 +39,7 @@ export const SUBSCRIPTION_LIMITS = {
     maxLyricOptimizations: 30,
     canEditLyrics: true,
     canUseProModel: true,
-    maxFavorites: 1000
+    maxFavorites: 300
   },
   // 保持向后兼容
   paid: {
@@ -47,7 +47,7 @@ export const SUBSCRIPTION_LIMITS = {
     maxLyricOptimizations: 30,
     canEditLyrics: true,
     canUseProModel: true,
-    maxFavorites: 1000
+    maxFavorites: 300
   }
 };
 

@@ -243,6 +243,40 @@ export default function Navbar() {
               </Link>
             ))}
 
+            {/* Generate Tools for Mobile */}
+            <div className="pl-4">
+              <div className="text-gray-500 text-sm font-medium mb-2">Tools</div>
+              <Link
+                href="/edit"
+                className="flex items-center text-gray-600 hover:text-purple-600 px-3 py-2 text-sm"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <PencilIcon className="w-4 h-4 mr-2 text-purple-500" />
+                Polish Lyrics
+              </Link>
+              <Link
+                href="/dashboard"
+                className="flex items-center text-gray-600 hover:text-blue-600 px-3 py-2 text-sm"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <LanguageIcon className="w-4 h-4 mr-2 text-indigo-500" />
+                Dashboard
+              </Link>
+              <Link
+                href="/personal-style"
+                className="flex items-center text-gray-600 hover:text-green-600 px-3 py-2 text-sm"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <StarIcon className="w-4 h-4 mr-2 text-green-500" />
+                Personal Style
+                {!isPro && (
+                  <span className="ml-auto bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full">
+                    Pro
+                  </span>
+                )}
+              </Link>
+            </div>
+
             {/* Blog Categories for Mobile */}
             <div className="pl-4">
               <div className="text-gray-500 text-sm font-medium mb-2">Blog Categories</div>
@@ -261,20 +295,37 @@ export default function Navbar() {
             {/* User actions for mobile */}
             <div className="border-t border-gray-200 pt-4">
               {user ? (
-                <Link
-                  href="/account"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="bg-gray-900 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:bg-black transition-colors cursor-pointer"
-                >
-                  Account
-                </Link>
+                <div className="space-y-2">
+                  {/* Subscription Status Badge */}
+                  <div className="px-3">
+                    {isPro ? (
+                      <div className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-2 rounded-full text-sm font-medium shadow-md w-fit">
+                        <StarIcon className="w-4 h-4" />
+                        <span>PRO MEMBER</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-3 py-2 rounded-full text-sm font-medium w-fit">
+                        <UserIcon className="w-4 h-4" />
+                        <span>FREE MEMBER</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Link
+                    href="/account"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 cursor-pointer"
+                  >
+                    Account
+                  </Link>
+                </div>
               ) : (
                 <button
                   onClick={() => {
                     handleSignIn();
                     setIsMenuOpen(false);
                   }}
-                  className="bg-blue-600 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 cursor-pointer"
                 >
                   Sign In
                 </button>

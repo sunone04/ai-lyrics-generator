@@ -73,13 +73,13 @@ export default function PersonalStylePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Personal Style Library' }]} />
+        <Breadcrumbs customBreadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Personal Style Library', href: '/personal-style' }]} />
         <Header onAddNew={() => {
           setEditingGroup(null);
           setIsGroupModalOpen(true);
         }} />
-        <StyleGroupGrid 
-          styleGroups={styleGroups} 
+        <StyleGroupGrid
+          styleGroups={styleGroups}
           onEdit={(group) => {
             setEditingGroup(group);
             setIsGroupModalOpen(true);
@@ -94,7 +94,7 @@ export default function PersonalStylePage() {
 
       {/* Modals */}
       {isGroupModalOpen && (
-        <GroupFormModal 
+        <GroupFormModal
           group={editingGroup}
           onClose={() => setIsGroupModalOpen(false)}
           onSuccess={() => {
@@ -104,7 +104,7 @@ export default function PersonalStylePage() {
         />
       )}
       {isLyricsModalOpen && currentGroup && (
-        <LyricsViewerModal 
+        <LyricsViewerModal
           group={currentGroup}
           onClose={() => setIsLyricsModalOpen(false)}
           onAddLyric={() => {
@@ -118,7 +118,7 @@ export default function PersonalStylePage() {
         />
       )}
       {isLyricFormModalOpen && currentGroup && (
-        <LyricFormModal 
+        <LyricFormModal
           group={currentGroup}
           lyric={editingLyric}
           onClose={() => setIsLyricFormModalOpen(false)}
@@ -147,7 +147,7 @@ const Header = ({ onAddNew }: { onAddNew: () => void }) => (
   </div>
 );
 
-const StyleGroupGrid = ({ styleGroups, onEdit, onDelete, onView }: { 
+const StyleGroupGrid = ({ styleGroups, onEdit, onDelete, onView }: {
   styleGroups: StyleGroup[],
   onEdit: (group: StyleGroup) => void,
   onDelete: () => void,
@@ -231,9 +231,9 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
     <Modal onClose={onClose}>
       <h3 className="text-xl font-semibold mb-4">{group ? 'Edit Style Group' : 'Create New Style Group'}</h3>
       <form onSubmit={handleSubmit}>
-        <input 
-          type="text" 
-          value={name} 
+        <input
+          type="text"
+          value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Enter style name (e.g., Dark Folk)"
           className="w-full p-2 border rounded mb-4"
@@ -249,7 +249,7 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
   );
 };
 
-const LyricsViewerModal = ({ group, onClose, onAddLyric, onEditLyric }: { 
+const LyricsViewerModal = ({ group, onClose, onAddLyric, onEditLyric }: {
   group: StyleGroup,
   onClose: () => void,
   onAddLyric: () => void,
@@ -304,7 +304,7 @@ const LyricsViewerModal = ({ group, onClose, onAddLyric, onEditLyric }: {
   );
 };
 
-const LyricFormModal = ({ group, lyric, onClose, onSuccess }: { 
+const LyricFormModal = ({ group, lyric, onClose, onSuccess }: {
   group: StyleGroup,
   lyric: Lyric | null,
   onClose: () => void,
@@ -341,17 +341,17 @@ const LyricFormModal = ({ group, lyric, onClose, onSuccess }: {
     <Modal onClose={onClose}>
       <h3 className="text-xl font-semibold mb-4">{lyric ? 'Edit Lyric Sample' : 'Add New Lyric Sample'}</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input 
-          type="text" 
-          value={title} 
+        <input
+          type="text"
+          value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Title (e.g., Verse 1 Sample)"
           className="w-full p-2 border rounded"
           required
           maxLength={100}
         />
-        <textarea 
-          value={lyrics} 
+        <textarea
+          value={lyrics}
           onChange={e => setLyrics(e.target.value)}
           placeholder="Paste lyrics here..."
           className="w-full p-2 border rounded"
