@@ -23,7 +23,7 @@ export function usePaddle() {
 
   useEffect(() => {
     const checkPaddleLoaded = () => {
-      if (window.Paddle && window.Paddle.Initialized) {
+      if (window.Paddle && (window.Paddle.Initialized || typeof window.Paddle.Checkout?.open === 'function')) {
         setIsLoaded(true);
       }
     };
@@ -32,7 +32,7 @@ export function usePaddle() {
     checkPaddleLoaded();
     
     // 监听Paddle加载完成
-    const interval = setInterval(checkPaddleLoaded, 100);
+    const interval = setInterval(checkPaddleLoaded, 200);
     
     return () => clearInterval(interval);
   }, []);

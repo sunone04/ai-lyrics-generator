@@ -119,7 +119,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       router.push('/auth/signin?returnTo=/generate');
       return;
     }
-    /* 校验自定义 Other 输入 */
+    // 校验自定义 Other 输入
     const errors: string[] = [];
     (Object.keys(customInputs) as Array<keyof typeof customInputs>).forEach((key) => {
       if ((params as any)[key] === 'Other' && !customInputs[key].trim()) {
@@ -139,25 +139,13 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
         lyricStyle: params.lyricStyle === 'Other' ? customInputs.lyricStyle : params.lyricStyle,
         rhymeRequirement: params.rhymeRequirement === 'Other' ? customInputs.rhymeRequirement : params.rhymeRequirement,
         songStructure: params.songStructure === 'Other' ? customInputs.songStructure : params.songStructure
-      };
-      const res = await fetch('/api/generate-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(final)
-      });
-      if (!res.ok) throw new Error(await res.text());
+      } as any;
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let lyrics = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        lyrics += decoder.decode(value, { stream: true });
-      }
-      sessionStorage.setItem('generatedLyrics', lyrics);
-      sessionStorage.setItem('generationParams', JSON.stringify(final));
-      router.push('/generate/result/live');
+      const qs = new URLSearchParams();
+      Object.entries(final).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) qs.set(k, String(v));
+      });
+      router.push(`/generate/result/live?${qs.toString()}`);
     } catch (e: any) {
       toast.error(e.message || 'Generation failed');
     } finally {

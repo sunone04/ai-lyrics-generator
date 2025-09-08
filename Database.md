@@ -116,6 +116,157 @@
 ]
 
 
+=============================
+个人风格库（members-only）约束与优化
+=============================
+
+以下为为了实现“个人风格为会员专属、每组最多5首、每首≤500字符，并在生成时使用该分组全部样本”的数据库层最小约束与可选优化。均为幂等，多次执行安全。
+
+一、最小必需（强约束，已执行）
+
+作用：
+- 仅会员（付费 active 或试用期内）可创建个人风格分组与样本；
+- 每个分组最多 5 条样本；
+- 每条样本 ≤500 字符，并将字符数写入 word_count（INSERT/UPDATE 都生效）。
+
+SQL：
+
+BEGIN;
+
+-- 仅会员可创建分组
+CREATE OR REPLACE FUNCTION public._ps_enforce_member_on_group()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  prof public.profiles%ROWTYPE;
+  in_trial boolean := false;
+BEGIN
+  SELECT * INTO prof FROM public.profiles WHERE id = NEW.user_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'profile not found';
+  END IF;
+
+  -- 默认：付费 active 或试用期内 都算会员（如需“仅付费”，可去掉 in_trial 条件）
+  SELECT public.is_user_in_trial_period(NEW.user_id) INTO in_trial;
+  IF NOT (prof.status = 'active' OR in_trial) THEN
+    RAISE EXCEPTION 'Personal style is members-only. Please subscribe.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_ps_member_group ON public.personal_style_groups;
+CREATE TRIGGER trg_ps_member_group
+  BEFORE INSERT ON public.personal_style_groups
+  FOR EACH ROW EXECUTE FUNCTION public._ps_enforce_member_on_group();
+
+-- 仅会员可新增样本
+CREATE OR REPLACE FUNCTION public._ps_enforce_member_on_lyrics()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  prof public.profiles%ROWTYPE;
+  in_trial boolean := false;
+BEGIN
+  SELECT * INTO prof FROM public.profiles WHERE id = NEW.user_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'profile not found';
+  END IF;
+
+  SELECT public.is_user_in_trial_period(NEW.user_id) INTO in_trial;
+  IF NOT (prof.status = 'active' OR in_trial) THEN
+    RAISE EXCEPTION 'Personal style is members-only. Please subscribe.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_ps_member_lyrics ON public.personal_style_lyrics;
+CREATE TRIGGER trg_ps_member_lyrics
+  BEFORE INSERT ON public.personal_style_lyrics
+  FOR EACH ROW EXECUTE FUNCTION public._ps_enforce_member_on_lyrics();
+
+-- 每个分组最多 5 条样本
+CREATE OR REPLACE FUNCTION public._ps_enforce_group_limit()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  cnt int;
+BEGIN
+  SELECT count(*) INTO cnt
+  FROM public.personal_style_lyrics
+  WHERE style_group_id = NEW.style_group_id
+    AND user_id = NEW.user_id;
+
+  IF cnt >= 5 THEN
+    RAISE EXCEPTION 'This style group already has 5 samples.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_ps_group_limit ON public.personal_style_lyrics;
+CREATE TRIGGER trg_ps_group_limit
+  BEFORE INSERT ON public.personal_style_lyrics
+  FOR EACH ROW EXECUTE FUNCTION public._ps_enforce_group_limit();
+
+-- 每条样本 ≤500 字符，并统一写入 word_count=字符数（INSERT/UPDATE）
+CREATE OR REPLACE FUNCTION public._ps_enforce_lyrics_len_and_wc()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  len int;
+BEGIN
+  len := char_length(coalesce(NEW.lyrics, ''));
+  IF len > 500 THEN
+    RAISE EXCEPTION 'Lyric too long (max 500 characters).';
+  END IF;
+  NEW.word_count := len;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_ps_lyrics_len_wc_ins ON public.personal_style_lyrics;
+CREATE TRIGGER trg_ps_lyrics_len_wc_ins
+  BEFORE INSERT ON public.personal_style_lyrics
+  FOR EACH ROW EXECUTE FUNCTION public._ps_enforce_lyrics_len_and_wc();
+
+DROP TRIGGER IF EXISTS trg_ps_lyrics_len_wc_upd ON public.personal_style_lyrics;
+CREATE TRIGGER trg_ps_lyrics_len_wc_upd
+  BEFORE UPDATE ON public.personal_style_lyrics
+  FOR EACH ROW EXECUTE FUNCTION public._ps_enforce_lyrics_len_and_wc();
+
+COMMIT;
+
+二、可选优化（按需执行）
+
+目的：加速“按分组取样本、按时间倒序”的查询，减少聚合/扫描。
+
+SQL：
+
+CREATE INDEX IF NOT EXISTS idx_psl_group_created
+  ON public.personal_style_lyrics (style_group_id, created_at DESC);
+
+说明：
+- 若你希望“仅付费会员（不含试用）”可用，将上面两个会员函数里的判断从
+  IF NOT (prof.status = 'active' OR in_trial) THEN
+  改为
+  IF prof.status <> 'active' THEN
+  然后重新执行这两段函数/触发器即可；
+- 本节约束与现有 RLS（只能操作自己的数据）配合使用，形成 UI/接口/DB 三层一致的生产级安全与成本控制。
+
+
 
 profiles表：
 [

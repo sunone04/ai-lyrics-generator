@@ -73,7 +73,7 @@ export class AIService {
    * Stream lyrics generation using Gemini streaming API
    * Yields incremental text chunks to enable real-time UI updates
    */
-  async *streamGenerateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle, abortSignal?: AbortSignal): AsyncGenerator<string> {
+  async *streamGenerateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle | PersonalStyle[], abortSignal?: AbortSignal): AsyncGenerator<string> {
 
     const model = this.getModel(params.modelType);
     const prompt = this.buildGenerationPrompt(params, personalStyle);
@@ -113,7 +113,7 @@ export class AIService {
     }
   }
 
-  private buildGenerationPrompt(params: LyricsGenerationParams, personalStyle?: PersonalStyle): string {
+  private buildGenerationPrompt(params: LyricsGenerationParams, personalStyle?: PersonalStyle | PersonalStyle[]): string {
     // Build dynamic specifications based on provided parameters
     let specifications = `CREATIVE SPECIFICATIONS:
 - Language: ${params.language}
@@ -156,16 +156,13 @@ export class AIService {
       specifications += `\n- Additional Creative Direction: ${params.intentOrRequest}`;
     }
 
-    // Add personal style example if provided
+    // Add personal style examples (few-shot) if provided
     if (personalStyle) {
-      specifications += `\n\nPERSONAL STYLE EXAMPLE:
-Title: ${personalStyle.title}
-Music Style: ${personalStyle.music_style || 'Not specified'}
-Language: ${personalStyle.language}
-Lyrics:
-${personalStyle.lyrics}
-
-Please use this personal style as a reference for tone, vocabulary, and writing approach.`;
+      const samples = Array.isArray(personalStyle) ? personalStyle : [personalStyle];
+      const block = samples
+        .map((s, i) => `TITLE: ${s.title}\nLANGUAGE: ${s.language}\nGENRE: ${s.music_style || 'Not specified'}\nCONTENT:\n${s.lyrics}`)
+        .join('\n\n---\n\n');
+      specifications += `\n\nPERSONAL STYLE SAMPLES (use as stylistic reference, do not copy phrases):\n${block}\n`;
     }
 
     const prompt = `You are a world-class professional songwriter and lyricist. Create exceptional, original lyrics that avoid clichés and generic expressions.
@@ -229,7 +226,7 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     return prompt;
   }
 
-  async generateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle): Promise<string> {
+  async generateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle | PersonalStyle[]): Promise<string> {
     return this.retryWithBackoff(async () => {
       const model = this.getModel(params.modelType);
       const prompt = this.buildGenerationPrompt(params, personalStyle);
@@ -263,7 +260,7 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
 
   async generateLyricsStream(
     params: LyricsGenerationParams, 
-    personalStyle: PersonalStyle | null,
+    personalStyle: PersonalStyle | PersonalStyle[] | null,
     onChunk: (chunk: string) => void
   ): Promise<void> {
     return this.retryWithBackoff(async () => {

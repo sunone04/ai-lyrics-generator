@@ -2,113 +2,203 @@ import { NextRequest } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server'
 import { aiService } from '@/lib/ai-service';
 
+// In-memory per-instance concurrency guard and simple dedup cache
+const userLocks = new Map<string, number>();
+const dedupCache = new Map<string, { result: string; expiresAt: number }>();
+
+function paramsHash(obj: unknown) {
+  // Stable stringify for small objects
+  return Buffer.from(JSON.stringify(obj)).toString('base64url');
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return new Response('Unauthorized', { status: 401 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
 
+    const body = await request.json();
     const {
       language, musicStyle, musicTheme, lengthOption, lyricStyle,
       intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement,
       songStructure, paragraphLength, bpm, useBpm, melody,
-      syllablePattern, modelType, personalStyleId: personalStyleGroupId // Renamed for clarity
-    } = await request.json();
+      syllablePattern, modelType, personalStyleId: personalStyleGroupId
+    } = body || {};
 
     if (!language || !musicStyle || !musicTheme || !lengthOption || !lyricStyle) {
-      return new Response('Missing required fields', { status: 400 });
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
+    // Usage check before any AI call
     const { data: canGenerate, error: limitCheckError } = await supabase
       .rpc('check_user_usage_limit_with_trial', { user_uuid: user.id, operation_type: 'generation' });
 
     if (limitCheckError || !canGenerate) {
       const message = limitCheckError ? 'Failed to check usage limit' : 'Daily generation limit reached.';
       if (limitCheckError) console.error('Error checking usage limit:', limitCheckError);
-      return new Response(message, { status: limitCheckError ? 500 : 429 });
+      return new Response(JSON.stringify({ error: message }), { status: limitCheckError ? 500 : 429, headers: { 'Content-Type': 'application/json' } });
     }
 
-    if (modelType === 'pro') {
+    // Pro model requires active subscription or trial
+    if ((modelType || 'basic') === 'pro') {
       const { data: profile, error: profileError } = await supabase.from('profiles').select('status').eq('id', user.id).single();
       const { data: isInTrial, error: trialError } = await supabase.rpc('is_user_in_trial_period', { user_uuid: user.id });
-      if (profileError || trialError || (profile.status !== 'active' && !isInTrial)) {
-        return new Response('Pro model requires an active subscription or trial.', { status: 403 });
+      if (profileError || trialError || (profile?.status !== 'active' && !isInTrial)) {
+        return new Response(JSON.stringify({ error: 'Pro model requires an active subscription or trial.' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
       }
     }
 
-    // Fetch the selected personal style as a sample
-    let personalStyleSample = null;
+    // Fetch selected personal style samples (optional, few-shot up to 3)
+    let personalStyleSample: any = null;
     if (personalStyleGroupId) {
-      const { data: style, error: styleError } = await supabase
+      const { data: styles } = await supabase
         .from('personal_style_lyrics')
         .select('title, lyrics, language, music_style')
         .eq('style_group_id', personalStyleGroupId)
         .eq('user_id', user.id)
-        .single();
+        .order('created_at', { ascending: false });
 
-      if (!styleError && style) {
-        personalStyleSample = {
-          id: 0, // temporary id for interface compatibility
+      if (styles && styles.length > 0) {
+        personalStyleSample = styles.map((style: any) => ({
+          id: 0,
           user_id: user.id,
           title: style.title,
           lyrics: style.lyrics,
           language: style.language,
           music_style: style.music_style || '',
-          word_count: 0, // will be calculated if needed
+          word_count: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        };
+        }));
       }
     }
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          let fullLyrics = '';
+    // Simple dedup within warm instance
+    const dedupTtlMinutes = parseInt(process.env.DEDUP_TTL_MINUTES || '120', 10);
+    const hashKey = paramsHash({ userId: user.id, language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType, personalStyleGroupId });
+    const cached = dedupCache.get(hashKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return new Response(JSON.stringify({ cached: true, result: cached.result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
 
+    // Per-user concurrency limit
+    const maxConcurrent = parseInt(process.env.MAX_CONCURRENT_PER_USER || '1', 10);
+    const current = userLocks.get(user.id) || 0;
+    if (current >= maxConcurrent) {
+      return new Response(JSON.stringify({ error: 'Too many concurrent generations. Please wait for the previous one to finish.' }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+    }
+    userLocks.set(user.id, current + 1);
+
+    const encoder = new TextEncoder();
+    const firstChunkTimeout = parseInt(process.env.FIRST_CHUNK_TIMEOUT_MS || '30000', 10);
+    const totalSoftTimeout = parseInt(process.env.TOTAL_SOFT_TIMEOUT_MS || '180000', 10);
+    const heartbeatMs = parseInt(process.env.HEARTBEAT_INTERVAL_MS || '15000', 10);
+
+    let firstChunkSent = false;
+    let fullLyrics = '';
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const heartbeat = setInterval(() => {
+          // send comment heartbeat only when no chunk yet
+          if (!firstChunkSent) {
+            controller.enqueue(encoder.encode(`: ping\n\n`));
+          }
+        }, heartbeatMs);
+
+        const firstChunkTimer = setTimeout(() => {
+          if (!firstChunkSent) {
+            try {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'First chunk timeout' })}\n\n`));
+            } catch {}
+            controller.close();
+          }
+        }, firstChunkTimeout);
+
+        const totalTimer = setTimeout(() => {
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'Generation timed out' })}\n\n`));
+          } catch {}
+          controller.close();
+        }, totalSoftTimeout);
+
+        try {
           await aiService.generateLyricsStream(
-            { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: modelType || 'basic' },
+            { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
             personalStyleSample,
             (chunk) => {
+              if (!firstChunkSent) firstChunkSent = true;
               fullLyrics += chunk;
-              controller.enqueue(new TextEncoder().encode(chunk));
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
             }
           );
 
           // Save generation record
-          await supabase.from('generations').insert({
-            user_id: user.id,
-            language, music_style: musicStyle, music_theme: musicTheme,
-            length_option: lengthOption, lyric_style: lyricStyle, intent_or_request: intentOrRequest,
-            artist_style: artistStyle, emotion_intensity: emotionIntensity, rhyme_requirement: rhymeRequirement,
-            song_structure: songStructure, paragraph_length: paragraphLength, bpm, melody, syllable_pattern: syllablePattern,
-            generated_lyrics: fullLyrics,
-            model_used: modelType || 'basic',
-            generation_type: 'full',
-            personal_style_id: personalStyleGroupId || null,
-            is_favorited: false
-          });
+          if (fullLyrics && fullLyrics.trim().length > 0) {
+            await supabase.from('generations').insert({
+              user_id: user.id,
+              language,
+              music_style: musicStyle,
+              music_theme: musicTheme,
+              length_option: lengthOption,
+              lyric_style: lyricStyle,
+              intent_or_request: intentOrRequest,
+              artist_style: artistStyle,
+              emotion_intensity: emotionIntensity,
+              rhyme_requirement: rhymeRequirement,
+              song_structure: songStructure,
+              paragraph_length: paragraphLength,
+              bpm,
+              melody,
+              syllable_pattern: syllablePattern,
+              generated_lyrics: fullLyrics,
+              model_used: modelType || 'basic',
+              generation_type: 'full',
+              personal_style_group_id: personalStyleGroupId || null,
+              is_favorited: false
+            });
 
-          // Increment usage count
-          await supabase.rpc('increment_user_generation_count', { user_uuid: user.id });
+            // Increment usage count (best-effort)
+            try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
+          }
 
+          // Cache result for dedup
+          dedupCache.set(hashKey, { result: fullLyrics, expiresAt: Date.now() + dedupTtlMinutes * 60 * 1000 });
+
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`));
           controller.close();
         } catch (error) {
           console.error('Error in lyrics generation stream:', error);
-          controller.error(error);
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: error instanceof Error ? error.message : 'Unknown error' })}\n\n`));
+          } catch {}
+          controller.close();
+        } finally {
+          clearInterval(heartbeat);
+          clearTimeout(firstChunkTimer);
+          clearTimeout(totalTimer);
+          // release lock
+          const cur = userLocks.get(user.id) || 1;
+          userLocks.set(user.id, Math.max(0, cur - 1));
         }
       }
     });
 
     return new Response(stream, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        // Disable buffering proxies
+        'X-Accel-Buffering': 'no',
+      },
     });
 
   } catch (error) {
     console.error('Error in generate-stream API:', error);
-    return new Response('Internal server error', { status: 500 });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }

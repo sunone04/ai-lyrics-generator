@@ -53,6 +53,7 @@ export interface Generation {
   generation_type: 'full' | 'partial';
   parent_generation_id?: number;
   optimization_request?: string;
+  personal_style_group_id?: number;
 }
 
 export interface PersonalStyle {
@@ -143,6 +144,5 @@ export interface PersonalStyleCreateResponse {
   personalStyle?: PersonalStyle;
   error?: string;
 }
-
 
 

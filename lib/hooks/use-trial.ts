@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/contexts/auth-context';
 
 interface TrialStatus {
@@ -65,7 +65,7 @@ export function useTrial() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTrialStatus = async () => {
+  const fetchTrialStatus = useCallback(async () => {
     if (!user) {
       setTrialStatus({
         isInTrial: false,
@@ -114,7 +114,7 @@ export function useTrial() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const fetchUsageLimits = async () => {
     if (!user) {
@@ -203,7 +203,7 @@ export function useTrial() {
       setUsageLimits(null);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, fetchTrialStatus]);
 
   // Calculate trial time remaining
   const getTrialTimeRemaining = () => {

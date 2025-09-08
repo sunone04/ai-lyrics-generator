@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
 import { cacheService } from '@/lib/cache-service';
 import { cookies } from 'next/headers';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  context: any
 ) {
-  const { id } = await params;
+  const { id } = (context.params as { id: string });
   try {
     // Create admin client for database operations
     const adminClient = createAdminClient();
@@ -51,10 +51,10 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  context: any
 ) {
-  const { id } = await params;
+  const { id } = (context.params as { id: string });
   try {
     // 检查管理员session cookie
     const cookieStore = await cookies();
@@ -107,7 +107,11 @@ export async function PATCH(
 
     // Clear blog cache after update
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate?secret=${process.env.REVALIDATE_SECRET}`);
+      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': String(process.env.REVALIDATE_SECRET || '') },
+        body: JSON.stringify({ path: '/blog' })
+      });
     } catch (error) {
       // Cache revalidation failed, but don't fail the request
       console.error('Failed to revalidate cache:', error);
@@ -129,10 +133,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  context: any
 ) {
-  const { id } = await params;
+  const { id } = (context.params as { id: string });
   try {
     // 检查管理员session cookie
     const cookieStore = await cookies();
@@ -169,8 +173,8 @@ export async function DELETE(
       await Promise.all(
         payloads.map(p => fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...p, secret: process.env.REVALIDATE_SECRET })
+          headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': String(process.env.REVALIDATE_SECRET || '') },
+          body: JSON.stringify({ ...p })
         }))
       )
 

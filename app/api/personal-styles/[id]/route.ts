@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  context: any
 ) {
   try {
-    const { id } = await params;
+    const { id } = (context.params as { id: string });
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -41,11 +41,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  context: any
 ) {
   try {
-    const { id } = await params;
+    const { id } = (context.params as { id: string });
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -100,11 +100,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  context: any
 ) {
   try {
-    const { id } = await params;
+    const { id } = (context.params as { id: string });
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  context: any
 ) {
   try {
     const supabase = await createServerComponentClient();
     
-    const { id } = params;
+    const { id } = (context.params as { id: string });
     
     if (!id) {
       return NextResponse.json({ error: 'Generation ID is required' }, { status: 400 });
@@ -38,13 +38,13 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  context: any
 ) {
   try {
     const supabase = await createServerComponentClient();
     
-    const { id } = params;
+    const { id } = (context.params as { id: string });
     
     if (!id) {
       return NextResponse.json({ error: 'Generation ID is required' }, { status: 400 });
@@ -92,13 +92,12 @@ export async function DELETE(
 }
 
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  context: any
 ) {
   try {
     const { generated_lyrics } = await request.json();
-    const resolvedParams = await params;
-    const generationId = resolvedParams.id;
+    const generationId = (context.params as { id: string }).id;
 
     if (!generated_lyrics || typeof generated_lyrics !== 'string') {
       return NextResponse.json(

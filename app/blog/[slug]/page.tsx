@@ -7,11 +7,8 @@ import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
 import ShareButton from '@/components/ui/share-button';
 
-interface BlogPostPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
-}
+// Relax props typing to avoid Next type aggregator conflicts
+type BlogPostPageProps = any;
 
 // 生成静态参数 - 这是SSG的关键
 export async function generateStaticParams() {
@@ -102,7 +99,7 @@ async function getAllCategories() {
 
 // 动态生成元数据
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug } = (params as any);
   const post = await getBlogPost(slug);
 
   if (!post) {
@@ -163,7 +160,7 @@ function generateStructuredData(post: Post) {
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { slug } = await params;
+  const { slug } = (params as any);
   const post = await getBlogPost(slug);
 
   if (!post) {

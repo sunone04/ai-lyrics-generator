@@ -281,7 +281,8 @@ function GenerationResultContent() {
         throw new Error('Failed to rewrite lyrics');
       }
 
-      const { rewrittenPortion } = await response.json();
+      const resp = await response.json();
+      const rewrittenPortion: string = resp.rewrittenLyrics || resp.rewrittenPortion;
       
       // Replace the selected text with the rewritten version
       const updatedLyrics = generation.generated_lyrics.replace(selectedText, rewrittenPortion);

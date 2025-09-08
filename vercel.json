@@ -1,7 +1,7 @@
 {
   "functions": {
     "app/api/generate-stream/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 180
     },
     "app/api/webhook/paddle/route.ts": {
       "maxDuration": 30

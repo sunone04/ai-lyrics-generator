@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
+import { aiService } from '@/lib/ai-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const { originalLyrics, selectedText, rewriteRequest } = await request.json();
+    const { originalLyrics, selectedText, rewriteRequest, modelType } = await request.json();
 
     if (!originalLyrics || !selectedText || !rewriteRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -59,9 +60,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Daily rewrite limit reached. Please upgrade to premium or wait until tomorrow.' }, { status: 429 });
     }
 
-    // TODO: Implement actual rewrite logic
-    // For now, return a placeholder response
-    const rewrittenText = `[Rewritten version of: "${selectedText}"]\n\nBased on your request: "${rewriteRequest}"\n\nThis is a placeholder response. The actual rewrite functionality will be implemented here.`;
+    // Perform AI rewrite
+    const rewrittenText = await aiService.rewriteLyrics(
+      String(originalLyrics),
+      String(selectedText),
+      String(rewriteRequest),
+      modelType === 'pro' ? 'pro' : 'basic'
+    );
 
     // Increment user's rewrite count after successful rewrite
     const { error: incrementError } = await supabase
@@ -72,9 +77,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ 
-      success: true, 
-      rewrittenText,
-      message: 'Rewrite completed successfully'
+      success: true,
+      rewrittenLyrics: rewrittenText,
     });
 
   } catch (error) {

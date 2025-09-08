@@ -8,11 +8,8 @@ import { formatDate } from '@/lib/utils';
 import { Category, Post } from '@/lib/types';
 import { cacheService } from '@/lib/cache-service';
 
-interface BlogPageProps {
-  params: Promise<{
-    page: string;
-  }>;
-}
+// Relax props typing to avoid Next types aggregation conflicts
+type BlogPageProps = any;
 
 const POSTS_PER_PAGE = 12;
 
@@ -85,7 +82,7 @@ async function getCategories(): Promise<Category[]> {
 
 // 动态生成元数据
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
-  const { page: pageParam } = await params;
+  const { page: pageParam } = (params as any);
   const page = parseInt(pageParam);
   
   if (isNaN(page) || page < 1) {
@@ -192,7 +189,7 @@ function Pagination({ currentPage, totalPages }: { currentPage: number; totalPag
 }
 
 export default async function BlogPageWithPagination({ params }: BlogPageProps) {
-  const { page: pageParam } = await params;
+  const { page: pageParam } = (params as any);
   const page = parseInt(pageParam);
   
   if (isNaN(page) || page < 1) {

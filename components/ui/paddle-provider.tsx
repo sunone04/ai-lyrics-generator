@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { getPaddleConfig } from '@/lib/paddle';
 
 declare global {
@@ -10,46 +11,50 @@ declare global {
 }
 
 export function PaddleProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const injectedRef = useRef(false);
+
   useEffect(() => {
     const config = getPaddleConfig();
-    
+
+    // 仅在定价/账户页加载以减少全站开销；支持路由切换
+    if (typeof window !== 'undefined') {
+      const path = pathname || window.location.pathname;
+      const shouldLoad = [/^\/pricing/, /^\/account/].some((re) => re.test(path));
+      if (!shouldLoad) return;
+    }
+
     if (!config.clientId) {
       console.warn('Paddle client ID not configured');
       return;
     }
 
-    // 动态加载Paddle.js
+    // 若已加载则不重复注入
+    if (injectedRef.current || (typeof window !== 'undefined' && (window as any).Paddle?.Checkout)) {
+      try { (window as any).Paddle && ((window as any).Paddle as any).Initialized !== true && (((window as any).Paddle as any).Initialized = true); } catch {}
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
     script.async = true;
-    
+
     script.onload = () => {
       if (window.Paddle) {
-        // 设置环境
         window.Paddle.Environment.set(config.environment);
-        
-        // 初始化Paddle
-        window.Paddle.Initialize({ 
-          token: config.clientId
-        });
-        
+        window.Paddle.Initialize({ token: config.clientId });
+        try { (window.Paddle as any).Initialized = true; } catch {}
       }
     };
-    
+
     script.onerror = () => {
       console.error('Failed to load Paddle.js');
     };
-    
+
     document.head.appendChild(script);
-    
-    return () => {
-      // 清理脚本
-      const existingScript = document.querySelector('script[src*="paddle.js"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
-    };
-  }, []);
+    injectedRef.current = true;
+  }, [pathname]);
 
   return <>{children}</>;
 }
+

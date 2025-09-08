@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         generated_lyrics: generatedLyrics,
         model_used: modelUsed,
         generation_type: 'full',
-        personal_style_id: personalStyleId || null,
+        personal_style_group_id: personalStyleId || null,
         is_favorited: false
       })
       .select()

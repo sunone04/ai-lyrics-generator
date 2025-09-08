@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 
 // PUT: Update a specific lyric sample
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ lyricId: string }> }
+  request: Request,
+  context: any
 ) {
   try {
-    const { lyricId } = await params;
+    const { lyricId } = (context.params as { lyricId: string });
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -61,11 +61,11 @@ export async function PUT(
 
 // DELETE: Delete a specific lyric sample
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ lyricId: string }> }
+  request: Request,
+  context: any
 ) {
   try {
-    const { lyricId } = await params;
+    const { lyricId } = (context.params as { lyricId: string });
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();

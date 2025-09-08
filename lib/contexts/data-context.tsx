@@ -121,9 +121,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const canFetchPersonalStyles = profile?.status === 'active' || (profile?.trial_end_date && new Date(profile.trial_end_date) > new Date());
     if (!user || !profile || !canFetchPersonalStyles) return;
     
-    if (!force && isCacheValid(lastFetchPersonalStyles) && personalStyles.length > 0) {
-      return; // Use cached data
-    }
+    // 仅基于时间窗口做缓存，避免“空数组反复重载”的死循环
+    if (!force && isCacheValid(lastFetchPersonalStyles)) return;
 
     setLoadingPersonalStyles(true);
     try {
@@ -134,7 +133,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
       if (response.ok) {
         const data = await response.json();
-        setPersonalStyles(data.personalStyles || []);
+        // 服务端当前返回键为 styleGroups
+        const list = data.personalStyles || data.styleGroups || [];
+        setPersonalStyles(list);
         setLastFetchPersonalStyles(Date.now());
       }
     } catch (error) {

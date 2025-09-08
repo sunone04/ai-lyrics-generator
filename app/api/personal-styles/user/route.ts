@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 获取用户的个人风格（只返回必要字段用于选择）
+    // 获取用户的个人风格分组（用于作为示例选择）
     const { data: personalStyles, error: fetchError } = await supabase
-      .from('personal_styles')
-      .select('id, title, music_style, language')
+      .from('personal_style_groups')
+      .select('id, name, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 

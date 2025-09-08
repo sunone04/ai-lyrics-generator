@@ -1,44 +1,49 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { Database } from './types';
+
+// Safe cookie helpers that also work during build (no request scope)
+async function safeCookieGetAll() {
+  try {
+    const store = await cookies();
+    return store.getAll();
+  } catch {
+    return [] as { name: string; value: string }[];
+  }
+}
+
+async function safeCookieSetAll(cookiesToSet: { name: string; value: string; options?: unknown }[]) {
+  try {
+    const store = await cookies();
+    cookiesToSet.forEach(({ name, value, options }) => {
+      // @ts-expect-error: options type is provided by Next runtime
+      store.set(name, value, options);
+    });
+  } catch {
+    // outside request scope: noop
+  }
+}
 
 export function createServerComponentClient() {
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async getAll() {
-          const cookieStore = await cookies();
-          return cookieStore.getAll();
-        },
-        async setAll(cookiesToSet) {
-          const cookieStore = await cookies();
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
+        getAll: safeCookieGetAll,
+        setAll: safeCookieSetAll,
       },
     }
   );
 }
 
 export function createAdminClient() {
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       cookies: {
-        async getAll() {
-          const cookieStore = await cookies();
-          return cookieStore.getAll();
-        },
-        async setAll(cookiesToSet) {
-          const cookieStore = await cookies();
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
+        getAll: safeCookieGetAll,
+        setAll: safeCookieSetAll,
       },
     }
   );

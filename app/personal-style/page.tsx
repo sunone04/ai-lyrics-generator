@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useData } from '@/lib/contexts/data-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Loading from '@/components/ui/loading';
@@ -27,8 +28,7 @@ interface Lyric {
 // Main Page Component
 export default function PersonalStylePage() {
   const { user } = useAuth();
-  const [styleGroups, setStyleGroups] = useState<StyleGroup[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { personalStyles, loadingPersonalStyles, fetchPersonalStyles } = useData();
 
   // Modal States
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -41,32 +41,18 @@ export default function PersonalStylePage() {
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [editingLyric, setEditingLyric] = useState<Lyric | null>(null);
 
-  const fetchStyleGroups = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/personal-styles');
-      const data = await response.json();
-      if (data.success) {
-        setStyleGroups(data.styleGroups || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch style groups:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // 首次登录后触发一次强制拉取，避免依赖函数引用造成死循环
   useEffect(() => {
-    if (user) {
-      fetchStyleGroups();
-    }
-  }, [user, fetchStyleGroups]);
+    if (user) fetchPersonalStyles(true);
+    // 仅在用户ID变化时触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   if (!user) {
     return <div className="text-center p-8">Please sign in to view your personal styles.</div>;
   }
 
-  if (isLoading) {
+  if (loadingPersonalStyles) {
     return <Loading />;
   }
 
@@ -79,12 +65,12 @@ export default function PersonalStylePage() {
           setIsGroupModalOpen(true);
         }} />
         <StyleGroupGrid
-          styleGroups={styleGroups}
+          styleGroups={personalStyles as any}
           onEdit={(group) => {
             setEditingGroup(group);
             setIsGroupModalOpen(true);
           }}
-          onDelete={fetchStyleGroups}
+          onDelete={fetchPersonalStyles}
           onView={(group) => {
             setCurrentGroup(group);
             setIsLyricsModalOpen(true);
@@ -99,7 +85,7 @@ export default function PersonalStylePage() {
           onClose={() => setIsGroupModalOpen(false)}
           onSuccess={() => {
             setIsGroupModalOpen(false);
-            fetchStyleGroups();
+            fetchPersonalStyles(true);
           }}
         />
       )}
@@ -188,8 +174,14 @@ const StyleGroupGrid = ({ styleGroups, onEdit, onDelete, onView }: {
 // Modal Components
 
 const Modal = ({ children, onClose }: { children: React.ReactNode, onClose: () => void }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-    <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+  <div
+    className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+    onClick={onClose}
+  >
+    <div
+      className="bg-white text-gray-900 rounded-xl shadow-2xl ring-1 ring-black/5 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      onClick={e => e.stopPropagation()}
+    >
       <div className="p-6">
         {children}
       </div>
@@ -199,6 +191,9 @@ const Modal = ({ children, onClose }: { children: React.ReactNode, onClose: () =
 
 const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | null, onClose: () => void, onSuccess: () => void }) => {
   const [name, setName] = useState(group?.name || '');
+  // 可选：在创建分组时同时添加首条歌词
+  const [firstLyricTitle, setFirstLyricTitle] = useState('');
+  const [firstLyricContent, setFirstLyricContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -215,6 +210,22 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
       });
       const data = await response.json();
       if (data.success) {
+        // 若是新建分组且填写了首条歌词，则立即创建歌词样本
+        if (!group && firstLyricTitle.trim() && firstLyricContent.trim()) {
+          try {
+            await fetch('/api/personal-styles/lyrics', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                style_group_id: data.styleGroup?.id,
+                title: firstLyricTitle.trim(),
+                lyrics: firstLyricContent.trim(),
+              })
+            });
+          } catch (e) {
+            console.warn('Create first lyric failed:', e);
+          }
+        }
         onSuccess();
       } else {
         alert(data.error || 'An error occurred.');
@@ -236,10 +247,31 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Enter style name (e.g., Dark Folk)"
-          className="w-full p-2 border rounded mb-4"
+          className="w-full p-2 border rounded mb-4 bg-white text-gray-900"
           required
           maxLength={100}
         />
+        {!group && (
+          <div className="space-y-3 mb-2">
+            <p className="text-sm text-gray-600">Optional: Add a first lyric sample</p>
+            <input
+              type="text"
+              value={firstLyricTitle}
+              onChange={e => setFirstLyricTitle(e.target.value)}
+              placeholder="Title (e.g., Verse 1 Sample)"
+              className="w-full p-2 border rounded bg-white text-gray-900"
+              maxLength={100}
+            />
+            <textarea
+              value={firstLyricContent}
+              onChange={e => setFirstLyricContent(e.target.value)}
+              placeholder="Paste lyrics here..."
+              className="w-full p-2 border rounded bg-white text-gray-900"
+              rows={8}
+              maxLength={500}
+            />
+          </div>
+        )}
         <div className="flex justify-end space-x-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save'}</Button>
@@ -346,7 +378,7 @@ const LyricFormModal = ({ group, lyric, onClose, onSuccess }: {
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Title (e.g., Verse 1 Sample)"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white text-gray-900"
           required
           maxLength={100}
         />
@@ -354,7 +386,7 @@ const LyricFormModal = ({ group, lyric, onClose, onSuccess }: {
           value={lyrics}
           onChange={e => setLyrics(e.target.value)}
           placeholder="Paste lyrics here..."
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white text-gray-900"
           rows={10}
           required
           maxLength={500}

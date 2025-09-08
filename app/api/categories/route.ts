@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: '/blog', secret: process.env.REVALIDATE_SECRET })
+          headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': String(process.env.REVALIDATE_SECRET || '') },
+          body: JSON.stringify({ path: '/blog' })
         });
       } catch {}
     } catch (cacheErr) {

@@ -6,11 +6,8 @@ import { createServerComponentClient } from '@/lib/supabase-server';
 import { formatDate } from '@/lib/utils';
 import { Post, Category } from '@/lib/types';
 
-interface CategoryPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
-}
+// Relax props typing to avoid Next types aggregation conflicts
+type CategoryPageProps = any;
 
 // 生成静态参数
 export async function generateStaticParams() {
@@ -119,7 +116,7 @@ async function getOtherCategories(currentCategoryId: number): Promise<Category[]
 
 // 动态生成元数据
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug } = (params as any);
   const category = await getCategory(slug);
 
   if (!category) {
@@ -136,7 +133,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { slug } = await params;
+  const { slug } = (params as any);
   const category = await getCategory(slug);
 
   if (!category) {
