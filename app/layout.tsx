@@ -4,7 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
-import { Toaster } from "react-hot-toast";
+import { LazyToaster } from "@/components/ui/lazy-toaster";
 import { SITE_CONFIG } from "@/lib/constants";
 import { PaddleProvider } from "@/components/ui/paddle-provider";
 import { AuthProvider } from "@/lib/contexts/auth-context";
@@ -132,6 +132,8 @@ export default function RootLayout({
         />
         {process.env.NODE_ENV === 'production' && GA_MEASUREMENT_ID ? (
           <>
+            <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
+            <link rel="preconnect" href="https://www.google-analytics.com" crossOrigin="anonymous" />
             <Script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
             <Script id="ga-gtag-init" strategy="afterInteractive">{`
               window.dataLayer = window.dataLayer || [];
@@ -155,16 +157,7 @@ export default function RootLayout({
                 {children}
               </main>
               <Footer />
-              <Toaster 
-                position="top-right"
-                toastOptions={{
-                  duration: 4000,
-                  style: {
-                    background: '#363636',
-                    color: '#fff',
-                  },
-                }}
-              />
+              <LazyToaster />
             </DataProvider>
           </AuthProvider>
         </PaddleProvider>

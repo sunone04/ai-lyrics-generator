@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import Breadcrumbs from '@/components/ui/breadcrumbs';
+// Static breadcrumb to avoid client-side JS
 import { EnvelopeIcon, ChatBubbleLeftRightIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 // 强制静态生成 - 联系页面内容变化缓慢
@@ -15,7 +15,11 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Breadcrumbs />
+        <nav aria-label="Breadcrumb" className="text-sm text-gray-500">
+          <a href="/" className="hover:text-gray-700">Home</a>
+          <span className="mx-2">/</span>
+          <span className="text-gray-900">Contact</span>
+        </nav>
         
         <div className="mt-8">
           <div className="text-center mb-12">
@@ -137,6 +141,7 @@ export default function ContactPage() {
                   </a>
                   <Link
                     href="/blog"
+                    prefetch={false}
                     className="block text-blue-600 hover:text-blue-500 transition-colors"
                   >
                     → Songwriting Tips & Guides

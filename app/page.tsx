@@ -44,6 +44,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
                 <Link
                   href="/generate"
+                  prefetch={false}
                   className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-12 py-6 rounded-xl text-xl font-bold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center shadow-2xl hover:shadow-3xl transform hover:scale-110 min-w-[280px]"
                 >
                   Generate AI Lyrics Now
@@ -330,6 +331,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
             <Link
               href="/generate"
+              prefetch={false}
               className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-10 py-4 rounded-full text-lg font-bold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 inline-flex items-center shadow-2xl transform hover:scale-105"
             >
               Start Creating Now

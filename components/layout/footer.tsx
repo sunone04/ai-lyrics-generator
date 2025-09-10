@@ -10,7 +10,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
-            <Link href="/" className="flex items-center mb-4">
+            <Link href="/" prefetch={false} className="flex items-center mb-4">
               <span className="text-2xl font-bold text-blue-400">AI Lyrics Generator</span>
             </Link>
             <p className="text-gray-300 mb-4 max-w-md">
@@ -28,42 +28,42 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   Home
                 </Link>
               </li>
               <li>
-                <Link href="/generate" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/generate" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   AI Lyrics Generator Tool
                 </Link>
               </li>
               <li>
-                <Link href="/edit" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/edit" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   Polish Lyrics
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/pricing" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/blog" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/faq" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/dashboard" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   Dashboard
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/contact" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   Contact
                 </Link>
               </li>
@@ -75,7 +75,7 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Blog</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/blog" className="text-gray-300 hover:text-blue-400 transition-colors">
+                <Link href="/blog" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
                   All Articles
                 </Link>
               </li>
@@ -83,6 +83,7 @@ export default function Footer() {
                 <li key={category.slug}>
                   <Link 
                     href={`/blog/category/${category.slug}`} 
+                    prefetch={false}
                     className="text-gray-300 hover:text-blue-400 transition-colors"
                   >
                     {category.name}
@@ -97,16 +98,16 @@ export default function Footer() {
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex space-x-6 mb-4 md:mb-0">
-              <Link href="/privacy" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+              <Link href="/privacy" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
                 Privacy Policy
               </Link>
-              <Link href="/terms" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+              <Link href="/terms" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
                 Terms of Service
               </Link>
-              <Link href="/refund" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+              <Link href="/refund" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
                 Refund Policy
               </Link>
-              <Link href="/contact" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+              <Link href="/contact" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
                 Contact
               </Link>
             </div>

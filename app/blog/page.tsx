@@ -145,6 +145,7 @@ export default async function BlogPage() {
                             {post.category && (
                               <Link
                                 href={`/blog/category/${post.category.slug}`}
+                                prefetch={false}
                                 className="text-sm font-medium text-blue-600 hover:text-blue-500"
                               >
                                 {post.category.name}
@@ -159,6 +160,7 @@ export default async function BlogPage() {
                           <h2 className="text-xl font-bold text-black mb-3 line-clamp-2">
                             <Link
                               href={`/blog/${post.slug}`}
+                              prefetch={false}
                               className="hover:text-blue-600 transition-colors"
                             >
                               {post.title}
@@ -173,6 +175,7 @@ export default async function BlogPage() {
                           
                           <Link
                             href={`/blog/${post.slug}`}
+                            prefetch={false}
                             className="inline-flex items-center text-blue-600 hover:text-blue-500 font-medium"
                           >
                             Read more
@@ -190,6 +193,7 @@ export default async function BlogPage() {
                     <div className="mt-12 text-center">
                       <Link
                         href="/blog/page/2"
+                        prefetch={false}
                         className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                       >
                         View More Articles
@@ -217,6 +221,7 @@ export default async function BlogPage() {
                     <li key={category.slug}>
                       <Link
                         href={`/blog/category/${category.slug}`}
+                        prefetch={false}
                         className="text-gray-600 hover:text-blue-600 transition-colors"
                       >
                         {category.name}
@@ -235,6 +240,7 @@ export default async function BlogPage() {
                 </p>
                 <Link
                   href="/generate"
+                  prefetch={false}
                   className="block w-full bg-blue-600 text-white text-center py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium"
                 >
                   Generate Lyrics

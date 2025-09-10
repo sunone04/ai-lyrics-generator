@@ -42,7 +42,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center">
+            <Link href="/" prefetch={false} className="flex items-center">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">AI</span>
@@ -67,6 +67,7 @@ export default function Navbar() {
                       >
                         <Link
                           href="/generate"
+                          prefetch={false}
                           className="text-gray-700 hover:text-blue-600 px-4 py-3 text-base font-medium flex items-center"
                         >
                           {item.name}
@@ -77,6 +78,7 @@ export default function Navbar() {
                             <div className="py-3">
                               <Link
                                 href="/generate"
+                                prefetch={false}
                                 className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-blue-700 transition-all duration-200 rounded-lg mx-2"
                               >
                                 <SparklesIcon className="w-4 h-4 mr-3 text-blue-500" />
@@ -84,6 +86,7 @@ export default function Navbar() {
                               </Link>
                               <Link
                                 href="/edit"
+                                prefetch={false}
                                 className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700 transition-all duration-200 rounded-lg mx-2"
                               >
                                 <PencilIcon className="w-4 h-4 mr-3 text-purple-500" />
@@ -91,6 +94,7 @@ export default function Navbar() {
                               </Link>
                               <Link
                                 href="/dashboard"
+                                prefetch={false}
                                 className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700 transition-all duration-200 rounded-lg mx-2"
                               >
                                 <LanguageIcon className="w-4 h-4 mr-3 text-indigo-500" />
@@ -98,6 +102,7 @@ export default function Navbar() {
                               </Link>
                               <Link
                                 href="/personal-style"
+                                prefetch={false}
                                 className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 hover:text-green-700 transition-all duration-200 rounded-lg mx-2"
                               >
                                 <StarIcon className="w-4 h-4 mr-3 text-green-500" />
@@ -236,6 +241,7 @@ export default function Navbar() {
               <Link
                 key={item.name}
                 href={item.href}
+                prefetch={false}
                 className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -248,6 +254,7 @@ export default function Navbar() {
               <div className="text-gray-500 text-sm font-medium mb-2">Tools</div>
               <Link
                 href="/edit"
+                prefetch={false}
                 className="flex items-center text-gray-600 hover:text-purple-600 px-3 py-2 text-sm"
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -256,6 +263,7 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/dashboard"
+                prefetch={false}
                 className="flex items-center text-gray-600 hover:text-blue-600 px-3 py-2 text-sm"
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -264,6 +272,7 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/personal-style"
+                prefetch={false}
                 className="flex items-center text-gray-600 hover:text-green-600 px-3 py-2 text-sm"
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -284,6 +293,7 @@ export default function Navbar() {
                 <Link
                   key={category.slug}
                   href={`/blog/category/${category.slug}`}
+                  prefetch={false}
                   className="text-gray-600 hover:text-blue-600 block px-3 py-1 text-sm"
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -313,6 +323,7 @@ export default function Navbar() {
                   
                   <Link
                     href="/account"
+                    prefetch={false}
                     onClick={() => setIsMenuOpen(false)}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 cursor-pointer"
                   >

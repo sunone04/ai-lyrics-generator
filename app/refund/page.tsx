@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import Breadcrumbs from '@/components/ui/breadcrumbs';
+// Static breadcrumb to avoid client-side JS
 
 // 强制静态生成 - 退款政策内容变化缓慢
 export const dynamic = 'force-static';
@@ -13,7 +13,11 @@ export default function RefundPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Breadcrumbs />
+        <nav aria-label="Breadcrumb" className="text-sm text-gray-500">
+          <a href="/" className="hover:text-gray-700">Home</a>
+          <span className="mx-2">/</span>
+          <span className="text-gray-900">Refund</span>
+        </nav>
         
         <div className="mt-8 bg-white rounded-lg shadow p-8">
           <h1 className="text-3xl font-bold text-black mb-8">Refund Policy</h1>
