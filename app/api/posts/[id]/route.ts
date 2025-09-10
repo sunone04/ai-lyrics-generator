@@ -105,15 +105,40 @@ export async function PATCH(
       );
     }
 
-    // Clear blog cache after update
+    // 按需刷新静态页面（首页列表、文章页、分类页、站点地图）
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': String(process.env.REVALIDATE_SECRET || '') },
-        body: JSON.stringify({ path: '/blog' })
-      });
+      const payloads: { path: string }[] = [
+        { path: '/blog' },
+        { path: '/sitemap.xml' },
+      ];
+
+      if (post?.slug) {
+        payloads.push({ path: `/blog/${post.slug}` });
+      }
+
+      // 获取分类 slug，用于刷新分类页
+      if (post?.category_id) {
+        try {
+          const { data: cat } = await createAdminClient()
+            .from('categories')
+            .select('slug')
+            .eq('id', post.category_id)
+            .single();
+          if (cat?.slug) {
+            payloads.push({ path: `/blog/category/${cat.slug}` });
+          }
+        } catch {}
+      }
+
+      await Promise.all(
+        payloads.map(p => fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': String(process.env.REVALIDATE_SECRET || '') },
+          body: JSON.stringify(p)
+        }))
+      );
     } catch (error) {
-      // Cache revalidation failed, but don't fail the request
+      // 按需刷新失败不影响主流程
       console.error('Failed to revalidate cache:', error);
     }
 
@@ -149,8 +174,14 @@ export async function DELETE(
       );
     }
     
-    // Delete post using admin client
+    // Delete post using admin client (先查询 slug 与分类，便于刷新)
     const adminClient = createAdminClient();
+    const { data: toDelete } = await adminClient
+      .from('posts')
+      .select('slug, category_id')
+      .eq('id', id)
+      .single();
+
     const { error: dbError } = await adminClient
       .from('posts')
       .delete()
@@ -166,10 +197,23 @@ export async function DELETE(
 
     // 删除后触发按需刷新
     try {
-      const payloads = [
+      const payloads: { path: string }[] = [
         { path: '/blog' },
         { path: '/sitemap.xml' }
-      ]
+      ];
+
+      if (toDelete?.slug) payloads.push({ path: `/blog/${toDelete.slug}` });
+
+      if (toDelete?.category_id) {
+        try {
+          const { data: cat } = await adminClient
+            .from('categories')
+            .select('slug')
+            .eq('id', toDelete.category_id)
+            .single();
+          if (cat?.slug) payloads.push({ path: `/blog/category/${cat.slug}` });
+        } catch {}
+      }
       await Promise.all(
         payloads.map(p => fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
           method: 'POST',

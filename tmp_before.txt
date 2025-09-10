@@ -9,8 +9,7 @@ import { Post, Category } from '@/lib/types';
 // Relax props typing to avoid Next types aggregation conflicts
 type CategoryPageProps = any;
 
-// 生成静态参数
-export async function generateStaticParams() {
+// 生成静态参�?export async function generateStaticParams() {
   // 在构建时使用管理员客户端，不依赖cookies
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
@@ -89,8 +88,7 @@ async function getCategoryPosts(categoryId: number): Promise<Post[]> {
 
 // 获取其他分类（排除当前分类）
 async function getOtherCategories(currentCategoryId: number): Promise<Category[]> {
-  // 首先尝试从缓存获取
-  const categories = await cacheService.getCategories();
+  // 首先尝试从缓存获�?  const categories = await cacheService.getCategories();
   
   if (Array.isArray(categories) && categories.length > 0) {
     return (categories as unknown as import('@/lib/types').Category[]).filter(cat => cat?.id !== currentCategoryId);
@@ -137,8 +135,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const category = await getCategory(slug);
 
   if (!category) {
-    // 友好降级：分类不存在时，返回 200 并给出提示，避免因重定向回到一个 404 页被误判为“登录失败”
-    return (
+    // 友好降级：分类不存在时，返回 200 并给出提示，避免因重定向回到一�?404 页被误判为“登录失败�?    return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -164,8 +161,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     getOtherCategories(category.id)
   ]);
 
-  // 生成结构化数据
-  const structuredData = {
+  // 生成结构化数�?  const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name: `${category.name} - AI Lyrics Generator Blog`,
@@ -194,7 +190,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   return (
     <>
-      {/* 结构化数据 */}
+      {/* 结构化数�?*/}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -218,7 +214,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                   href="/blog"
                   className="text-blue-600 hover:text-blue-500 font-medium"
                 >
-                  ← Back to all articles
+                  �?Back to all articles
                 </Link>
               </div>
             </div>
@@ -247,7 +243,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {category.name}
                         </span>
-                        <span className="text-gray-300">•</span>
+                        <span className="text-gray-300">�?/span>
                         <time className="text-sm text-gray-500" dateTime={post.created_at}>
                           {formatDate(post.created_at)}
                         </time>
@@ -329,8 +325,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 }
 
 // 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
-export const dynamic = 'force-static';
 export const revalidate = false;
 
-// 启用动态路由 - 允许访问未预生成的分类页面
-export const dynamicParams = false;
+// 启用动态路�?- 允许访问未预生成的分类页�?export const dynamicParams = true;

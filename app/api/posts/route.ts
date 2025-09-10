@@ -55,13 +55,23 @@ export async function POST(request: NextRequest) {
     // 低成本按需刷新（通过内部API，避免在函数内做大量工作）
     try {
       if (post.status === 'published') {
-        const payloads = [
+        const payloads: { path: string }[] = [
           { path: '/blog' },
           { path: '/sitemap.xml' },
-          ...(post.slug ? [{ path: `/blog/${post.slug}` }] : []),
-          // 粗粒度刷新分类页：不查slug，按需手工刷新具体分类也可
-          { path: '/blog' }
-        ]
+        ];
+
+        if (post.slug) payloads.push({ path: `/blog/${post.slug}` });
+
+        // 查询分类 slug 以刷新分类页
+        try {
+          const { data: cat } = await createAdminClient()
+            .from('categories')
+            .select('slug')
+            .eq('id', post.category_id)
+            .single();
+          if (cat?.slug) payloads.push({ path: `/blog/category/${cat.slug}` });
+        } catch {}
+
         await Promise.all(
           payloads.map(p => fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
             method: 'POST',

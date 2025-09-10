@@ -255,5 +255,7 @@ export default async function BlogPage() {
   );
 }
 
+// 强制完全静态输出，且不自动再验证
+export const dynamic = 'force-static';
 // 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
 export const revalidate = false;

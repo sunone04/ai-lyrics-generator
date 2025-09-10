@@ -390,4 +390,6 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
 }
 
 // 启用ISR - 每60秒重新验证一次
+export const dynamic = 'force-static';
 export const revalidate = false;
+export const dynamicParams = false;

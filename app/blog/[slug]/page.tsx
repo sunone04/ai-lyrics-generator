@@ -326,5 +326,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   );
 }
 
+// 强制完全静态输出，且不自动再验证
+export const dynamic = 'force-static';
+// 禁止动态参数回退（仅服务构建/重新验证过的路径）
+export const dynamicParams = false;
 // 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
 export const revalidate = false;
