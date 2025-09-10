@@ -4,10 +4,12 @@ import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/lib/contexts/auth-context';
 
 function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshProfile } = useAuth();
 
   useEffect(() => {
     const supabase = createClient();
@@ -22,9 +24,34 @@ function AuthCallbackInner() {
 
     const sync = async () => {
       try {
-        if (!code) {
+        if (code) {
+          // Ensure the OAuth code is exchanged for a session and cookies are set
+          await supabase.auth.exchangeCodeForSession(code);
+        } else {
           await supabase.auth.getUser();
         }
+
+        // Auto-activate 3-day free trial for new users (no credit card)
+        try {
+          const statusResp = await fetch('/api/trial/activate', { method: 'GET' });
+          if (statusResp.ok) {
+            const statusData = await statusResp.json();
+            if (statusData?.canUseTrial) {
+              const activateResp = await fetch('/api/trial/activate', { method: 'POST' });
+              if (activateResp.ok) {
+                toast.success('Your 3-day free trial is now active');
+              }
+            }
+          }
+        } catch (_) {
+          // Non-blocking: ignore trial activation failures here
+        }
+
+        // Refresh profile to reflect trial/subscription changes
+        try {
+          await refreshProfile();
+        } catch {}
+
         toast.success('Signed in');
         router.replace('/');
       } catch {

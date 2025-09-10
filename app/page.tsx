@@ -52,6 +52,9 @@ export default function Home() {
                 </Link>
 
               </div>
+              <p className="text-sm text-gray-600 mt-[-8px] mb-12">
+                New users get a 3-day free trial membership — no credit card required.
+              </p>
 
               {/* Trust Indicators */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">

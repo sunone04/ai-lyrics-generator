@@ -164,6 +164,9 @@ export default function PricingPage() {
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
             Choose the perfect plan for your songwriting needs. Start free and upgrade when you're ready to unlock unlimited creativity.
           </p>
+          <div className="inline-block bg-green-50 text-green-700 border border-green-200 rounded-md px-4 py-2 text-sm">
+            New users get a 3-day free trial (no credit card required)
+          </div>
         </div>
       </div>
 

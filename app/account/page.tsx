@@ -13,12 +13,14 @@ import {
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
+import { useTrial } from '@/lib/hooks/use-trial';
 
 export default function AccountPage() {
   const { user, profile, loading, signOut } = useAuth();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { isInTrial } = useTrial();
 
   useEffect(() => {
     return () => {
@@ -130,13 +132,13 @@ export default function AccountPage() {
             
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-gray-500">Plan:</span>
-              <span className={`font-medium px-2 py-1 rounded-full text-sm ${
-                profile.status === 'active' 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
-                {profile.status === 'active' ? 'Pro' : 'Free'}
-              </span>
+              {profile.status === 'active' ? (
+                <span className="font-medium px-2 py-1 rounded-full text-sm bg-green-100 text-green-800">Pro</span>
+              ) : isInTrial ? (
+                <span className="font-medium px-2 py-1 rounded-full text-sm bg-orange-100 text-orange-700">Trial</span>
+              ) : (
+                <span className="font-medium px-2 py-1 rounded-full text-sm bg-gray-100 text-gray-800">Free</span>
+              )}
             </div>
             
             {profile.status === 'active' && (
@@ -160,6 +162,16 @@ export default function AccountPage() {
                   </span>
                 </div>
               </>
+            )}
+
+            {/* Trial info when active */}
+            {profile.status !== 'active' && isInTrial && (
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-500">Trial Ends:</span>
+                <span className="font-medium text-gray-900">
+                  {profile.trial_end_date ? new Date(profile.trial_end_date).toLocaleDateString() : '-'}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -216,5 +228,4 @@ export default function AccountPage() {
     </div>
   );
 }
-
 

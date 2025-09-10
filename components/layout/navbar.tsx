@@ -15,6 +15,7 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useTrial } from '@/lib/hooks/use-trial';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,6 +23,7 @@ export default function Navbar() {
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
+  const { isInTrial } = useTrial();
 
   const handleSignIn = () => {
     router.push('/auth/signin');
@@ -187,6 +189,11 @@ export default function Navbar() {
                         <StarIcon className="w-3.5 h-3.5" />
                         <span>PRO</span>
                       </div>
+                    ) : isInTrial ? (
+                      <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-xs font-medium">
+                        <UserIcon className="w-3.5 h-3.5" />
+                        <span>TRIAL</span>
+                      </div>
                     ) : (
                       <div className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full text-xs font-medium">
                         <UserIcon className="w-3.5 h-3.5" />
@@ -312,6 +319,11 @@ export default function Navbar() {
                       <div className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-2 rounded-full text-sm font-medium shadow-md w-fit">
                         <StarIcon className="w-4 h-4" />
                         <span>PRO MEMBER</span>
+                      </div>
+                    ) : isInTrial ? (
+                      <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 px-3 py-2 rounded-full text-sm font-medium w-fit">
+                        <UserIcon className="w-4 h-4" />
+                        <span>TRIAL MEMBER</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-3 py-2 rounded-full text-sm font-medium w-fit">

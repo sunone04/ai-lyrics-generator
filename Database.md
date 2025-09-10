@@ -115,6 +115,36 @@
   }
 ]
 
+## 变更记录（2025-09-10）
+
+为统一“收藏上限”逻辑并确保授权完整，已对如下函数进行更新：
+
+- 将 `public.check_favorite_limit_optimized(uuid)` 统一为对 `public.check_favorite_limit_with_trial(uuid)` 的包装，以实时统计为准，避免因 `profiles.favorite_count` 未同步导致的误判。
+- 为两个函数补充了执行权限授予（GRANT EXECUTE）。
+
+最新函数定义（摘要）：
+
+```
+CREATE OR REPLACE FUNCTION public.check_favorite_limit_optimized(user_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT public.check_favorite_limit_with_trial(user_uuid);
+$$;
+```
+
+已授予的执行权限：
+
+```
+GRANT EXECUTE ON FUNCTION public.check_favorite_limit_with_trial(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.check_favorite_limit_optimized(uuid) TO authenticated, service_role;
+```
+
+应用侧配套：代码已统一调用 `check_favorite_limit_with_trial`，`check_favorite_limit_optimized` 作为兼容入口存在但不再单独实现逻辑。
+
+
 
 =============================
 个人风格库（members-only）约束与优化

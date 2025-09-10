@@ -293,6 +293,9 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                       : 'Welcome back to AI Lyrics Generator'
                     }
                   </p>
+                  <div className="mt-3 inline-block bg-green-50 text-green-700 border border-green-200 rounded-md px-3 py-2 text-sm">
+                    New users get a 3-day free trial membership (no credit card required)
+                  </div>
                 </div>
 
                 {/* 通用错误信息 */}
