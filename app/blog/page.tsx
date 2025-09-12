@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+﻿import { Metadata } from 'next';
 import Link from 'next/link';
 import { cacheService } from '@/lib/cache-service';
 import { BLOG_CATEGORIES } from '@/lib/constants';
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
 
 async function getBlogPosts() {
   try {
-    // 使用永久缓存方法
+    // 浣跨敤姘镐箙缂撳瓨鏂规硶
     let posts = await cacheService.getBlogPosts(undefined, 1, 12);
     
     if (posts && posts.posts && posts.posts.length > 0) {
       return { posts: posts.posts, totalCount: posts.total || 0 };
     }
     
-    // 如果缓存为空，返回空结果（避免无限重试）
+    // 濡傛灉缂撳瓨涓虹┖锛岃繑鍥炵┖缁撴灉锛堥伩鍏嶆棤闄愰噸璇曪級
     return { posts: [], totalCount: 0 };
   } catch (error) {
     console.error('Unexpected error in getBlogPosts:', error);
@@ -52,15 +52,14 @@ async function getBlogPosts() {
 
 async function getCategories() {
   try {
-    // 使用永久缓存方法
+    // 浣跨敤姘镐箙缂撳瓨鏂规硶
     let categories = await cacheService.getCategories();
     
     if (categories && categories.length > 0) {
       return categories;
     }
     
-    // 如果缓存为空，返回默认分类
-    return BLOG_CATEGORIES;
+    // 濡傛灉缂撳瓨涓虹┖锛岃繑鍥為粯璁ゅ垎绫?    return BLOG_CATEGORIES;
   } catch (error) {
     console.error('Unexpected error in getCategories:', error);
     return BLOG_CATEGORIES;
@@ -90,7 +89,7 @@ export default async function BlogPage() {
       headline: post.title,
       description: post.excerpt || post.meta_description,
       url: `https://ai-lyrics-generator.net/blog/${post.slug}`,
-      datePublished: post.created_at,
+      datePublished: post.published_at || post.created_at,
       dateModified: post.updated_at || post.created_at,
       author: {
         '@type': 'Organization',
@@ -101,7 +100,7 @@ export default async function BlogPage() {
 
   return (
     <>
-      {/* 结构化数据 */}
+      {/* 缁撴瀯鍖栨暟鎹?*/}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -151,13 +150,13 @@ export default async function BlogPage() {
                                 {post.category.name}
                               </Link>
                             )}
-                            <span className="text-gray-300">•</span>
-                            <time className="text-sm text-gray-500" dateTime={post.created_at}>
-                              {formatDate(post.created_at)}
-                            </time>
+
+
+
+
                           </div>
                           
-                          <h2 className="text-xl font-bold text-black mb-3 line-clamp-2">
+                          <h2 className="text-xl font-bold text-black mb-3">
                             <Link
                               href={`/blog/${post.slug}`}
                               prefetch={false}
@@ -188,7 +187,7 @@ export default async function BlogPage() {
                     ))}
                   </div>
 
-                  {/* 分页链接 */}
+                  {/* 鍒嗛〉閾炬帴 */}
                   {totalCount > 12 && (
                     <div className="mt-12 text-center">
                       <Link
@@ -255,7 +254,6 @@ export default async function BlogPage() {
   );
 }
 
-// 强制完全静态输出，且不自动再验证
-export const dynamic = 'force-static';
-// 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
+// 寮哄埗瀹屽叏闈欐€佽緭鍑猴紝涓斾笉鑷姩鍐嶉獙璇?export const dynamic = 'force-static';
+// 鍚敤ISR - 姘镐箙缂撳瓨锛屽彧鍦ㄧ鐞嗘搷浣滄椂閫氳繃 /api/revalidate 鍒锋柊
 export const revalidate = false;

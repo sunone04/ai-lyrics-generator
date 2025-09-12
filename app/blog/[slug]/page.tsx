@@ -7,8 +7,8 @@ import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
 import ShareButton from '@/components/ui/share-button';
 
-// Relax props typing to avoid Next type aggregator conflicts
-type BlogPostPageProps = any;
+// Next.js 15: dynamic route params may be a Promise
+type BlogPostPageProps = { params: Promise<{ slug: string }> };
 
 // 生成静态参数 - 这是SSG的关键
 export async function generateStaticParams() {
@@ -99,7 +99,7 @@ async function getAllCategories() {
 
 // 动态生成元数据
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
-  const { slug } = (params as any);
+  const { slug } = await params;
   const post = await getBlogPost(slug);
 
   if (!post) {
@@ -116,8 +116,8 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       title: post.seo_title || post.title,
       description: post.meta_description,
       type: 'article',
-      publishedTime: post.created_at,
-      modifiedTime: post.created_at,
+      publishedTime: post.published_at || post.created_at,
+      modifiedTime: post.updated_at || post.created_at,
       authors: ['AI Lyrics Generator'],
       section: post.category?.name,
     },
@@ -146,8 +146,8 @@ function generateStructuredData(post: Post) {
       name: 'AI Lyrics Generator',
       url: 'https://ai-lyrics-generator.net'
     },
-    datePublished: post.created_at,
-    dateModified: post.created_at,
+    datePublished: post.published_at || post.created_at,
+    dateModified: post.updated_at || post.created_at,
     mainEntityOfPage: {
       '@type': 'WebPage',
       '@id': `https://ai-lyrics-generator.net/blog/${post.slug}`
@@ -160,7 +160,7 @@ function generateStructuredData(post: Post) {
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { slug } = (params as any);
+  const { slug } = await params;
   const post = await getBlogPost(slug);
 
   if (!post) {
@@ -194,9 +194,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     {post.category.name}
                   </span>
                 )}
-                <time className="text-sm text-gray-500" dateTime={post.created_at}>
-                  {formatDate(post.created_at)}
-                </time>
+                {post.published_at && (
+                  <time className="text-sm text-gray-500" dateTime={post.published_at}>
+                    {formatDate(post.published_at)}
+                  </time>
+                )}
               </div>
               
               <h1 className="text-3xl md:text-4xl font-bold text-black mb-4">
@@ -236,9 +238,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {/* 文章底部 */}
             <div className="px-6 py-6 bg-gray-50 border-t border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  Published: {formatDate(post.created_at)}
-                </div>
+                {post.published_at && (
+                  <div className="text-sm text-gray-500">
+                    Published: {formatDate(post.published_at)}
+                  </div>
+                )}
                 
                 <div className="flex items-center space-x-4">
                   <ShareButton 
@@ -266,9 +270,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                             {relatedPost.category.name}
                           </span>
                         )}
-                        <time className="text-xs text-gray-500" dateTime={relatedPost.created_at}>
-                          {formatDate(relatedPost.created_at)}
-                        </time>
+                        {relatedPost.published_at && (
+                          <time className="text-xs text-gray-500" dateTime={relatedPost.published_at}>
+                            {formatDate(relatedPost.published_at)}
+                          </time>
+                        )}
                       </div>
                       
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">

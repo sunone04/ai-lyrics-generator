@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         meta_description: meta_description || null,
         category_id,
         status: 'published',
-        published_at: published_at || new Date().toISOString()
+        published_at: published_at ?? null
       })
       .select('id, title, slug, status, category_id, created_at, updated_at, published_at')
       .single();

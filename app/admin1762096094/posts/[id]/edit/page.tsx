@@ -108,7 +108,7 @@ export default function EditPostPage() {
           meta_description: post.meta_description,
           category_id: post.category_id,
           status: 'published',
-          published_at: post.published_at,
+          published_at: (post.published_at && post.published_at.length > 0) ? post.published_at : null,
         }),
       });
 
@@ -253,19 +253,16 @@ export default function EditPostPage() {
 
               <div>
                 <label htmlFor="publishedAt" className="block text-lg font-medium text-gray-700 mb-2">
-                  Publish Time *
+                  Publish Time (Optional)
                 </label>
                 <input
                   type="datetime-local"
                   id="publishedAt"
                   value={post.published_at ? post.published_at.slice(0, 16) : ''}
                   onChange={(e) => handleInputChange('published_at', e.target.value)}
-                  required
                   className="mt-1 block w-full border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg px-6 py-4 transition-colors"
                 />
-                <p className="mt-2 text-sm text-gray-500">
-                  Choose when to publish this post
-                </p>
+                <p className="mt-2 text-sm text-gray-500">Leave empty to hide publish time on the page</p>
               </div>
             </div>
 

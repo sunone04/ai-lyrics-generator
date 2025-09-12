@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useTrial } from '@/lib/hooks/use-trial';
 import { Profile } from '@/lib/types';
 import { 
   ArrowUpTrayIcon,
@@ -20,6 +21,7 @@ import { LoadingButton } from '@/components/ui/loading';
 
 export default function EditPage() {
   const { user, profile, loading: authLoading } = useAuth();
+  const { isInTrial } = useTrial();
   const [lyrics, setLyrics] = useState('');
   const [selectedText, setSelectedText] = useState('');
   const [rewriteRequest, setRewriteRequest] = useState('');
@@ -29,14 +31,7 @@ export default function EditPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const router = useRouter();
 
-  // 检查用户权限
-  useEffect(() => {
-    if (!authLoading && (!user || profile?.status !== 'active')) {
-      toast.error('This feature requires a Pro subscription');
-      router.push('/pricing');
-    }
-  }, [user, profile, authLoading, router]);
-
+  // 公开可访问：不在进入页面时做鉴权或跳转；仅在执行受限操作时检查权限。
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -100,8 +95,8 @@ export default function EditPage() {
       return;
     }
 
-    if (!profile || profile.status !== 'active') {
-      toast.error('This feature requires a premium subscription');
+    if (!profile || (profile.status !== 'active' && !isInTrial)) {
+      toast.error('Premium or trial membership required');
       router.push('/pricing');
       return;
     }
@@ -116,7 +111,7 @@ export default function EditPage() {
         },
         body: JSON.stringify({
           originalLyrics: lyrics,
-          selectedPortion: selectedText,
+          selectedText: selectedText,
           rewriteRequest: rewriteRequest
         }),
       });
@@ -289,7 +284,7 @@ export default function EditPage() {
                     />
                     {lyrics && (
                       <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1 text-xs text-gray-600 border border-gray-200">
-                        💡 Select text to rewrite with AI
+                        馃挕 Select text to rewrite with AI
                       </div>
                     )}
                   </div>
@@ -378,8 +373,7 @@ export default function EditPage() {
                           className="text-blue-600 hover:text-blue-800 ml-2 text-xs"
                           title="Clear selection"
                         >
-                          ✕
-                        </button>
+                          鉁?                        </button>
                       </div>
                     </div>
                   </div>
@@ -400,7 +394,7 @@ export default function EditPage() {
                             <li>3. <strong>Click Rewrite</strong> to get AI suggestions</li>
                           </ol>
                           <p className="text-sm text-blue-600 mt-2 font-medium">
-                            💡 Try selecting a verse, chorus, or specific lines
+                            馃挕 Try selecting a verse, chorus, or specific lines
                           </p>
                         </div>
                       </div>
@@ -442,9 +436,9 @@ export default function EditPage() {
                         <strong>Quick tips:</strong>
                       </p>
                       <ul className="text-xs text-yellow-700 mt-1 space-y-1">
-                        <li>• Highlight a verse or chorus</li>
-                        <li>• Select problematic lines</li>
-                        <li>• Choose specific phrases to improve</li>
+                        <li>鈥?Highlight a verse or chorus</li>
+                        <li>鈥?Select problematic lines</li>
+                        <li>鈥?Choose specific phrases to improve</li>
                       </ul>
                     </div>
                   )}
@@ -459,19 +453,19 @@ export default function EditPage() {
                     onClick={() => router.push('/generate')}
                     className="w-full text-left text-blue-600 hover:text-blue-700 transition-colors"
                   >
-                    → Generate new lyrics
+                    鈫?Generate new lyrics
                   </button>
                   <button
                     onClick={() => router.push('/dashboard')}
                     className="w-full text-left text-blue-600 hover:text-blue-700 transition-colors"
                   >
-                    → View your lyrics history
+                    鈫?View your lyrics history
                   </button>
                   <button
                     onClick={() => router.push('/auth/signin')}
                     className="w-full text-left text-blue-600 hover:text-blue-700 transition-colors"
                   >
-                    → Upgrade subscription
+                    鈫?Upgrade subscription
                   </button>
                 </div>
               </div>
@@ -481,7 +475,7 @@ export default function EditPage() {
           {/* Privacy Notice */}
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
-              🔒 Your lyrics and audio files are processed securely and are not permanently stored on our servers.
+              馃敀 Your lyrics and audio files are processed securely and are not permanently stored on our servers.
             </p>
           </div>
         </div>
@@ -489,3 +483,6 @@ export default function EditPage() {
     </div>
   );
 }
+
+// 注意：本页为 Client Component，不导出 revalidate/dynamic 段配置。
+

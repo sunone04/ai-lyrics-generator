@@ -6,8 +6,8 @@ import { createServerComponentClient } from '@/lib/supabase-server';
 import { formatDate } from '@/lib/utils';
 import { Post, Category } from '@/lib/types';
 
-// Relax props typing to avoid Next types aggregation conflicts
-type CategoryPageProps = any;
+// Next.js 15: dynamic route params may be a Promise
+type CategoryPageProps = { params: Promise<{ slug: string }> };
 
 // 生成静态参数
 export async function generateStaticParams() {
@@ -116,7 +116,7 @@ async function getOtherCategories(currentCategoryId: number): Promise<Category[]
 
 // 动态生成元数据
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
-  const { slug } = (params as any);
+  const { slug } = await params;
   const category = await getCategory(slug);
 
   if (!category) {

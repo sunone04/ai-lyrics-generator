@@ -95,7 +95,7 @@ export class CacheService {
           category:categories!inner(id, name, slug, created_at, updated_at)
         `, { count: 'exact' })
         .eq('status', 'published')
-        .order('created_at', { ascending: false });
+        .order('published_at', { ascending: false });
       
       if (categorySlug) {
         query = query.eq('category.slug', categorySlug);

@@ -109,11 +109,6 @@ export default function Navbar() {
                               >
                                 <StarIcon className="w-4 h-4 mr-3 text-green-500" />
                                 Personal Style
-                                {!isPro && (
-                                  <span className="ml-auto bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full">
-                                    Pro
-                                  </span>
-                                )}
                               </Link>
                             </div>
                           </div>
@@ -285,11 +280,6 @@ export default function Navbar() {
               >
                 <StarIcon className="w-4 h-4 mr-2 text-green-500" />
                 Personal Style
-                {!isPro && (
-                  <span className="ml-auto bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full">
-                    Pro
-                  </span>
-                )}
               </Link>
             </div>
 

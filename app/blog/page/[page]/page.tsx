@@ -8,8 +8,8 @@ import { formatDate } from '@/lib/utils';
 import { Category, Post } from '@/lib/types';
 import { cacheService } from '@/lib/cache-service';
 
-// Relax props typing to avoid Next types aggregation conflicts
-type BlogPageProps = any;
+// Next.js 15: dynamic route params may be a Promise
+type BlogPageProps = { params: Promise<{ page: string }> };
 
 const POSTS_PER_PAGE = 12;
 
@@ -52,7 +52,7 @@ async function getBlogPosts(page: number) {
       category:categories!inner(id, name, slug, created_at, updated_at)
     `, { count: 'exact' })
     .eq('status', 'published')
-    .order('created_at', { ascending: false })
+    .order('published_at', { ascending: false })
     .range(offset, offset + POSTS_PER_PAGE - 1);
 
   if (error) {
@@ -82,7 +82,7 @@ async function getCategories(): Promise<Category[]> {
 
 // 动态生成元数据
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
-  const { page: pageParam } = (params as any);
+  const { page: pageParam } = await params;
   const page = parseInt(pageParam);
   
   if (isNaN(page) || page < 1) {
@@ -294,7 +294,7 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                               </time>
                             </div>
                             
-                            <h2 className="text-xl font-bold text-black mb-3 line-clamp-2">
+                            <h2 className="text-xl font-bold text-black mb-3">
                               <Link
                                 href={`/blog/${post.slug}`}
                                 className="hover:text-blue-600 transition-colors"

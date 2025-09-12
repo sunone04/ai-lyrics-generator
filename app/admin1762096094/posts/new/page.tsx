@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,7 @@ export default function NewPostPage() {
   const [seoTitle, setSeoTitle] = useState('');
   const [metaDescription, setMetaDescription] = useState('');
   const [excerpt, setExcerpt] = useState('');
-  const [publishedAt, setPublishedAt] = useState(new Date().toISOString().split('T')[0]);
+  const [publishedAt, setPublishedAt] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,10 +39,9 @@ export default function NewPostPage() {
   useEffect(() => {
     checkAdminAuth();
     fetchCategories();
-    // 设置默认发布时间为当前时间
-    const now = new Date();
-    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    setPublishedAt(localDateTime.toISOString().slice(0, 16));
+    // 发布时间可选：不设置默认值，留空则不显示
+
+
   }, []);
 
   const checkAdminAuth = async () => {
@@ -100,12 +99,12 @@ export default function NewPostPage() {
           content,
           category_id: parseInt(categoryId),
           status: 'published',
-          published_at: publishedAt,
+          published_at: publishedAt || null,
         }),
       });
 
       if (response.ok) {
-        setSuccess('文章创建成功！正在跳转...');
+        setSuccess('鏂囩珷鍒涘缓鎴愬姛锛佹鍦ㄨ烦杞?..');
         timeoutRef.current = setTimeout(() => {
           router.push('/admin1762096094/posts');
         }, 1500);
@@ -131,7 +130,7 @@ export default function NewPostPage() {
                 href="/admin1762096094/posts"
                 className="text-gray-500 hover:text-gray-700"
               >
-                ← Back to Posts
+                鈫?Back to Posts
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Create New Post</h1>
             </div>
@@ -215,18 +214,17 @@ export default function NewPostPage() {
 
               <div>
                 <label htmlFor="publishedAt" className="block text-lg font-medium text-gray-700 mb-2">
-                  Publish Time *
+                  Publish Time (Optional)
                 </label>
                 <input
                   type="datetime-local"
                   id="publishedAt"
                   value={publishedAt}
                   onChange={(e) => setPublishedAt(e.target.value)}
-                  required
                   className="mt-1 block w-full border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg px-6 py-4 transition-colors"
                 />
                 <p className="mt-2 text-sm text-gray-500">
-                  Choose when to publish this post
+                  Leave empty to hide publish time on the page
                 </p>
               </div>
             </div>
