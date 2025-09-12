@@ -216,7 +216,7 @@ export default async function BlogPage() {
                   Categories
                 </h3>
                 <ul className="space-y-2">
-                  {categories.map((category) => (
+                  {(categories || []).map((category) => (
                     <li key={category.slug}>
                       <Link
                         href={`/blog/category/${category.slug}`}
