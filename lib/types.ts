@@ -56,6 +56,17 @@ export interface Generation {
   personal_style_group_id?: number;
 }
 
+// Lightweight list item used by client-side lists to reduce transfer and typing friction
+export interface GenerationListItem {
+  id: number;
+  created_at: string;
+  music_style?: string;
+  music_theme?: string;
+  generated_lyrics?: string;
+  model_used: string;
+  is_favorited: boolean;
+}
+
 export interface PersonalStyle {
   id: number;
   user_id: string;
@@ -144,5 +155,4 @@ export interface PersonalStyleCreateResponse {
   personalStyle?: PersonalStyle;
   error?: string;
 }
-
 

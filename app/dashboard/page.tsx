@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
 import { useTrial } from '@/lib/hooks/use-trial';
-import { Generation } from '@/lib/types';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { LoadingPage } from '@/components/ui/loading';

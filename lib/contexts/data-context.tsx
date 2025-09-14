@@ -1,14 +1,14 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
-import { Generation } from '@/lib/types';
+import { GenerationListItem } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { createClient } from '@/lib/supabase';
 
 interface DataContextType {
   // Generations data
-  generations: Generation[];
-  favorites: Generation[];
+  generations: GenerationListItem[];
+  favorites: GenerationListItem[];
   personalStyles: any[];
 
   // Loading states
@@ -28,7 +28,7 @@ interface DataContextType {
   refreshAll: () => Promise<void>;
 
   // Data mutations
-  updateGeneration: (id: number, updates: Partial<Generation>) => void;
+  updateGeneration: (id: number, updates: Partial<GenerationListItem>) => void;
   removeGeneration: (id: number) => void;
   addPersonalStyle: (style: any) => void;
   updatePersonalStyle: (id: number, updates: any) => void;
@@ -45,8 +45,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
 
   // Data states
-  const [generations, setGenerations] = useState<Generation[]>([]);
-  const [favorites, setFavorites] = useState<Generation[]>([]);
+  const [generations, setGenerations] = useState<GenerationListItem[]>([]);
+  const [favorites, setFavorites] = useState<GenerationListItem[]>([]);
   const [personalStyles, setPersonalStyles] = useState<any[]>([]);
 
   // Loading states
@@ -151,7 +151,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [fetchGenerations, fetchFavorites, fetchPersonalStyles]);
 
   // Data mutations (client-side state only)
-  const updateGeneration = useCallback((id: number, updates: Partial<Generation>) => {
+  const updateGeneration = useCallback((id: number, updates: Partial<GenerationListItem>) => {
     setGenerations(prev => prev.map(gen => gen.id === id ? { ...gen, ...updates } : gen));
     setFavorites(prev => prev.map(gen => gen.id === id ? { ...gen, ...updates } : gen));
   }, []);
