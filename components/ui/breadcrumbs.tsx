@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronRightIcon, HomeIcon } from '@heroicons/react/24/outline';
 import { generateBreadcrumbs } from '@/lib/utils';
+import { SITE_CONFIG } from '@/lib/constants';
 
 interface BreadcrumbsProps {
   customBreadcrumbs?: Array<{
@@ -23,6 +24,8 @@ export default function Breadcrumbs({ customBreadcrumbs }: BreadcrumbsProps) {
   }
 
   // 结构化数据（BreadcrumbList）
+  // 为避免水合不一致，统一使用站点配置的绝对URL（不要访问 window）
+  const base = (SITE_CONFIG.url || '').replace(/\/$/, '');
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -30,7 +33,7 @@ export default function Breadcrumbs({ customBreadcrumbs }: BreadcrumbsProps) {
       '@type': 'ListItem',
       position: index + 1,
       name: index === 0 ? 'Home' : bc.label,
-      item: typeof window !== 'undefined' ? `${window.location.origin}${bc.href}` : bc.href
+      item: `${base}${bc.href}`
     }))
   };
 

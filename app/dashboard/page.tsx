@@ -114,7 +114,7 @@ function DashboardContent() {
       const currentGeneration = generations.find(gen => gen.id === generationId);
       const newFavoriteStatus = !currentGeneration?.is_favorited;
       
-      const response = await fetch('/api/user/generations', {
+      const response = await fetch('/api/me/generations', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +157,7 @@ function DashboardContent() {
     if (!generationId) return;
     
     try {
-      const response = await fetch('/api/user/generations', {
+      const response = await fetch('/api/me/generations', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -292,9 +292,6 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* Trial Status */}
-          <TrialStatus className="mb-6" />
-          
           {/* Trial Activation */}
           <TrialActivation 
             className="mb-6" 
@@ -441,6 +438,11 @@ function DashboardContent() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Trial Status moved to page bottom */}
+          <div className="mt-8">
+            <TrialStatus />
           </div>
 
 

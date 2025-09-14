@@ -168,7 +168,8 @@ export default function PersonalStylePage() {
             setEditingGroup(group);
             setIsGroupModalOpen(true);
           }}
-          onDelete={fetchPersonalStyles}
+          // 删除后强制刷新，绕过时间缓存与会员限制
+          onDelete={() => fetchPersonalStyles(true)}
           onView={(group) => {
             setCurrentGroup(group);
             setIsLyricsModalOpen(true);
@@ -481,12 +482,18 @@ const LyricFormModal = ({ group, lyric, onClose, onSuccess }: {
 };
 const DeleteButton = ({ id, onSuccess, apiPath }: { id: number, onSuccess: () => void, apiPath: string }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const { removePersonalStyle } = useData();
   const handleDelete = async () => {
     if (!confirm('Are you sure?')) return;
     setIsDeleting(true);
     try {
       const response = await fetch(`${apiPath}/${id}`, { method: 'DELETE' });
       if (response.ok) {
+        // 乐观更新：仅分组删除时从列表中移除
+        if (apiPath === '/api/personal-styles') {
+          try { removePersonalStyle(id); } catch {}
+        }
+        // 触发调用方的后续刷新（如歌词列表刷新、或强制拉取）
         onSuccess();
       } else {
         const data = await response.json();

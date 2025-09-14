@@ -5,9 +5,9 @@ import { cookies } from 'next/headers';
 
 export async function GET(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params as { id: string };
+  const { id } = await context.params;
   try {
     // Create admin client for database operations
     const adminClient = createAdminClient();
@@ -44,9 +44,9 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params as { id: string };
+  const { id } = await context.params;
   try {
     // 检查管理员session cookie
     const cookieStore = await cookies();
@@ -123,9 +123,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params as { id: string };
+  const { id } = await context.params;
   try {
     // 检查管理员session cookie
     const cookieStore = await cookies();

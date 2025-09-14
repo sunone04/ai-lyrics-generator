@@ -122,7 +122,7 @@ function GenerationResultContent() {
     try {
       const newFavoriteStatus = !generation.is_favorited;
       
-      const response = await fetch('/api/user/generations', {
+      const response = await fetch('/api/me/generations', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

@@ -88,6 +88,12 @@ select {
   animation: gradientFlow 3s ease-in-out infinite;
 }
 
+/* Ensure glyph descenders (g, y, p) aren't clipped by following backgrounds */
+.descender-fix {
+  display: inline-block;
+  padding-bottom: 0.12em; /* expand element box to fully cover descenders */
+}
+
 @keyframes gradientFlow {
   0% {
     background-position: 0% 50%;

@@ -3,10 +3,10 @@ import { createServerComponentClient } from '@/lib/supabase-server';
 
 export async function GET(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = (context.params as { id: string });
+    const { id } = await context.params;
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -42,10 +42,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = (context.params as { id: string });
+    const { id } = await context.params;
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -101,10 +101,10 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = (context.params as { id: string });
+    const { id } = await context.params;
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();

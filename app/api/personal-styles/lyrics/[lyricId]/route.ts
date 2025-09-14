@@ -4,10 +4,10 @@ import { createServerComponentClient } from '@/lib/supabase-server';
 // PUT: Update a specific lyric sample
 export async function PUT(
   request: Request,
-  context: any
+  context: { params: Promise<{ lyricId: string }> }
 ) {
   try {
-    const { lyricId } = (context.params as { lyricId: string });
+    const { lyricId } = await context.params;
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -62,10 +62,10 @@ export async function PUT(
 // DELETE: Delete a specific lyric sample
 export async function DELETE(
   request: Request,
-  context: any
+  context: { params: Promise<{ lyricId: string }> }
 ) {
   try {
-    const { lyricId } = (context.params as { lyricId: string });
+    const { lyricId } = await context.params;
     const supabase = createServerComponentClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();

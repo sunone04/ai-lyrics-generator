@@ -108,8 +108,9 @@ export function TrialStatus({ className }: TrialStatusProps) {
           🎉 Free Trial Active
         </p>
         <p className="text-green-600 text-sm mt-1">
-          {timeRemaining.days > 0 && `${timeRemaining.days} days, `}
-          {timeRemaining.hours} hours, {timeRemaining.minutes} minutes remaining
+          {timeRemaining.days > 0
+            ? `${timeRemaining.days} days remaining`
+            : `Less than 1 day remaining`}
         </p>
       </div>
     </Card>

@@ -3,12 +3,12 @@ import { createServerComponentClient } from '@/lib/supabase-server';
 
 export async function GET(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createServerComponentClient();
     
-    const { id } = (context.params as { id: string });
+    const { id } = await context.params;
     
     if (!id) {
       return NextResponse.json({ error: 'Generation ID is required' }, { status: 400 });
@@ -39,12 +39,12 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createServerComponentClient();
     
-    const { id } = (context.params as { id: string });
+    const { id } = await context.params;
     
     if (!id) {
       return NextResponse.json({ error: 'Generation ID is required' }, { status: 400 });
@@ -93,11 +93,11 @@ export async function DELETE(
 
 export async function PATCH(
   request: Request,
-  context: any
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { generated_lyrics } = await request.json();
-    const generationId = (context.params as { id: string }).id;
+    const generationId = (await context.params).id;
 
     if (!generated_lyrics || typeof generated_lyrics !== 'string') {
       return NextResponse.json(

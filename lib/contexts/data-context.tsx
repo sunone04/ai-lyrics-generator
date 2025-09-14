@@ -72,7 +72,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     setLoadingGenerations(true);
     try {
-      const response = await fetch('/api/user/generations?page=1&pageSize=20', {
+      const response = await fetch('/api/me/generations?page=1&pageSize=20', {
         credentials: 'include',
         headers: { 'Cache-Control': 'no-cache' },
       });
@@ -99,7 +99,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     setLoadingFavorites(true);
     try {
-      const response = await fetch('/api/user/generations?favorites=true&page=1&pageSize=20', {
+      const response = await fetch('/api/me/generations?favorites=true&page=1&pageSize=20', {
         credentials: 'include',
         headers: { 'Cache-Control': 'no-cache' },
       });
@@ -118,8 +118,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Fetch personal styles with caching
   const fetchPersonalStyles = useCallback(async (force = false) => {
+    if (!user || !profile) return;
     const canFetchPersonalStyles = profile?.status === 'active' || (profile?.trial_end_date && new Date(profile.trial_end_date) > new Date());
-    if (!user || !profile || !canFetchPersonalStyles) return;
+    // 对于强制刷新（如删除/新增后），允许绕过“会员限制”，以确保UI与数据库一致
+    if (!canFetchPersonalStyles && !force) return;
     
     // 仅基于时间窗口做缓存，避免“空数组反复重载”的死循环
     if (!force && isCacheValid(lastFetchPersonalStyles)) return;

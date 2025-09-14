@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/contexts/auth-context';
 
+// 简单本地缓存，减少频繁调用 /api/trial/activate（GET）导致的函数调用与CPU占用
+const TRIAL_CACHE_KEY_PREFIX = 'trial_status_cache_v1';
+// 因为试用期为 3 天，分钟级精度并无必要；延长缓存有效期以减少请求
+const TRIAL_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时
+
 interface TrialStatus {
   isInTrial: boolean;
   canUseTrial: boolean;
@@ -80,6 +85,19 @@ export function useTrial() {
     try {
       setLoading(true);
       setError(null);
+      // 命中本地缓存则直接返回
+      try {
+        const cacheKey = `${TRIAL_CACHE_KEY_PREFIX}:${user.id}`;
+        const raw = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null;
+        if (raw) {
+          const parsed = JSON.parse(raw) as { value: TrialStatus; expiresAt: number };
+          if (parsed && parsed.expiresAt && Date.now() < parsed.expiresAt && parsed.value) {
+            setTrialStatus({ ...parsed.value, loading: false });
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {}
 
       const response = await fetch('/api/trial/activate', {
         method: 'GET',
@@ -94,14 +112,24 @@ export function useTrial() {
 
       const data = await response.json();
       
-      setTrialStatus({
+      const nextStatus: TrialStatus = {
         isInTrial: data.isInTrial,
         canUseTrial: data.canUseTrial,
         trialStartDate: data.trialStartDate,
         trialEndDate: data.trialEndDate,
         isTrialUsed: data.isTrialUsed,
         loading: false
-      });
+      };
+      setTrialStatus(nextStatus);
+
+      // 写入本地缓存
+      try {
+        const cacheKey = `${TRIAL_CACHE_KEY_PREFIX}:${user.id}`;
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({ value: nextStatus, expiresAt: Date.now() + TRIAL_CACHE_TTL_MS })
+        );
+      } catch {}
     } catch (err) {
       console.error('Error fetching trial status:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -123,7 +151,7 @@ export function useTrial() {
     }
 
     try {
-      const response = await fetch('/api/user/usage-limits', {
+      const response = await fetch('/api/me/usage-limits', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -164,14 +192,24 @@ export function useTrial() {
 
       const data = await response.json();
       
-      setTrialStatus({
+      const nextStatus: TrialStatus = {
         isInTrial: true,
         canUseTrial: false,
         trialStartDate: data.profile.trial_start_date,
         trialEndDate: data.profile.trial_end_date,
         isTrialUsed: true,
         loading: false
-      });
+      };
+      setTrialStatus(nextStatus);
+
+      // 更新本地缓存
+      try {
+        const cacheKey = `${TRIAL_CACHE_KEY_PREFIX}:${user.id}`;
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({ value: nextStatus, expiresAt: Date.now() + TRIAL_CACHE_TTL_MS })
+        );
+      } catch {}
 
       // Refresh usage limits
       await fetchUsageLimits();
@@ -202,6 +240,17 @@ export function useTrial() {
       });
       setUsageLimits(null);
       setLoading(false);
+      // 清理缓存（登出后清除所有 trial_status 前缀键）
+      try {
+        if (typeof window !== 'undefined') {
+          const keys: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(TRIAL_CACHE_KEY_PREFIX)) keys.push(k);
+          }
+          keys.forEach((k) => localStorage.removeItem(k));
+        }
+      } catch {}
     }
   }, [user, fetchTrialStatus]);
 

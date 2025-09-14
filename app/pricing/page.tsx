@@ -153,29 +153,31 @@ export default function PricingPage() {
       />
 
       {/* Header */}
-      <div className="pt-32 pb-20">
+      <div className="pt-32 pb-12 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-[1.1]">
             Simple, Transparent
-            <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mt-2">
+            <span className="block gradient-title descender-fix mt-2">
               Pricing
             </span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-            Choose the perfect plan for your songwriting needs. Start free and upgrade when you're ready to unlock unlimited creativity.
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-4">
+            AI Lyrics Generator pricing: start free and upgrade anytime.
           </p>
-          <div className="inline-block bg-green-50 text-green-700 border border-green-200 rounded-md px-4 py-2 text-sm">
-            New users get a 3-day free trial (no credit card required)
-          </div>
         </div>
       </div>
 
       {/* Pricing Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan) => (
             <PricingCard key={plan.name} plan={plan} />
           ))}
+        </div>
+        <div className="mt-8 text-center">
+          <div className="inline-block bg-green-50 text-green-700 border border-green-200 rounded-md px-4 py-2 text-sm">
+            New users get a 3-day free trial (no credit card required)
+          </div>
         </div>
       </div>
 

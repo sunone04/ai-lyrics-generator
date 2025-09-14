@@ -171,13 +171,13 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         <Breadcrumbs />
         {/* Header */}
-        <div className="text-center mb-12 pt-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            <span className="block">AI Lyrics Generator - Create Perfect</span>
-            <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Song Lyrics & Rap Lyrics</span>
+        <div className="text-center mb-12 pt-8 relative z-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-[1.1]">
+            <span className="block">AI Lyrics Generator</span>
+            <span className="block gradient-title descender-fix">Create Perfect Song & Rap Lyrics</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Generate professional song lyrics and rap lyrics with our advanced AI lyrics generator. Create custom lyrics in any style, language, and theme with our powerful lyric generator tool.
+            Generate professional song and rap lyrics with our AI lyrics generator.
           </p>
         </div>
 

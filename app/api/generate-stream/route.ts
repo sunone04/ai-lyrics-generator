@@ -100,6 +100,16 @@ export async function POST(request: NextRequest) {
     let firstChunkSent = false;
     let fullLyrics = '';
 
+    // 将客户端断开与上游AI调用关联：客户端断开 -> 中止生成
+    const upstreamAbortController = new AbortController();
+    const reqSignal: AbortSignal | undefined = (request as any)?.signal;
+    const onClientAbort = () => {
+      try { upstreamAbortController.abort(); } catch {}
+    };
+    if (reqSignal) {
+      try { reqSignal.addEventListener('abort', onClientAbort); } catch {}
+    }
+
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         const heartbeat = setInterval(() => {
@@ -115,6 +125,7 @@ export async function POST(request: NextRequest) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'First chunk timeout' })}\n\n`));
             } catch {}
             controller.close();
+            try { upstreamAbortController.abort(); } catch {}
           }
         }, firstChunkTimeout);
 
@@ -123,18 +134,20 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'Generation timed out' })}\n\n`));
           } catch {}
           controller.close();
+          try { upstreamAbortController.abort(); } catch {}
         }, totalSoftTimeout);
 
         try {
-          await aiService.generateLyricsStream(
+          // 使用支持中止信号的生成器，客户端断开后立即停止读取与处理
+          for await (const chunk of aiService.streamGenerateLyrics(
             { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
-            personalStyleSample,
-            (chunk) => {
-              if (!firstChunkSent) firstChunkSent = true;
-              fullLyrics += chunk;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
-            }
-          );
+            personalStyleSample || undefined,
+            upstreamAbortController.signal,
+          )) {
+            if (!firstChunkSent) firstChunkSent = true;
+            fullLyrics += chunk;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
+          }
 
           // Save generation record
           if (fullLyrics && fullLyrics.trim().length > 0) {
@@ -183,6 +196,9 @@ export async function POST(request: NextRequest) {
           // release lock
           const cur = userLocks.get(user.id) || 1;
           userLocks.set(user.id, Math.max(0, cur - 1));
+          if (reqSignal) {
+            try { reqSignal.removeEventListener('abort', onClientAbort); } catch {}
+          }
         }
       }
     });

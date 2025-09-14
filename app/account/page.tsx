@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
 import { useTrial } from '@/lib/hooks/use-trial';
+import { TrialStatus } from '@/components/ui/trial-activation';
 
 export default function AccountPage() {
   const { user, profile, loading, signOut } = useAuth();
@@ -176,6 +177,9 @@ export default function AccountPage() {
           </div>
         </div>
 
+        {/* Trial Status Block */}
+        <TrialStatus />
+
         {/* Quick Actions Card */}
         <div className="bg-white rounded-xl shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
@@ -228,4 +232,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
