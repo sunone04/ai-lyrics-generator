@@ -1,9 +1,12 @@
-import { createServerClient } from '@supabase/ssr';
+﻿import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  // 只对API路由进行认证检查，页面路由由组件自己处理
+  // 只对 /api/user/* 路由进行认证检查
   if (request.nextUrl.pathname.startsWith('/api/user/')) {
+    // 使用一个可写的响应对象，这样 Supabase 在刷新 token 时能把新 cookie 写回响应
+    const response = NextResponse.next();
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -14,7 +17,9 @@ export async function middleware(request: NextRequest) {
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              request.cookies.set(name, value);
+              // 将刷新后的会话 cookie 写入响应，而不是写入 request
+
+              response.cookies.set(name, value, options as any);
             });
           },
         },
@@ -22,13 +27,15 @@ export async function middleware(request: NextRequest) {
     );
 
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
+
+    return response;
   }
 
   return NextResponse.next();
