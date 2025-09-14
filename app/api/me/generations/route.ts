@@ -41,9 +41,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch generations' }, { status: 500 });
     }
 
+    // Reduce data transfer: only send a short preview of lyrics
+    const MAX_PREVIEW_CHARS = 600;
+    const safeList = (generations || []).map((g: any) => ({
+      ...g,
+      generated_lyrics: typeof g.generated_lyrics === 'string'
+        ? g.generated_lyrics.slice(0, MAX_PREVIEW_CHARS)
+        : g.generated_lyrics,
+    }));
+
     return NextResponse.json({ 
       success: true, 
-      generations: generations || [],
+      generations: safeList,
       pagination: {
         page,
         pageSize,

@@ -1,31 +1,32 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
 import { Generation } from '@/lib/types';
 import { useAuth } from './auth-context';
+import { createClient } from '@/lib/supabase';
 
 interface DataContextType {
   // Generations data
   generations: Generation[];
   favorites: Generation[];
   personalStyles: any[];
-  
+
   // Loading states
   loadingGenerations: boolean;
   loadingFavorites: boolean;
   loadingPersonalStyles: boolean;
-  
+
   // Cache timestamps
   lastFetchGenerations: number;
   lastFetchFavorites: number;
   lastFetchPersonalStyles: number;
-  
+
   // Actions
   fetchGenerations: (force?: boolean) => Promise<void>;
   fetchFavorites: (force?: boolean) => Promise<void>;
   fetchPersonalStyles: (force?: boolean) => Promise<void>;
   refreshAll: () => Promise<void>;
-  
+
   // Data mutations
   updateGeneration: (id: number, updates: Partial<Generation>) => void;
   removeGeneration: (id: number) => void;
@@ -41,113 +42,106 @@ const CACHE_DURATION = 5 * 60 * 1000;
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
-  
+  const supabase = useMemo(() => createClient(), []);
+
   // Data states
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [favorites, setFavorites] = useState<Generation[]>([]);
   const [personalStyles, setPersonalStyles] = useState<any[]>([]);
-  
+
   // Loading states
   const [loadingGenerations, setLoadingGenerations] = useState(false);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
   const [loadingPersonalStyles, setLoadingPersonalStyles] = useState(false);
-  
+
   // Cache timestamps
   const [lastFetchGenerations, setLastFetchGenerations] = useState(0);
   const [lastFetchFavorites, setLastFetchFavorites] = useState(0);
   const [lastFetchPersonalStyles, setLastFetchPersonalStyles] = useState(0);
 
   // Check if cache is valid
-  const isCacheValid = (lastFetch: number) => {
-    return Date.now() - lastFetch < CACHE_DURATION;
-  };
+  const isCacheValid = (lastFetch: number) => Date.now() - lastFetch < CACHE_DURATION;
 
-  // Fetch generations with caching
+  // Fetch generations with caching (client → Supabase with RLS)
   const fetchGenerations = useCallback(async (force = false) => {
     if (!user) return;
-    
-    if (!force && isCacheValid(lastFetchGenerations) && generations.length > 0) {
-      return; // Use cached data
-    }
+    if (!force && isCacheValid(lastFetchGenerations) && generations.length > 0) return;
 
     setLoadingGenerations(true);
     try {
-      const response = await fetch('/api/me/generations?page=1&pageSize=20', {
-        credentials: 'include',
-        headers: { 'Cache-Control': 'no-cache' },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setGenerations(data.generations || []);
-        setLastFetchGenerations(Date.now());
-      }
+      const pageSize = 20;
+      const { data, error } = await supabase
+        .from('generations')
+        .select('id, created_at, music_style, music_theme, model_used, is_favorited, generated_lyrics')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(0, pageSize - 1);
+
+      if (error) throw error;
+      setGenerations(data || []);
+      setLastFetchGenerations(Date.now());
     } catch (error) {
-      console.error('Error fetching generations:', error);
+      console.error('Error fetching generations (client direct):', error);
     } finally {
       setLoadingGenerations(false);
     }
-  }, [user, lastFetchGenerations]);
+  }, [user, lastFetchGenerations, supabase]);
 
-  // Fetch favorites with caching
+  // Fetch favorites with caching (lazy trigger recommended)
   const fetchFavorites = useCallback(async (force = false) => {
     if (!user) return;
-    
-    if (!force && isCacheValid(lastFetchFavorites) && favorites.length > 0) {
-      return; // Use cached data
-    }
+    if (!force && isCacheValid(lastFetchFavorites) && favorites.length > 0) return;
 
     setLoadingFavorites(true);
     try {
-      const response = await fetch('/api/me/generations?favorites=true&page=1&pageSize=20', {
-        credentials: 'include',
-        headers: { 'Cache-Control': 'no-cache' },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setFavorites(data.generations || []);
-        setLastFetchFavorites(Date.now());
-      }
+      const pageSize = 20;
+      const { data, error } = await supabase
+        .from('generations')
+        .select('id, created_at, music_style, music_theme, model_used, is_favorited, generated_lyrics')
+        .eq('user_id', user.id)
+        .eq('is_favorited', true)
+        .order('created_at', { ascending: false })
+        .range(0, pageSize - 1);
+
+      if (error) throw error;
+      setFavorites(data || []);
+      setLastFetchFavorites(Date.now());
     } catch (error) {
-      console.error('Error fetching favorites:', error);
+      console.error('Error fetching favorites (client direct):', error);
     } finally {
       setLoadingFavorites(false);
     }
-  }, [user, lastFetchFavorites]);
+  }, [user, lastFetchFavorites, supabase]);
 
-  // Fetch personal styles with caching
+  // Fetch personal styles with caching (requires active or trial user)
   const fetchPersonalStyles = useCallback(async (force = false) => {
     if (!user || !profile) return;
-    const canFetchPersonalStyles = profile?.status === 'active' || (profile?.trial_end_date && new Date(profile.trial_end_date) > new Date());
-    // 对于强制刷新（如删除/新增后），允许绕过“会员限制”，以确保UI与数据库一致
+    const canFetchPersonalStyles =
+      profile?.status === 'active' || (profile?.trial_end_date && new Date(profile.trial_end_date) > new Date());
     if (!canFetchPersonalStyles && !force) return;
-    
-    // 仅基于时间窗口做缓存，避免“空数组反复重载”的死循环
     if (!force && isCacheValid(lastFetchPersonalStyles)) return;
 
     setLoadingPersonalStyles(true);
     try {
-      const response = await fetch('/api/personal-styles?page=1&pageSize=20', {
-        credentials: 'include',
-        headers: { 'Cache-Control': 'no-cache' },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // 服务端当前返回键为 styleGroups
-        const list = data.personalStyles || data.styleGroups || [];
-        setPersonalStyles(list);
-        setLastFetchPersonalStyles(Date.now());
-      }
+      const pageSize = 20;
+      const { data, error } = await supabase
+        .from('personal_style_groups')
+        .select('id, name, created_at, personal_style_lyrics(count)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(0, pageSize - 1);
+
+      if (error) throw error;
+      setPersonalStyles(data || []);
+      setLastFetchPersonalStyles(Date.now());
     } catch (error) {
-      console.error('Error fetching personal styles:', error);
+      console.error('Error fetching personal styles (client direct):', error);
     } finally {
       setLoadingPersonalStyles(false);
     }
-  }, [user, profile, lastFetchPersonalStyles]);
+  }, [user, profile, lastFetchPersonalStyles, supabase]);
 
-  // Refresh all data
+  // Refresh all (explicit user action)
   const refreshAll = useCallback(async () => {
     await Promise.all([
       fetchGenerations(true),
@@ -156,14 +150,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ]);
   }, [fetchGenerations, fetchFavorites, fetchPersonalStyles]);
 
-  // Data mutations
+  // Data mutations (client-side state only)
   const updateGeneration = useCallback((id: number, updates: Partial<Generation>) => {
-    setGenerations(prev => prev.map(gen => 
-      gen.id === id ? { ...gen, ...updates } : gen
-    ));
-    setFavorites(prev => prev.map(gen => 
-      gen.id === id ? { ...gen, ...updates } : gen
-    ));
+    setGenerations(prev => prev.map(gen => gen.id === id ? { ...gen, ...updates } : gen));
+    setFavorites(prev => prev.map(gen => gen.id === id ? { ...gen, ...updates } : gen));
   }, []);
 
   const removeGeneration = useCallback((id: number) => {
@@ -176,28 +166,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePersonalStyle = useCallback((id: number, updates: any) => {
-    setPersonalStyles(prev => prev.map(style => 
-      style.id === id ? { ...style, ...updates } : style
-    ));
+    setPersonalStyles(prev => prev.map(style => style.id === id ? { ...style, ...updates } : style));
   }, []);
 
   const removePersonalStyle = useCallback((id: number) => {
     setPersonalStyles(prev => prev.filter(style => style.id !== id));
   }, []);
 
-  // Auto-fetch data when user changes
+  // Auto-fetch on user change: recent + personal styles only; favorites lazy
   useEffect(() => {
     if (user) {
-      // Fetch data with a small delay to avoid race conditions
       const timer = setTimeout(() => {
         fetchGenerations();
-        fetchFavorites();
         fetchPersonalStyles();
       }, 100);
-      
       return () => clearTimeout(timer);
     } else {
-      // Clear data when user logs out
       setGenerations([]);
       setFavorites([]);
       setPersonalStyles([]);

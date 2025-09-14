@@ -67,6 +67,13 @@ function DashboardContent() {
     }
   }, [user, authLoading]);
 
+  // 懒加载：切换到“收藏”时再获取
+  useEffect(() => {
+    if (activeTab === 'favorites') {
+      try { fetchFavorites(false); } catch {}
+    }
+  }, [activeTab, fetchFavorites]);
+
   // 如果正在认证加载中，显示加载页面
   if (authLoading) {
     return <LoadingPage text="Checking authentication..." />;
