@@ -1454,6 +1454,8 @@ ORDER BY tc.table_name;执行结果：
     "index_definition": "CREATE UNIQUE INDEX user_sessions_session_id_key ON public.user_sessions USING btree (session_id)"
   }
 ]
+还有执行了：
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_psg_user_created ON public.personal_style_groups (user_id, created_at DESC);
 
 
 

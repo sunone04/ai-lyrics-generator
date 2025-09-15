@@ -146,7 +146,8 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          // Preserve returnTo so callback can redirect correctly
+          redirectTo: `${window.location.origin}/auth/callback${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`,
           queryParams: { prompt: 'select_account' },
         },
       });

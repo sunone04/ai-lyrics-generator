@@ -1,11 +1,13 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
-import { createServerComponentClient } from '@/lib/supabase-server'
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
     const error = searchParams.get('error')
+    const returnTo = searchParams.get('returnTo')
 
     if (error) {
       const reason = searchParams.get('error_description') || error
@@ -13,12 +15,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    // Build redirect response first so Set-Cookie can be attached to it
+    const redirectUrl = new URL(returnTo ? decodeURIComponent(returnTo) : '/', request.url)
+    const response = NextResponse.redirect(redirectUrl)
+
     if (code) {
-      const supabase = createServerComponentClient()
-      // 服务端交换 code，设置 HttpOnly 会话 cookie，更稳定
+      const cookieStore = await cookies()
+
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll: async () => cookieStore.getAll(),
+            setAll: async (cookiesToSet) => {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                const saneOptions: any = { sameSite: 'lax', ...options }
+                if (process.env.NODE_ENV === 'production') {
+                  saneOptions.secure = true
+                }
+                response.cookies.set(name, value, saneOptions)
+              })
+            },
+          },
+        }
+      )
+
       await supabase.auth.exchangeCodeForSession(code)
 
-      // 尝试为首次登录用户自动开通 3 天试用（失败不阻断登录流程）
+      // Optional: auto-activate trial on first login
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
@@ -28,15 +53,14 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (_) {
-        // 忽略试用开通过程中的错误，确保登录可继续
+        // ignore non-critical errors
       }
     }
 
-    // 成功后回首页（如需保留 returnTo，可在发起登录时把它拼到 redirectTo）
-    const redirectUrl = new URL('/', request.url)
-    return NextResponse.redirect(redirectUrl)
+    return response
   } catch (e) {
     const url = new URL('/auth/signin?error=unexpected_error', request.url)
     return NextResponse.redirect(url)
   }
 }
+
