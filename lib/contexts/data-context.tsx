@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { GenerationListItem } from '@/lib/types';
 import { useAuth } from './auth-context';
 
@@ -41,6 +42,7 @@ const CACHE_DURATION = 5 * 60 * 1000;
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
+  const pathname = usePathname();
 
   // Data states
   const [generations, setGenerations] = useState<GenerationListItem[]>([]);
@@ -155,12 +157,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setPersonalStyles(prev => prev.filter(style => style.id !== id));
   }, []);
 
-  // Auto-fetch on user change: recent + personal styles only; favorites lazy
+  // Auto-fetch仅在相关页面触发，避免全站无谓请求消耗
   useEffect(() => {
     if (user) {
+      const onDashboard = pathname?.startsWith('/dashboard');
+      const onPersonalStyle = pathname?.startsWith('/personal-style');
+
       const timer = setTimeout(() => {
-        fetchGenerations();
-        fetchPersonalStyles();
+        if (onDashboard) fetchGenerations();
+        if (onPersonalStyle) fetchPersonalStyles();
       }, 100);
       return () => clearTimeout(timer);
     } else {
@@ -171,7 +176,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setLastFetchFavorites(0);
       setLastFetchPersonalStyles(0);
     }
-  }, [user, profile]);
+  }, [user, profile, pathname, fetchGenerations, fetchPersonalStyles]);
 
   const value = {
     generations,
