@@ -106,11 +106,12 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
       startTimeoutGuard();
 
       if (isSignUp) {
+        const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${siteOrigin}/auth/callback`,
           },
         });
         if (error) {
@@ -143,11 +144,12 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
     clearErrors();
     
     try {
+      const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Preserve returnTo so callback can redirect correctly
-          redirectTo: `${window.location.origin}/auth/callback${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`,
+          // Use configured site origin to avoid www/apex mismatch
+          redirectTo: `${siteOrigin}/auth/callback${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`,
           queryParams: { prompt: 'select_account' },
         },
       });
@@ -183,10 +185,11 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
     clearErrors();
 
     try {
+      const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: `${siteOrigin}/auth/callback` },
       });
       if (error) {
         setErrors({ general: error.message });
