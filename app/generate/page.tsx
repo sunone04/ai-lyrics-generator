@@ -100,13 +100,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
 
   const loadPersonalStyles = async () => {
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('personal_style_groups')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
-      if (!error && data) setPersonalStyles(data);
+      const res = await fetch('/api/personal-styles?page=1&pageSize=50', { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json?.styleGroups) setPersonalStyles(json.styleGroups);
     } catch (e) {
       console.error(e);
     }

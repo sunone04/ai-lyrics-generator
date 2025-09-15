@@ -1,9 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { GenerationListItem } from '@/lib/types';
 import { useAuth } from './auth-context';
-import { createClient } from '@/lib/supabase';
 
 interface DataContextType {
   // Generations data
@@ -42,7 +41,6 @@ const CACHE_DURATION = 5 * 60 * 1000;
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
-  const supabase = useMemo(() => createClient(), []);
 
   // Data states
   const [generations, setGenerations] = useState<GenerationListItem[]>([]);
@@ -62,7 +60,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Check if cache is valid
   const isCacheValid = (lastFetch: number) => Date.now() - lastFetch < CACHE_DURATION;
 
-  // Fetch generations with caching (client → Supabase with RLS)
+  // Fetch generations with caching (client → self API → server Supabase)
   const fetchGenerations = useCallback(async (force = false) => {
     if (!user) return;
     if (!force && isCacheValid(lastFetchGenerations) && generations.length > 0) return;
@@ -70,22 +68,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoadingGenerations(true);
     try {
       const pageSize = 20;
-      const { data, error } = await supabase
-        .from('generations')
-        .select('id, created_at, music_style, music_theme, model_used, is_favorited, generated_lyrics')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .range(0, pageSize - 1);
-
-      if (error) throw error;
-      setGenerations(data || []);
+      const res = await fetch(`/api/me/generations?page=1&pageSize=${pageSize}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch generations');
+      const result = await res.json();
+      setGenerations(result?.generations || []);
       setLastFetchGenerations(Date.now());
     } catch (error) {
       console.error('Error fetching generations (client direct):', error);
     } finally {
       setLoadingGenerations(false);
     }
-  }, [user, lastFetchGenerations, supabase]);
+  }, [user, lastFetchGenerations, generations.length]);
 
   // Fetch favorites with caching (lazy trigger recommended)
   const fetchFavorites = useCallback(async (force = false) => {
@@ -95,23 +88,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoadingFavorites(true);
     try {
       const pageSize = 20;
-      const { data, error } = await supabase
-        .from('generations')
-        .select('id, created_at, music_style, music_theme, model_used, is_favorited, generated_lyrics')
-        .eq('user_id', user.id)
-        .eq('is_favorited', true)
-        .order('created_at', { ascending: false })
-        .range(0, pageSize - 1);
-
-      if (error) throw error;
-      setFavorites(data || []);
+      const res = await fetch(`/api/me/generations?favorites=true&page=1&pageSize=${pageSize}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch favorites');
+      const result = await res.json();
+      setFavorites(result?.generations || []);
       setLastFetchFavorites(Date.now());
     } catch (error) {
       console.error('Error fetching favorites (client direct):', error);
     } finally {
       setLoadingFavorites(false);
     }
-  }, [user, lastFetchFavorites, supabase]);
+  }, [user, lastFetchFavorites, favorites.length]);
 
   // Fetch personal styles with caching (requires active or trial user)
   const fetchPersonalStyles = useCallback(async (force = false) => {
@@ -124,22 +111,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoadingPersonalStyles(true);
     try {
       const pageSize = 20;
-      const { data, error } = await supabase
-        .from('personal_style_groups')
-        .select('id, name, created_at, personal_style_lyrics(count)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .range(0, pageSize - 1);
-
-      if (error) throw error;
-      setPersonalStyles(data || []);
+      const res = await fetch(`/api/personal-styles?page=1&pageSize=${pageSize}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch personal styles');
+      const result = await res.json();
+      setPersonalStyles(result?.styleGroups || []);
       setLastFetchPersonalStyles(Date.now());
     } catch (error) {
       console.error('Error fetching personal styles (client direct):', error);
     } finally {
       setLoadingPersonalStyles(false);
     }
-  }, [user, profile, lastFetchPersonalStyles, supabase]);
+  }, [user, profile, lastFetchPersonalStyles]);
 
   // Refresh all (explicit user action)
   const refreshAll = useCallback(async () => {

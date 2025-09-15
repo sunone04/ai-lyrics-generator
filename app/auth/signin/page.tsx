@@ -122,12 +122,19 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
           toast.success('注册成功，请检查邮箱中的确认邮件');
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          setErrors({ general: error.message });
-        } else if (data?.user) {
+        // 改为调用服务端 API，服务端写入 HttpOnly Cookie，符合 SaaS 规范
+        const res = await fetch('/api/auth/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const result = await res.json();
+        if (!res.ok || result?.success === false) {
+          setErrors({ general: result?.error || 'Sign in failed' });
+        } else {
           toast.success('登录成功');
-          router.push(returnTo ? decodeURIComponent(returnTo) : '/');
+          // 强制整页刷新以便 AuthProvider 从服务端 Cookie 重新获取用户
+          window.location.href = returnTo ? decodeURIComponent(returnTo) : '/';
         }
       }
     } catch (error: any) {

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase';
 import { Generation, Profile } from '@/lib/types';
 import { downloadTextFile } from '@/lib/utils';
 import { LoadingPage } from '@/components/ui/loading';
@@ -49,39 +48,14 @@ function GenerationResultContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const supabase = createClient();
-        
-        // Get generation
-        let generationData, genError;
-        if (user) {
-          // If user is logged in, get their generation
-          const result = await supabase
-            .from('generations')
-            .select('*')
-            .eq('id', generationId)
-            .eq('user_id', user.id)
-            .single();
-          generationData = result.data;
-          genError = result.error;
-        } else {
-          // If no user, try to get public generation (for SEO)
-          const result = await supabase
-            .from('generations')
-            .select('*')
-            .eq('id', generationId)
-            .single();
-          generationData = result.data;
-          genError = result.error;
-        }
-
-        if (genError || !generationData) {
+        const res = await fetch(`/api/generations/${generationId}`, { cache: 'no-store' });
+        if (!res.ok) {
           toast.error('Generation not found');
           router.push('/dashboard');
           return;
         }
-
-        setGeneration(generationData);
-
+        const data = await res.json();
+        setGeneration(data?.generation || null);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Failed to load generation');
@@ -94,7 +68,7 @@ function GenerationResultContent() {
     if (!authLoading) {
       fetchData();
     }
-  }, [generationId, router, user, authLoading]);
+  }, [generationId, router, authLoading]);
 
   const handleCopy = async () => {
     if (!generation) return;
