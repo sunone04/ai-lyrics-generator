@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
     const isActiveUser = profile.status === 'active' || isInTrial;
     const maxGenerations = isActiveUser ? 30 : 1;
     const maxRewrites = isActiveUser ? 30 : 1;
-    const maxFavorites = isActiveUser ? 100 : 3;
+    // Standardize favorites limit to 300 for active/trial users
+    const maxFavorites = isActiveUser ? 300 : 3;
 
     // Derive canUse from counters to avoid RPCs
     const canGenerate = profile.generation_count < maxGenerations;

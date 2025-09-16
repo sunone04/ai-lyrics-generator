@@ -41,7 +41,8 @@ export async function GET() {
     const isActiveUser = profile.status === 'active' || isInTrial;
     const maxGenerations = isActiveUser ? 30 : 1;
     const maxRewrites = isActiveUser ? 30 : 1;
-    const maxFavorites = isActiveUser ? 100 : 3;
+    // Standardize favorites limit to 300 for active/trial users
+    const maxFavorites = isActiveUser ? 300 : 3;
 
     const usage = {
       generation: {
@@ -92,4 +93,3 @@ export async function GET() {
     return NextResponse.json({ user: null, error: 'Internal server error' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }
-

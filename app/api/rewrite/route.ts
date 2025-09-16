@@ -19,6 +19,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Enforce max length for rewrite instructions (defense-in-depth)
+    if (String(rewriteRequest).trim().length > 500) {
+      return NextResponse.json({ error: 'Rewrite instructions must be 500 characters or less' }, { status: 400 });
+    }
+
     // Check user subscription status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')

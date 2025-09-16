@@ -89,6 +89,11 @@ export default function EditPage() {
       return;
     }
 
+    if (rewriteRequest.trim().length > 500) {
+      toast.error('Rewrite instructions must be 500 characters or less');
+      return;
+    }
+
     if (!user) {
       toast.error('Please sign in to use the rewrite feature');
       router.push('/auth/signin');
@@ -410,6 +415,7 @@ export default function EditPage() {
                     value={rewriteRequest}
                     onChange={(e) => setRewriteRequest(e.target.value)}
                     rows={4}
+                    maxLength={500}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 bg-white placeholder-gray-500"
                     placeholder="e.g., Make it more emotional, change the rhyme scheme, simplify the language..."
                   />
@@ -485,4 +491,3 @@ export default function EditPage() {
 }
 
 // 注意：本页为 Client Component，不导出 revalidate/dynamic 段配置。
-

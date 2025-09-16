@@ -28,8 +28,52 @@ export async function POST(request: NextRequest) {
       syllablePattern, modelType, personalStyleId: personalStyleGroupId
     } = body || {};
 
+    // Basic required checks
     if (!language || !musicStyle || !musicTheme || !lengthOption || !lyricStyle) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Free-text length caps (defense-in-depth)
+    const LIMITS: Record<string, number> = {
+      intentOrRequest: 500,
+      artistStyle: 100,
+      melody: 120,
+      syllablePattern: 50,
+      paragraphLength: 80,
+      rhymeRequirement: 80,
+      songStructure: 60,
+      lyricStyle: 50,
+      lengthOption: 60,
+      musicTheme: 80,
+      musicStyle: 40,
+      language: 40,
+    };
+    const checkLen = (key: string, value: unknown) => {
+      const max = LIMITS[key];
+      if (!max) return null;
+      const s = typeof value === 'string' ? value.trim() : '';
+      if (s && s.length > max) return `${key} exceeds ${max} characters`;
+      return null;
+    };
+    const toCheck: Array<[string, unknown]> = [
+      ['intentOrRequest', intentOrRequest],
+      ['artistStyle', artistStyle],
+      ['melody', melody],
+      ['syllablePattern', syllablePattern],
+      ['paragraphLength', paragraphLength],
+      ['rhymeRequirement', rhymeRequirement],
+      ['songStructure', songStructure],
+      ['lyricStyle', lyricStyle],
+      ['lengthOption', lengthOption],
+      ['musicTheme', musicTheme],
+      ['musicStyle', musicStyle],
+      ['language', language],
+    ];
+    for (const [k, v] of toCheck) {
+      const err = checkLen(k, v);
+      if (err) {
+        return new Response(JSON.stringify({ error: err }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      }
     }
 
     // Usage check before any AI call

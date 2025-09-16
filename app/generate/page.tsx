@@ -61,6 +61,26 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const { isInTrial, isActiveUser } = useTrial();
   const router = useRouter();
 
+  // Max length limits for custom 'Other' inputs
+  const OTHER_LIMITS = {
+    language: 40,
+    musicStyle: 40,
+    musicTheme: 80,
+    lengthOption: 60,
+    lyricStyle: 50,
+    rhymeRequirement: 80,
+    songStructure: 60,
+  } as const;
+
+  // Max length limits for additional free-text fields
+  const FREE_TEXT_LIMITS = {
+    intentOrRequest: 500,
+    artistStyle: 100,
+    melody: 120,
+    syllablePattern: 50,
+    paragraphLength: 80,
+  } as const;
+
   const [personalStyles, setPersonalStyles] = useState<PersonalStyleGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -93,6 +113,59 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     modelType: 'basic'
   });
 
+  // 前端硬限制：当自由文本超过上限时，立即截断到上限（与 maxLength 体验一致）
+  useEffect(() => {
+    const ft = FREE_TEXT_LIMITS as Record<string, number>;
+    const updated: Partial<LyricsGenerationParams> = {};
+    let changed = false;
+    const clamp = (key: keyof typeof FREE_TEXT_LIMITS) => {
+      const v = (params as any)[key];
+      const max = ft[key];
+      if (typeof v === 'string' && v.length > max) {
+        (updated as any)[key] = v.slice(0, max);
+        changed = true;
+      }
+    };
+    clamp('intentOrRequest');
+    clamp('artistStyle');
+    clamp('melody');
+    clamp('syllablePattern');
+    clamp('paragraphLength');
+    if (changed) setParams({ ...params, ...updated });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    params.intentOrRequest,
+    params.artistStyle,
+    params.melody,
+    params.syllablePattern,
+    params.paragraphLength,
+  ]);
+
+  // 前端硬限制：Other 自定义输入的上限即时截断
+  useEffect(() => {
+    const limits = OTHER_LIMITS as Record<string, number>;
+    const next = { ...customInputs };
+    let changed = false;
+    (Object.keys(next) as Array<keyof typeof next>).forEach((key) => {
+      const v = next[key];
+      const max = limits[key as any];
+      if (typeof v === 'string' && max && v.length > max) {
+        next[key] = v.slice(0, max);
+        changed = true;
+      }
+    });
+    if (changed) setCustomInputs(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    customInputs.language,
+    customInputs.musicStyle,
+    customInputs.musicTheme,
+    customInputs.lengthOption,
+    customInputs.lyricStyle,
+    customInputs.rhymeRequirement,
+    customInputs.songStructure,
+  ]);
+
   /* 仅高级用户拉取个人风格库 */
   useEffect(() => {
     if (user && isActiveUser) loadPersonalStyles();
@@ -119,10 +192,32 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     // 校验自定义 Other 输入
     const errors: string[] = [];
     (Object.keys(customInputs) as Array<keyof typeof customInputs>).forEach((key) => {
-      if ((params as any)[key] === 'Other' && !customInputs[key].trim()) {
-        errors.push(`Please specify your ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+      if ((params as any)[key] === 'Other') {
+        const value = customInputs[key].trim();
+        if (!value) {
+          errors.push(`Please specify your ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+          return;
+        }
+        const max = (OTHER_LIMITS as any)[key] as number;
+        if (max && value.length > max) {
+          errors.push(`Please keep ${key.replace(/([A-Z])/g, ' $1').toLowerCase()} within ${max} characters`);
+        }
       }
     });
+
+    // Validate other free text fields
+    const ft = FREE_TEXT_LIMITS as Record<string, number>;
+    const checkField = (field: keyof typeof FREE_TEXT_LIMITS, label: string) => {
+      const v = (params as any)[field];
+      if (typeof v === 'string' && v.trim() && v.trim().length > ft[field]) {
+        errors.push(`${label} must be ${ft[field]} characters or less`);
+      }
+    };
+    checkField('intentOrRequest', 'Creative direction');
+    checkField('artistStyle', 'Artist style');
+    checkField('melody', 'Melody');
+    checkField('syllablePattern', 'Syllable pattern');
+    checkField('paragraphLength', 'Paragraph length');
     if (errors.length) { toast.error(errors[0]); return; }
 
     setIsLoading(true);
@@ -193,7 +288,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <select value={params.language} onChange={(e) => setParams({ ...params, language: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {FORM_OPTIONS.languages.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
-                {params.language === 'Other' && <input type="text" value={customInputs.language} onChange={(e) => setCustomInputs({ ...customInputs, language: e.target.value })} placeholder="Specify language" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+                {params.language === 'Other' && <input type="text" value={customInputs.language} onChange={(e) => setCustomInputs({ ...customInputs, language: e.target.value })} placeholder="Specify language" maxLength={OTHER_LIMITS.language} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
               </div>
               {/* Music Style */}
               <div>
@@ -201,7 +296,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <select value={params.musicStyle} onChange={(e) => setParams({ ...params, musicStyle: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {FORM_OPTIONS.musicStyles.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-                {params.musicStyle === 'Other' && <input type="text" value={customInputs.musicStyle} onChange={(e) => setCustomInputs({ ...customInputs, musicStyle: e.target.value })} placeholder="Specify style" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+                {params.musicStyle === 'Other' && <input type="text" value={customInputs.musicStyle} onChange={(e) => setCustomInputs({ ...customInputs, musicStyle: e.target.value })} placeholder="Specify style" maxLength={OTHER_LIMITS.musicStyle} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
               </div>
               {/* Theme */}
               <div>
@@ -209,7 +304,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <select value={params.musicTheme} onChange={(e) => setParams({ ...params, musicTheme: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {FORM_OPTIONS.musicThemes.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
-                {params.musicTheme === 'Other' && <input type="text" value={customInputs.musicTheme} onChange={(e) => setCustomInputs({ ...customInputs, musicTheme: e.target.value })} placeholder="Specify theme" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+                {params.musicTheme === 'Other' && <input type="text" value={customInputs.musicTheme} onChange={(e) => setCustomInputs({ ...customInputs, musicTheme: e.target.value })} placeholder="Specify theme" maxLength={OTHER_LIMITS.musicTheme} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
               </div>
               {/* Length */}
               <div>
@@ -217,7 +312,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <select value={params.lengthOption} onChange={(e) => setParams({ ...params, lengthOption: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {FORM_OPTIONS.lengthOptions.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
-                {params.lengthOption === 'Other' && <input type="text" value={customInputs.lengthOption} onChange={(e) => setCustomInputs({ ...customInputs, lengthOption: e.target.value })} placeholder="Specify length" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
+                {params.lengthOption === 'Other' && <input type="text" value={customInputs.lengthOption} onChange={(e) => setCustomInputs({ ...customInputs, lengthOption: e.target.value })} placeholder="Specify length" maxLength={OTHER_LIMITS.lengthOption} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
               </div>
             </div>
           </div>
@@ -235,7 +330,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <select value={params.lyricStyle} onChange={(e) => setParams({ ...params, lyricStyle: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                   {FORM_OPTIONS.lyricStyles.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-                {params.lyricStyle === 'Other' && <input type="text" value={customInputs.lyricStyle} onChange={(e) => setCustomInputs({ ...customInputs, lyricStyle: e.target.value })} placeholder="Specify lyric style" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
+                {params.lyricStyle === 'Other' && <input type="text" value={customInputs.lyricStyle} onChange={(e) => setCustomInputs({ ...customInputs, lyricStyle: e.target.value })} placeholder="Specify lyric style" maxLength={OTHER_LIMITS.lyricStyle} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
               </div>
               {/* Song Structure */}
               <div>
@@ -243,7 +338,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <select value={params.songStructure} onChange={(e) => setParams({ ...params, songStructure: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                   {FORM_OPTIONS.songStructures.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-                {params.songStructure === 'Other' && <input type="text" value={customInputs.songStructure} onChange={(e) => setCustomInputs({ ...customInputs, songStructure: e.target.value })} placeholder="Specify structure" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
+                {params.songStructure === 'Other' && <input type="text" value={customInputs.songStructure} onChange={(e) => setCustomInputs({ ...customInputs, songStructure: e.target.value })} placeholder="Specify structure" maxLength={OTHER_LIMITS.songStructure} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
               </div>
               {/* Rhyme */}
               <div>
@@ -251,12 +346,12 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <select value={params.rhymeRequirement} onChange={(e) => setParams({ ...params, rhymeRequirement: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                   {FORM_OPTIONS.rhymeRequirements.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
-                {params.rhymeRequirement === 'Other' && <input type="text" value={customInputs.rhymeRequirement} onChange={(e) => setCustomInputs({ ...customInputs, rhymeRequirement: e.target.value })} placeholder="Specify rhyme" className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
+                {params.rhymeRequirement === 'Other' && <input type="text" value={customInputs.rhymeRequirement} onChange={(e) => setCustomInputs({ ...customInputs, rhymeRequirement: e.target.value })} placeholder="Specify rhyme" maxLength={OTHER_LIMITS.rhymeRequirement} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
               </div>
               {/* Artist Style */}
               <div>
                 <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MicrophoneIcon className="w-5 h-5 mr-2 text-purple-600" />Artist Style Reference</label>
-                <input type="text" value={params.artistStyle} onChange={(e) => setParams({ ...params, artistStyle: e.target.value })} placeholder="e.g., Taylor Swift, Drake" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                <input type="text" value={params.artistStyle} onChange={(e) => setParams({ ...params, artistStyle: e.target.value })} placeholder="e.g., Taylor Swift, Drake" maxLength={FREE_TEXT_LIMITS.artistStyle} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
               </div>
             </div>
 
@@ -296,11 +391,11 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
               <div>
                 <label className="block text-base font-semibold text-gray-700 mb-2">Syllable Pattern</label>
-                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8-8-6-6" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8-8-6-6" maxLength={FREE_TEXT_LIMITS.syllablePattern} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
               <div>
                 <label className="block text-base font-semibold text-gray-700 mb-2">Paragraph Length Preference</label>
-                <input type="text" value={params.paragraphLength} onChange={(e) => setParams({ ...params, paragraphLength: e.target.value })} placeholder="e.g., 4 lines per verse" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                <input type="text" value={params.paragraphLength} onChange={(e) => setParams({ ...params, paragraphLength: e.target.value })} placeholder="e.g., 4 lines per verse" maxLength={FREE_TEXT_LIMITS.paragraphLength} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
             </div>
 
