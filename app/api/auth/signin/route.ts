@@ -33,9 +33,17 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 401 });
     }
+
+    // 标记前端可见的登录提示 Cookie（非 HttpOnly），用于避免匿名访问无谓的 bootstrap 请求
+    try {
+      const sane: any = { sameSite: 'lax', path: '/' };
+      if (process.env.NODE_ENV === 'production') sane.secure = true;
+      // 7 天有效期即可，用户长期登录依旧以 Supabase 会话为准
+      sane.maxAge = 60 * 60 * 24 * 7;
+      response.cookies.set('aig_auth', '1', sane);
+    } catch {}
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Unexpected error' }, { status: 500 });
   }
   return response;
 }
-

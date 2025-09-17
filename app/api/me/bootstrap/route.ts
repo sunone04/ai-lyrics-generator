@@ -1,9 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
+import { cookies } from 'next/headers';
 
 // Single bootstrap endpoint to hydrate client with auth + profile + limits
 export async function GET() {
   try {
+    // 快速返回：没有登录提示 Cookie 时直接返回匿名态，避免不必要的 Supabase 初始化
+    try {
+      const store = await cookies();
+      const hint = store.get('aig_auth');
+      if (!hint || hint.value !== '1') {
+        return NextResponse.json(
+          { user: null },
+          { headers: { 'Cache-Control': 'no-store' } }
+        );
+      }
+    } catch {}
+
     const supabase = await createServerComponentClient();
 
     // Read user from HttpOnly cookie session

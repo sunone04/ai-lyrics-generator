@@ -43,6 +43,14 @@ export async function GET(request: NextRequest) {
 
       await supabase.auth.exchangeCodeForSession(code)
 
+      // 设置前端可读的登录提示 Cookie（非 HttpOnly）
+      try {
+        const sane: any = { sameSite: 'lax', path: '/' }
+        if (process.env.NODE_ENV === 'production') sane.secure = true
+        sane.maxAge = 60 * 60 * 24 * 7 // 7 天
+        response.cookies.set('aig_auth', '1', sane)
+      } catch {}
+
       // Optional: auto-activate trial on first login
       try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -63,4 +71,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 }
-

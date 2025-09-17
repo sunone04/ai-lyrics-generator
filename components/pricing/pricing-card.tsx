@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { usePaddle } from '@/lib/hooks/use-paddle';
-import { useAuth } from '@/lib/contexts/auth-context';
+import { useOptionalAuth } from '@/lib/contexts/auth-context';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
 interface PricingPlan {
@@ -22,7 +22,8 @@ interface PricingCardProps {
 
 export default function PricingCard({ plan }: PricingCardProps) {
   const { openCheckout, isLoaded } = usePaddle();
-  const { user } = useAuth();
+  const auth = useOptionalAuth();
+  const user = auth?.user;
 
   const handleSubscribe = async () => {
     if (!isLoaded) {

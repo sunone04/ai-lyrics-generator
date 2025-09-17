@@ -25,10 +25,17 @@ export async function POST() {
     );
 
     await supabase.auth.signOut();
+
+    // 清除前端可见的登录提示 Cookie
+    try {
+      const sane: any = { sameSite: 'lax', path: '/' };
+      if (process.env.NODE_ENV === 'production') sane.secure = true;
+      sane.maxAge = 0;
+      response.cookies.set('aig_auth', '', sane);
+    } catch {}
   } catch (e) {
     // Keep response success false if needed
     return NextResponse.json({ success: false }, { status: 500 });
   }
   return response;
 }
-

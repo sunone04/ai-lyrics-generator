@@ -6,9 +6,7 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import { LazyToaster } from "@/components/ui/lazy-toaster";
 import { SITE_CONFIG } from "@/lib/constants";
-import { PaddleProvider } from "@/components/ui/paddle-provider";
-import { AuthProvider } from "@/lib/contexts/auth-context";
-import { DataProvider } from "@/lib/contexts/data-context";
+import ConditionalProviders from "@/components/layout/conditional-providers";
  
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
@@ -146,21 +144,15 @@ export default function RootLayout({
         
 
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
-      >
-        <PaddleProvider>
-          <AuthProvider>
-            <DataProvider>
-              <Navbar />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-              <LazyToaster />
-            </DataProvider>
-          </AuthProvider>
-        </PaddleProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
+        <Navbar />
+        <ConditionalProviders>
+          <main className="flex-1">
+            {children}
+          </main>
+        </ConditionalProviders>
+        <Footer />
+        <LazyToaster />
       </body>
     </html>
   );

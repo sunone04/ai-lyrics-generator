@@ -12,6 +12,21 @@ let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any
   inflight: null,
 };
 
+// 仅用于优化匿名访问：前端可读的登录提示 Cookie 名称
+const AUTH_HINT_COOKIE = 'aig_auth';
+
+function hasAuthHintCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  try {
+    const cookies = document.cookie?.split('; ').filter(Boolean) || [];
+    for (const c of cookies) {
+      const [k, v] = c.split('=');
+      if (k === AUTH_HINT_COOKIE && v === '1') return true;
+    }
+  } catch {}
+  return false;
+}
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -114,6 +129,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const init = async () => {
       try {
+        // 匿名访问优化：无登录提示 Cookie 时不触发 /api/me/bootstrap
+        if (!hasAuthHintCookie()) {
+          setUser(null);
+          setProfile(null);
+          return;
+        }
         await fetchBootstrap();
       } finally {
         setLoading(false);
@@ -152,4 +173,13 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+// 可选的 Auth 读取：在未挂载 AuthProvider 时返回 undefined
+export function useOptionalAuth() {
+  try {
+    return useContext(AuthContext);
+  } catch {
+    return undefined;
+  }
 }

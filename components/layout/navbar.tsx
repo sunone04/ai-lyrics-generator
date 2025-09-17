@@ -14,16 +14,18 @@ import {
   StarIcon,
   UserIcon
 } from '@heroicons/react/24/outline';
-import { useAuth } from '@/lib/contexts/auth-context';
-import { useTrial } from '@/lib/hooks/use-trial';
+import { useOptionalAuth } from '@/lib/contexts/auth-context';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
   const router = useRouter();
-  const { user, profile, signOut } = useAuth();
-  const { isInTrial } = useTrial();
+  const auth = useOptionalAuth();
+  const user = auth?.user || null;
+  const profile = auth?.profile || null;
+  const signOut = auth?.signOut || (async () => {});
+  const isInTrial = !!(profile?.trial_end_date && new Date(profile.trial_end_date) > new Date() && profile?.status !== 'active');
 
   const handleSignIn = () => {
     router.push('/auth/signin');
