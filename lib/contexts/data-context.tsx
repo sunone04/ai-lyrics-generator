@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import useSWR from 'swr';
 import { GenerationListItem } from '@/lib/types';
 import { useAuth } from './auth-context';
 
@@ -15,11 +16,6 @@ interface DataContextType {
   loadingGenerations: boolean;
   loadingFavorites: boolean;
   loadingPersonalStyles: boolean;
-
-  // Cache timestamps
-  lastFetchGenerations: number;
-  lastFetchFavorites: number;
-  lastFetchPersonalStyles: number;
 
   // Actions
   fetchGenerations: (force?: boolean) => Promise<void>;
@@ -37,159 +33,129 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Cache duration: 5 minutes
-const CACHE_DURATION = 5 * 60 * 1000;
-
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
   const pathname = usePathname();
 
-  // Data states
-  const [generations, setGenerations] = useState<GenerationListItem[]>([]);
-  const [favorites, setFavorites] = useState<GenerationListItem[]>([]);
-  const [personalStyles, setPersonalStyles] = useState<any[]>([]);
+  // Enable flags for on-demand SWR fetching
+  const [enableGenerations, setEnableGenerations] = useState(false);
+  const [enableFavorites, setEnableFavorites] = useState(false);
+  const [enablePersonalStyles, setEnablePersonalStyles] = useState(false);
 
-  // Loading states
-  const [loadingGenerations, setLoadingGenerations] = useState(false);
-  const [loadingFavorites, setLoadingFavorites] = useState(false);
-  const [loadingPersonalStyles, setLoadingPersonalStyles] = useState(false);
+  const pageSize = 20;
 
-  // Cache timestamps
-  const [lastFetchGenerations, setLastFetchGenerations] = useState(0);
-  const [lastFetchFavorites, setLastFetchFavorites] = useState(0);
-  const [lastFetchPersonalStyles, setLastFetchPersonalStyles] = useState(0);
+  // SWR: generations (auto on dashboard or when explicitly enabled)
+  const genKey = user && enableGenerations ? ['/api/me/generations', { page: 1, pageSize }] : null;
+  const { data: genResp, isLoading: swrLoadingGenerations, mutate: mutateGenerations } = useSWR(genKey);
+  const generations: GenerationListItem[] = (genResp?.generations as GenerationListItem[]) || [];
 
-  // Check if cache is valid
-  const isCacheValid = (lastFetch: number) => Date.now() - lastFetch < CACHE_DURATION;
+  // SWR: favorites (lazy enable on demand)
+  const favKey = user && enableFavorites ? ['/api/me/generations', { favorites: true, page: 1, pageSize }] : null;
+  const { data: favResp, isLoading: swrLoadingFavorites, mutate: mutateFavorites } = useSWR(favKey);
+  const favorites: GenerationListItem[] = (favResp?.generations as GenerationListItem[]) || [];
 
-  // Fetch generations with caching (client → self API → server Supabase)
+  // SWR: personal styles (gated by active/trial)
+  const canFetchPersonalStyles = Boolean(
+    profile?.status === 'active' || (profile?.trial_end_date && new Date(profile?.trial_end_date) > new Date())
+  );
+  const psKey = user && enablePersonalStyles && canFetchPersonalStyles ? ['/api/personal-styles', { page: 1, pageSize }] : null;
+  const { data: psResp, isLoading: swrLoadingPersonalStyles, mutate: mutatePersonalStyles } = useSWR(psKey);
+  const personalStyles: any[] = (psResp?.styleGroups as any[]) || [];
+
+  // Public loading flags
+  const loadingGenerations = Boolean(enableGenerations && swrLoadingGenerations);
+  const loadingFavorites = Boolean(enableFavorites && swrLoadingFavorites);
+  const loadingPersonalStyles = Boolean(enablePersonalStyles && swrLoadingPersonalStyles);
+
+  // On-demand fetch triggers
   const fetchGenerations = useCallback(async (force = false) => {
     if (!user) return;
-    // Cache even when the list is empty to avoid refetch loops
-    if (!force && isCacheValid(lastFetchGenerations)) return;
+    setEnableGenerations(true);
+    if (force) await mutateGenerations();
+  }, [user, mutateGenerations]);
 
-    setLoadingGenerations(true);
-    try {
-      const pageSize = 20;
-      const res = await fetch(`/api/me/generations?page=1&pageSize=${pageSize}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to fetch generations');
-      const result = await res.json();
-      setGenerations(result?.generations || []);
-      setLastFetchGenerations(Date.now());
-    } catch (error) {
-      console.error('Error fetching generations (client direct):', error);
-    } finally {
-      setLoadingGenerations(false);
-    }
-  }, [user, lastFetchGenerations]);
-
-  // Fetch favorites with caching (lazy trigger recommended)
   const fetchFavorites = useCallback(async (force = false) => {
     if (!user) return;
-    // Cache even when the list is empty to avoid unnecessary refetches
-    if (!force && isCacheValid(lastFetchFavorites)) return;
+    setEnableFavorites(true);
+    if (force) await mutateFavorites();
+  }, [user, mutateFavorites]);
 
-    setLoadingFavorites(true);
-    try {
-      const pageSize = 20;
-      const res = await fetch(`/api/me/generations?favorites=true&page=1&pageSize=${pageSize}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to fetch favorites');
-      const result = await res.json();
-      setFavorites(result?.generations || []);
-      setLastFetchFavorites(Date.now());
-    } catch (error) {
-      console.error('Error fetching favorites (client direct):', error);
-    } finally {
-      setLoadingFavorites(false);
-    }
-  }, [user, lastFetchFavorites]);
-
-  // Fetch personal styles with caching (requires active or trial user)
   const fetchPersonalStyles = useCallback(async (force = false) => {
-    if (!user || !profile) return;
-    const canFetchPersonalStyles =
-      profile?.status === 'active' || (profile?.trial_end_date && new Date(profile.trial_end_date) > new Date());
-    if (!canFetchPersonalStyles && !force) return;
-    if (!force && isCacheValid(lastFetchPersonalStyles)) return;
-
-    setLoadingPersonalStyles(true);
-    try {
-      const pageSize = 20;
-      const res = await fetch(`/api/personal-styles?page=1&pageSize=${pageSize}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to fetch personal styles');
-      const result = await res.json();
-      setPersonalStyles(result?.styleGroups || []);
-      setLastFetchPersonalStyles(Date.now());
-    } catch (error) {
-      console.error('Error fetching personal styles (client direct):', error);
-    } finally {
-      setLoadingPersonalStyles(false);
-    }
-  }, [user, profile, lastFetchPersonalStyles]);
+    if (!user) return;
+    setEnablePersonalStyles(true);
+    if (force) await mutatePersonalStyles();
+  }, [user, mutatePersonalStyles]);
 
   // Refresh all (explicit user action)
   const refreshAll = useCallback(async () => {
+    setEnableGenerations(true);
+    setEnableFavorites(true);
+    setEnablePersonalStyles(true);
     await Promise.all([
-      fetchGenerations(true),
-      fetchFavorites(true),
-      fetchPersonalStyles(true),
+      mutateGenerations(),
+      mutateFavorites(),
+      mutatePersonalStyles(),
     ]);
-  }, [fetchGenerations, fetchFavorites, fetchPersonalStyles]);
+  }, [mutateGenerations, mutateFavorites, mutatePersonalStyles]);
 
-  // Data mutations (client-side state only)
+  // Data mutations (client-side cache updates via SWR)
   const updateGeneration = useCallback((id: number, updates: Partial<GenerationListItem>) => {
-    setGenerations(prev => prev.map(gen => gen.id === id ? { ...gen, ...updates } : gen));
-    setFavorites(prev => prev.map(gen => gen.id === id ? { ...gen, ...updates } : gen));
-  }, []);
+    try {
+      mutateGenerations((cur: any) => cur ? { ...cur, generations: (cur.generations || []).map((g: any) => g.id === id ? { ...g, ...updates } : g) } : cur, { revalidate: false });
+      mutateFavorites((cur: any) => cur ? { ...cur, generations: (cur.generations || []).map((g: any) => g.id === id ? { ...g, ...updates } : g) } : cur, { revalidate: false });
+    } catch {}
+  }, [mutateGenerations, mutateFavorites]);
 
   const removeGeneration = useCallback((id: number) => {
-    setGenerations(prev => prev.filter(gen => gen.id !== id));
-    setFavorites(prev => prev.filter(gen => gen.id !== id));
-  }, []);
+    try {
+      mutateGenerations((cur: any) => cur ? { ...cur, generations: (cur.generations || []).filter((g: any) => g.id !== id) } : cur, { revalidate: false });
+      mutateFavorites((cur: any) => cur ? { ...cur, generations: (cur.generations || []).filter((g: any) => g.id !== id) } : cur, { revalidate: false });
+    } catch {}
+  }, [mutateGenerations, mutateFavorites]);
 
   const addPersonalStyle = useCallback((style: any) => {
-    setPersonalStyles(prev => [style, ...prev]);
-  }, []);
+    try {
+      mutatePersonalStyles((cur: any) => cur ? { ...cur, styleGroups: [style, ...(cur.styleGroups || [])] } : cur, { revalidate: false });
+    } catch {}
+  }, [mutatePersonalStyles]);
 
   const updatePersonalStyle = useCallback((id: number, updates: any) => {
-    setPersonalStyles(prev => prev.map(style => style.id === id ? { ...style, ...updates } : style));
-  }, []);
+    try {
+      mutatePersonalStyles((cur: any) => cur ? { ...cur, styleGroups: (cur.styleGroups || []).map((s: any) => s.id === id ? { ...s, ...updates } : s) } : cur, { revalidate: false });
+    } catch {}
+  }, [mutatePersonalStyles]);
 
   const removePersonalStyle = useCallback((id: number) => {
-    setPersonalStyles(prev => prev.filter(style => style.id !== id));
-  }, []);
+    try {
+      mutatePersonalStyles((cur: any) => cur ? { ...cur, styleGroups: (cur.styleGroups || []).filter((s: any) => s.id !== id) } : cur, { revalidate: false });
+    } catch {}
+  }, [mutatePersonalStyles]);
 
-  // Auto-fetch仅在相关页面触发，避免全站无谓请求消耗
+  // Auto-enable SWR keys on relevant pages; reset toggles on logout
   useEffect(() => {
     if (user) {
       const onDashboard = pathname?.startsWith('/dashboard');
       const onPersonalStyle = pathname?.startsWith('/personal-style');
 
       const timer = setTimeout(() => {
-        if (onDashboard) fetchGenerations();
-        if (onPersonalStyle) fetchPersonalStyles();
+        if (onDashboard) setEnableGenerations(true);
+        if (onPersonalStyle) setEnablePersonalStyles(true);
       }, 100);
       return () => clearTimeout(timer);
     } else {
-      setGenerations([]);
-      setFavorites([]);
-      setPersonalStyles([]);
-      setLastFetchGenerations(0);
-      setLastFetchFavorites(0);
-      setLastFetchPersonalStyles(0);
+      setEnableGenerations(false);
+      setEnableFavorites(false);
+      setEnablePersonalStyles(false);
     }
   }, [user, profile, pathname]);
 
-  const value = {
+  const value: DataContextType = {
     generations,
     favorites,
     personalStyles,
     loadingGenerations,
     loadingFavorites,
     loadingPersonalStyles,
-    lastFetchGenerations,
-    lastFetchFavorites,
-    lastFetchPersonalStyles,
     fetchGenerations,
     fetchFavorites,
     fetchPersonalStyles,
