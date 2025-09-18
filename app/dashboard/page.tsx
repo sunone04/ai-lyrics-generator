@@ -117,6 +117,13 @@ function DashboardContent() {
     try {
       const currentGeneration = generations.find(gen => gen.id === generationId);
       const newFavoriteStatus = !currentGeneration?.is_favorited;
+      const maxFavorites = isActiveUser ? 300 : 10;
+      const currentFavCount = profile?.favorite_count ?? 0;
+      if (newFavoriteStatus && currentFavCount >= maxFavorites) {
+        toast.error("You've reached your favorites limit. Upgrade to save more.");
+        router.push('/pricing');
+        return;
+      }
       await setFavorite(generationId, newFavoriteStatus);
       await fetchFavorites(true);
       toast.success('Favorite updated');
@@ -170,6 +177,8 @@ function DashboardContent() {
 
   const stats = getUsageStats();
   const currentList = activeTab === 'recent' ? generations : favorites;
+  const maxFavorites = isActiveUser ? 300 : 10;
+  const currentFavCount = profile?.favorite_count ?? favorites.length;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -177,6 +186,19 @@ function DashboardContent() {
         <Breadcrumbs />
         
         <div className="mt-8">
+          {currentFavCount >= maxFavorites && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
+              <div className="mt-0.5">⚠️</div>
+              <div>
+                <p className="text-sm text-yellow-800">
+                  You've reached your favorites limit ({currentFavCount}/{maxFavorites}). Remove some items or upgrade to Premium to save more.
+                </p>
+              </div>
+              <div className="ml-auto">
+                <button onClick={() => router.push('/pricing')} className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">Upgrade</button>
+              </div>
+            </div>
+          )}
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
               Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!
@@ -241,7 +263,7 @@ function DashboardContent() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Favorites</p>
-                  <p className="text-2xl font-bold text-gray-900">{favorites.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">{currentFavCount}/{maxFavorites}</p>
                 </div>
               </div>
             </div>

@@ -115,6 +115,65 @@
   }
 ]
 
+## 变更记录 2025-09-18
+将“收藏上限”免费档从 3 首提升为 10 首（会员/试用仍为 300 首）。请在数据库执行以下 SQL 更新函数：
+
+```
+-- 根据用户状态/试用期判断收藏上限（免费 10，会员/试用 300）
+CREATE OR REPLACE FUNCTION public.check_favorite_limit_with_trial(user_uuid uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+AS $$
+DECLARE
+  prof public.profiles%ROWTYPE;
+  in_trial boolean := false;
+  max_favs int := 10; -- 免费默认 10 首
+  current_favs int := 0;
+BEGIN
+  SELECT * INTO prof FROM public.profiles WHERE id = user_uuid;
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  -- 判断试用期
+  SELECT public.is_user_in_trial_period(user_uuid) INTO in_trial;
+
+  IF prof.status = 'active' OR in_trial THEN
+    max_favs := 300;
+  ELSE
+    max_favs := 10;
+  END IF;
+
+  -- 当前收藏数：可按需要改为 COUNT(*) 直接统计
+  current_favs := COALESCE(prof.favorite_count, 0);
+
+  RETURN current_favs < max_favs;
+END;
+$$;
+
+-- 兼容入口：透传到主函数
+CREATE OR REPLACE FUNCTION public.check_favorite_limit_optimized(user_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT public.check_favorite_limit_with_trial(user_uuid);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.check_favorite_limit_with_trial(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.check_favorite_limit_optimized(uuid) TO authenticated, service_role;
+```
+
+注意：
+- 本更新不会删除任何已有收藏。达到上限后仅阻止“新增收藏”。
+- 若未维护 `profiles.favorite_count`，可将函数中 `current_favs := ...` 改为：
+  `SELECT COUNT(*) FROM public.generations WHERE user_id = user_uuid AND is_favorited = true` 以实时统计。
+
+---
+
 ## 变更记录 2025-09-17
 为修复“注册时报 Database error saving new user”的问题，做了如下数据库调整并已执行：
 

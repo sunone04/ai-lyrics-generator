@@ -55,7 +55,7 @@ export async function GET() {
     const maxGenerations = isActiveUser ? 30 : 1;
     const maxRewrites = isActiveUser ? 30 : 1;
     // Standardize favorites limit to 300 for active/trial users
-    const maxFavorites = isActiveUser ? 300 : 3;
+    const maxFavorites = isActiveUser ? 300 : 10;
 
     const usage = {
       generation: {

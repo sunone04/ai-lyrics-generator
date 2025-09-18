@@ -5,6 +5,7 @@ import { PaddleProvider } from '@/components/ui/paddle-provider';
 import { AuthProvider } from '@/lib/contexts/auth-context';
 import { DataProvider } from '@/lib/contexts/data-context';
 import { SWRConfig } from 'swr';
+import toast from 'react-hot-toast';
 
 export default function ConditionalProviders({ children }: { children: ReactNode }) {
   // 全局挂载 Provider + SWRConfig，统一数据获取与缓存策略
@@ -40,6 +41,19 @@ export default function ConditionalProviders({ children }: { children: ReactNode
         revalidateOnReconnect: false,
         shouldRetryOnError: false,
         keepPreviousData: true,
+        onError: (error: any) => {
+          if (!error) return;
+          // Ignore aborts
+          if (error?.name === 'AbortError') return;
+          const msg = typeof error?.message === 'string' && error.message.trim()
+            ? error.message.trim()
+            : 'Something went wrong. Please try again.';
+          if (/failed to fetch/i.test(msg)) {
+            toast.error('Network error. Please check your connection.');
+          } else {
+            toast.error(msg);
+          }
+        },
       }}>
         <AuthProvider>
           <DataProvider>

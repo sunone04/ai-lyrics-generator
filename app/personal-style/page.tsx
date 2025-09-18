@@ -1,6 +1,8 @@
 ﻿'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Loading from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { PlusIcon, PencilIcon, TrashIcon, BookOpenIcon, SparklesIcon, ShieldCheckIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
+import { useTrial } from '@/lib/hooks/use-trial';
 // Types to match the new database structure
 interface StyleGroup {
   id: number;
@@ -25,6 +28,8 @@ interface Lyric {
 // Main Page Component
 export default function PersonalStylePage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const { isActiveUser } = useTrial();
   const { personalStyles, loadingPersonalStyles, fetchPersonalStyles } = useData();
   // Modal States
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -90,8 +95,12 @@ export default function PersonalStylePage() {
               <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mt-2">Teach the AI Your Unique Writing Style</span>
             </h1>
             <p className="mt-5 text-lg text-gray-700 leading-relaxed">
-              Save a few short lyric samples in groups and let our AI learn your voice, wording, and structure. Use your personal style in the lyric generator to produce songs that feel truly yours.
+              Create your own style library by adding short samples of lyrics you wrote. These samples act as private reference cues so the AI can write in your voice, structure, and wording — as if you wrote it yourself.
             </p>
+            <div className="mt-3 text-sm text-gray-700 bg-gray-50 inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200">
+              <ShieldCheckIcon className="w-4 h-4 text-green-600" />
+              We respect your privacy: your samples are only used at generation time as temporary references — not for model training or any other purpose.
+            </div>
             <div className="mt-6 inline-flex gap-3">
               <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-medium">Start Free Trial</Link>
               <Link href="/generate" className="px-6 py-3 rounded-lg text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 font-medium">Try The Generator</Link>
@@ -158,7 +167,27 @@ export default function PersonalStylePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       <div className="container mx-auto px-4 py-8">
         <Breadcrumbs customBreadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Personal Style Library', href: '/personal-style' }]} />
-        <Header onAddNew={() => {
+        {!isActiveUser && (
+          <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5"><SparklesIcon className="w-5 h-5 text-purple-600" /></div>
+              <div>
+                <h3 className="font-semibold text-purple-900">Premium Feature</h3>
+                <p className="text-sm text-purple-800">Personal Style Library is available for Premium members. Start a 3-day free trial or upgrade to create and use your style groups in generations.</p>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-3">
+              <Button onClick={() => router.push('/auth/signin')} className="bg-blue-600 hover:bg-blue-700">Start Free Trial</Button>
+              <Button variant="outline" onClick={() => router.push('/pricing')}>See Plans</Button>
+            </div>
+          </div>
+        )}
+        <Header isActiveUser={isActiveUser} onAddNew={() => {
+          if (!isActiveUser) {
+            toast.error('This feature is for Premium members. Start a free trial or upgrade.');
+            router.push('/pricing');
+            return;
+          }
           setEditingGroup(null);
           setIsGroupModalOpen(true);
         }} />
@@ -217,13 +246,13 @@ export default function PersonalStylePage() {
 }
 // 注意：本页为 Client Component，不导出 revalidate/dynamic 段配置。
 // Sub-components for clarity
-const Header = ({ onAddNew }: { onAddNew: () => void }) => (
+const Header = ({ isActiveUser, onAddNew }: { isActiveUser: boolean, onAddNew: () => void }) => (
   <div className="flex justify-between items-center mb-8">
     <div>
       <h1 className="text-4xl font-bold text-gray-800">Personal Style Library</h1>
-      <p className="text-xl text-gray-600 mt-2">Create style groups and add lyric samples to train the AI.</p>
+      <p className="text-xl text-gray-600 mt-2">Add your own lyric samples as private references so the AI can write in your voice. Samples are never used to train models.</p>
     </div>
-    <Button onClick={onAddNew} className="bg-blue-600 hover:bg-blue-700">
+    <Button onClick={onAddNew} className={`bg-blue-600 hover:bg-blue-700 ${!isActiveUser ? 'opacity-70' : ''}`}>
       <PlusIcon className="w-5 h-5 mr-2" />
       Create New Style
     </Button>
@@ -317,12 +346,13 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
           }
         }
         onSuccess();
+        toast.success('Saved successfully');
       } else {
-        alert(data.error || 'An error occurred.');
+        toast.error(data.error || 'An error occurred');
       }
     } catch (error) {
       console.error('Failed to save style group:', error);
-      alert('An error occurred.');
+      toast.error('An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -369,31 +399,18 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
     </Modal>
   );
 };
+import useSWR from 'swr';
 const LyricsViewerModal = ({ group, onClose, onAddLyric, onEditLyric }: {
   group: StyleGroup,
   onClose: () => void,
   onAddLyric: () => void,
   onEditLyric: (lyric: Lyric) => void
 }) => {
-  const [lyrics, setLyrics] = useState<Lyric[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const fetchLyrics = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/personal-styles/${group.id}`);
-      const data = await response.json();
-      if (data.success) {
-        setLyrics(data.styleGroup.personal_style_lyrics || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch lyrics:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [group.id]);
-  useEffect(() => {
-    fetchLyrics();
-  }, [fetchLyrics]);
+  const { data, isLoading, mutate } = useSWR(`/api/personal-styles/${group.id}` , {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+  });
+  const lyrics: Lyric[] = data?.styleGroup?.personal_style_lyrics || [];
   return (
     <Modal onClose={onClose}>
       <div className="flex justify-between items-center mb-4">
@@ -408,7 +425,7 @@ const LyricsViewerModal = ({ group, onClose, onAddLyric, onEditLyric }: {
                 <h4 className="font-semibold text-lg">{lyric.title}</h4>
                 <div className="flex space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => onEditLyric(lyric)}><PencilIcon className="w-4 h-4" /></Button>
-                  <DeleteButton id={lyric.id} onSuccess={fetchLyrics} apiPath="/api/personal-styles/lyrics" />
+                  <DeleteButton id={lyric.id} onSuccess={() => mutate()} apiPath="/api/personal-styles/lyrics" />
                 </div>
               </div>
               <p className="text-gray-600 mt-2 whitespace-pre-wrap">{lyric.lyrics}</p>
@@ -440,12 +457,13 @@ const LyricFormModal = ({ group, lyric, onClose, onSuccess }: {
       const data = await response.json();
       if (data.success) {
         onSuccess();
+        toast.success('Saved successfully');
       } else {
-        alert(data.error || 'An error occurred.');
+        toast.error(data.error || 'An error occurred');
       }
     } catch (error) {
       console.error('Failed to save lyric:', error);
-      alert('An error occurred.');
+      toast.error('An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -482,9 +500,9 @@ const LyricFormModal = ({ group, lyric, onClose, onSuccess }: {
 };
 const DeleteButton = ({ id, onSuccess, apiPath }: { id: number, onSuccess: () => void, apiPath: string }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const { removePersonalStyle } = useData();
   const handleDelete = async () => {
-    if (!confirm('Are you sure?')) return;
     setIsDeleting(true);
     try {
       const response = await fetch(`${apiPath}/${id}`, { method: 'DELETE' });
@@ -496,19 +514,33 @@ const DeleteButton = ({ id, onSuccess, apiPath }: { id: number, onSuccess: () =>
         // 触发调用方的后续刷新（如歌词列表刷新、或强制拉取）
         onSuccess();
       } else {
-        const data = await response.json();
-        alert(data.error || 'Failed to delete.');
+        const data = await response.json().catch(() => ({} as any));
+        toast.error(data.error || 'Failed to delete');
       }
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('Failed to delete.');
+      toast.error('Failed to delete');
     } finally {
       setIsDeleting(false);
     }
   };
   return (
-    <Button variant="ghost" size="sm" onClick={handleDelete} disabled={isDeleting}>
-      {isDeleting ? '...' : <TrashIcon className="w-4 h-4 text-red-500" />}
-    </Button>
+    <>
+      <Button variant="ghost" size="sm" onClick={() => setShowConfirm(true)} disabled={isDeleting}>
+        {isDeleting ? '...' : <TrashIcon className="w-4 h-4 text-red-500" />}
+      </Button>
+      {showConfirm && (
+        <Modal onClose={() => setShowConfirm(false)}>
+          <h3 className="text-lg font-semibold mb-2">Confirm Deletion</h3>
+          <p className="text-sm text-gray-600 mb-4">This action will permanently remove the item. This cannot be undone.</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={isDeleting}>Cancel</Button>
+            <Button className="bg-red-600 hover:bg-red-700" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </Modal>
+      )}
+    </>
   );
 };

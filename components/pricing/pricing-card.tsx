@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePaddle } from '@/lib/hooks/use-paddle';
+import toast from 'react-hot-toast';
 import { useOptionalAuth } from '@/lib/contexts/auth-context';
 import { CheckIcon } from '@heroicons/react/24/outline';
 
@@ -32,7 +33,9 @@ export default function PricingCard({ plan }: PricingCardProps) {
     }
 
     if (!user?.email) {
-      alert('Please sign in to subscribe.');
+      toast.error('Please sign in to subscribe');
+      const ret = encodeURIComponent('/pricing');
+      window.location.href = `/auth/signin?returnTo=${ret}`;
       return;
     }
 
@@ -48,9 +51,9 @@ export default function PricingCard({ plan }: PricingCardProps) {
         checkoutPromise,
         new Promise((resolve) => setTimeout(resolve, 10000))
       ]).catch(() => { });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to open checkout:', error);
-      alert('Failed to open payment page. Please try again.');
+      toast.error(error?.message || 'Failed to open payment page');
     }
   };
 

@@ -179,6 +179,12 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       router.push('/auth/signin?returnTo=/generate');
       return;
     }
+    // Premium gating for Personal Style
+    if (params.personalStyleId && !isActiveUser) {
+      toast.error('Personal Style is a Premium feature. Start a free trial or upgrade.');
+      router.push('/pricing');
+      return;
+    }
     // 校验自定义 Other 输入
     const errors: string[] = [];
     (Object.keys(customInputs) as Array<keyof typeof customInputs>).forEach((key) => {
