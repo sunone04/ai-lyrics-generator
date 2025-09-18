@@ -145,8 +145,8 @@ export default function RootLayout({
 
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
-        <Navbar />
         <ConditionalProviders>
+          <Navbar />
           <main className="flex-1">
             {children}
           </main>

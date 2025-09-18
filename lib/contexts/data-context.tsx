@@ -65,7 +65,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Fetch generations with caching (client → self API → server Supabase)
   const fetchGenerations = useCallback(async (force = false) => {
     if (!user) return;
-    if (!force && isCacheValid(lastFetchGenerations) && generations.length > 0) return;
+    // Cache even when the list is empty to avoid refetch loops
+    if (!force && isCacheValid(lastFetchGenerations)) return;
 
     setLoadingGenerations(true);
     try {
@@ -80,12 +81,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoadingGenerations(false);
     }
-  }, [user, lastFetchGenerations, generations.length]);
+  }, [user, lastFetchGenerations]);
 
   // Fetch favorites with caching (lazy trigger recommended)
   const fetchFavorites = useCallback(async (force = false) => {
     if (!user) return;
-    if (!force && isCacheValid(lastFetchFavorites) && favorites.length > 0) return;
+    // Cache even when the list is empty to avoid unnecessary refetches
+    if (!force && isCacheValid(lastFetchFavorites)) return;
 
     setLoadingFavorites(true);
     try {
@@ -100,7 +102,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoadingFavorites(false);
     }
-  }, [user, lastFetchFavorites, favorites.length]);
+  }, [user, lastFetchFavorites]);
 
   // Fetch personal styles with caching (requires active or trial user)
   const fetchPersonalStyles = useCallback(async (force = false) => {
@@ -176,7 +178,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setLastFetchFavorites(0);
       setLastFetchPersonalStyles(0);
     }
-  }, [user, profile, pathname, fetchGenerations, fetchPersonalStyles]);
+  }, [user, profile, pathname]);
 
   const value = {
     generations,

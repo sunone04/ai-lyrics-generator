@@ -115,6 +115,74 @@
   }
 ]
 
+## 变更记录 2025-09-17
+为修复“注册时报 Database error saving new user”的问题，做了如下数据库调整并已执行：
+
+- 修复触发函数 `public.handle_new_user()`：去除不存在的 `usage_last_reset` 字段，改为幂等插入（`ON CONFLICT (id) DO NOTHING`）。
+- 清理多种可能存在的旧触发器，统一使用标准触发器 `on_auth_user_created` 绑定到 `auth.users` 的 `AFTER INSERT`，以自动初始化 `public.profiles`。
+- 回填历史缺失的 `profiles` 行，确保已有 `auth.users` 均有对应资料。
+
+关键 SQL（摘要）：
+
+```
+-- 删除遗留触发器（如存在）
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS handle_new_user_trigger ON auth.users;
+DROP TRIGGER IF EXISTS trg_handle_new_user ON auth.users;
+DROP TRIGGER IF EXISTS trg_on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS create_profile_on_user_created ON auth.users;
+
+-- 重建修正后的函数
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (
+    id, email, status,
+    generation_count, rewrite_count, favorite_count,
+    is_admin, is_trial_used
+  )
+  VALUES (
+    NEW.id, NEW.email, 'free',
+    0, 0, 0,
+    FALSE, FALSE
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+-- 统一触发器
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_new_user();
+
+-- 清理误加过的不存在列
+ALTER TABLE public.profiles DROP COLUMN IF EXISTS usage_last_reset;
+
+-- 回填历史缺失的 profile
+INSERT INTO public.profiles (
+  id, email, status,
+  generation_count, rewrite_count, favorite_count,
+  is_admin, is_trial_used
+)
+SELECT
+  u.id, u.email, 'free',
+  0, 0, 0,
+  FALSE, FALSE
+FROM auth.users u
+LEFT JOIN public.profiles p ON p.id = u.id
+WHERE p.id IS NULL;
+```
+
+影响评估：
+- 新用户注册将稳定生成 `profiles` 记录，不再因无效列导致插入失败。
+- 既有用户若缺资料已被自动补齐，后续接口如 `/api/me/bootstrap` 将正常返回。
+
 ## 变更记录（2025-09-10）
 
 为统一“收藏上限”逻辑并确保授权完整，已对如下函数进行更新：
