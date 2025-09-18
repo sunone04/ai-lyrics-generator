@@ -1,0 +1,42 @@
+﻿const handleToggleFavorite = async (generationId: number) => {
+    if (!user) {
+      toast.error('Please sign in to manage favorites');
+      router.push('/auth/signin');
+      return;
+    }
+    
+    try {
+      // 鍏堣幏鍙栧綋鍓嶇殑favorite鐘舵€?      const currentGeneration = generations.find(gen => gen.id === generationId);
+      const newFavoriteStatus = !currentGeneration?.is_favorited;
+      // Use DataContext mutation and short-circuit legacy fetch
+      await setFavorite(generationId, newFavoriteStatus);
+      await fetchFavorites(true);
+      toast.success('Favorite updated');
+      return;
+      
+      const response = await fetch('/api/me/generations', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          generationId, 
+          isFavorited: newFavoriteStatus 
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update favorite');
+      }
+      
+      // 浣跨敤context鐨剈pdateGeneration鏂规硶鏇存柊鐘舵€?      updateGeneration(generationId, { is_favorited: newFavoriteStatus });
+
+      // 鍒锋柊鏀惰棌鍒楄〃
+      await fetchFavorites(true);
+
+      toast.success('Favorite updated');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update favorite');
+    }
+  };

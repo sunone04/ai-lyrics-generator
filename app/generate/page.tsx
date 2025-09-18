@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useData } from '@/lib/contexts/data-context';
 import { useTrial } from '@/lib/hooks/use-trial';
 import { createClient } from '@/lib/supabase';
 import { LoadingButton } from '@/components/ui/loading';
@@ -81,7 +82,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     paragraphLength: 80,
   } as const;
 
-  const [personalStyles, setPersonalStyles] = useState<PersonalStyleGroup[]>([]);
+  const { personalStyles, loadingPersonalStyles, fetchPersonalStyles } = useData();
   const [isLoading, setIsLoading] = useState(false);
 
   const [customInputs, setCustomInputs] = useState({
@@ -166,21 +167,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     customInputs.songStructure,
   ]);
 
-  /* 仅高级用户拉取个人风格库 */
+  /* 仅高级用户拉取个人风格库（SWR） */
   useEffect(() => {
-    if (user && isActiveUser) loadPersonalStyles();
-  }, [user, isActiveUser]);
-
-  const loadPersonalStyles = async () => {
-    try {
-      const res = await fetch('/api/personal-styles?page=1&pageSize=50', { cache: 'no-store' });
-      if (!res.ok) return;
-      const json = await res.json();
-      if (json?.styleGroups) setPersonalStyles(json.styleGroups);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+    if (user && isActiveUser) fetchPersonalStyles(false);
+  }, [user, isActiveUser, fetchPersonalStyles]);
 
   /* ---------- 提交 ---------- */
   const handleSubmit = async () => {
@@ -400,7 +390,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
             </div>
 
             {/* Personal Style */}
-            {user && isActiveUser && personalStyles.length > 0 && (
+            {user && isActiveUser && !loadingPersonalStyles && personalStyles.length > 0 && (
               <div className="pl-11 mt-6">
                 <label className="block text-base font-semibold text-gray-700 mb-2">Personal Style Reference (Optional)</label>
                 <select value={params.personalStyleId || ''} onChange={(e) => setParams({ ...params, personalStyleId: e.target.value ? Number(e.target.value) : undefined })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500">

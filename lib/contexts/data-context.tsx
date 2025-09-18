@@ -26,6 +26,8 @@ interface DataContextType {
   // Data mutations
   updateGeneration: (id: number, updates: Partial<GenerationListItem>) => void;
   removeGeneration: (id: number) => void;
+  setFavorite: (id: number, isFavorited: boolean) => Promise<void>;
+  deleteGenerationById: (id: number) => Promise<void>;
   addPersonalStyle: (style: any) => void;
   updatePersonalStyle: (id: number, updates: any) => void;
   removePersonalStyle: (id: number) => void;
@@ -113,6 +115,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [mutateGenerations, mutateFavorites]);
 
+  // Server mutations
+  const setFavorite = useCallback(async (id: number, isFavorited: boolean) => {
+    if (!user) throw new Error('Unauthenticated');
+    const res = await fetch('/api/me/generations', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ generationId: id, isFavorited })
+    });
+    if (!res.ok) {
+      try { const j = await res.json(); throw new Error(j?.error || 'Failed to update favorite'); } catch { throw new Error('Failed to update favorite'); }
+    }
+    updateGeneration(id, { is_favorited: isFavorited });
+  }, [user, updateGeneration]);
+
+  const deleteGenerationById = useCallback(async (id: number) => {
+    if (!user) throw new Error('Unauthenticated');
+    const res = await fetch('/api/me/generations', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ generationId: id })
+    });
+    if (!res.ok) {
+      try { const j = await res.json(); throw new Error(j?.error || 'Failed to delete generation'); } catch { throw new Error('Failed to delete generation'); }
+    }
+    removeGeneration(id);
+  }, [user, removeGeneration]);
+
   const addPersonalStyle = useCallback((style: any) => {
     try {
       mutatePersonalStyles((cur: any) => cur ? { ...cur, styleGroups: [style, ...(cur.styleGroups || [])] } : cur, { revalidate: false });
@@ -162,6 +191,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     refreshAll,
     updateGeneration,
     removeGeneration,
+    setFavorite,
+    deleteGenerationById,
     addPersonalStyle,
     updatePersonalStyle,
     removePersonalStyle,

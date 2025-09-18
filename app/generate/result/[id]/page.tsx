@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { useData } from '@/lib/contexts/data-context';
 import { User } from '@supabase/supabase-js';
 import { Generation, Profile } from '@/lib/types';
 import { downloadTextFile } from '@/lib/utils';
@@ -27,6 +28,7 @@ function GenerationResultContent() {
   const params = useParams();
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
+  const { setFavorite } = useData();
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
@@ -95,22 +97,9 @@ function GenerationResultContent() {
     setIsToggling(true);
     try {
       const newFavoriteStatus = !generation.is_favorited;
-      
-      const response = await fetch('/api/me/generations', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          generationId: generation.id,
-          isFavorited: newFavoriteStatus
-        })
-      });
-      
-      if (response.ok) {
-        setGeneration(prev => prev ? { ...prev, is_favorited: newFavoriteStatus } : null);
-        toast.success(newFavoriteStatus ? 'Added to favorites' : 'Removed from favorites');
-      } else {
-        throw new Error('Failed to toggle favorite');
-      }
+      await setFavorite(generation.id, newFavoriteStatus);
+      setGeneration(prev => prev ? { ...prev, is_favorited: newFavoriteStatus } : null);
+      toast.success(newFavoriteStatus ? 'Added to favorites' : 'Removed from favorites');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update favorite');
     } finally {

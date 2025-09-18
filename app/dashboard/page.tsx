@@ -35,8 +35,8 @@ function DashboardContent() {
     favorites, 
     loadingGenerations, 
     loadingFavorites,
-    updateGeneration,
-    removeGeneration,
+    setFavorite,
+    deleteGenerationById,
     fetchGenerations,
     fetchFavorites
   } = useData();
@@ -114,37 +114,14 @@ function DashboardContent() {
       router.push('/auth/signin');
       return;
     }
-    
     try {
-      // 先获取当前的favorite状态
       const currentGeneration = generations.find(gen => gen.id === generationId);
       const newFavoriteStatus = !currentGeneration?.is_favorited;
-      
-      const response = await fetch('/api/me/generations', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          generationId, 
-          isFavorited: newFavoriteStatus 
-        }),
-      });
-
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to update favorite');
-      }
-      
-      // 使用context的updateGeneration方法更新状态
-      updateGeneration(generationId, { is_favorited: newFavoriteStatus });
-
-      // 刷新收藏列表
+      await setFavorite(generationId, newFavoriteStatus);
       await fetchFavorites(true);
-
       toast.success('Favorite updated');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update favorite');
+      toast.error((error && error.message) || 'Failed to update favorite');
     }
   };
 
@@ -161,28 +138,12 @@ function DashboardContent() {
   const handleDeleteConfirm = async () => {
     const generationId = deleteConfirm.generationId;
     if (!generationId) return;
-    
     try {
-      const response = await fetch('/api/me/generations', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ generationId }),
-      });
-
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to delete generation');
-      }
-      
-      // 使用context的removeGeneration方法移除数据
-      removeGeneration(generationId);
-      
+      await deleteGenerationById(generationId);
       toast.success('Generation deleted');
       setDeleteConfirm({ show: false, generationId: null });
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete generation');
+      toast.error((error && error.message) || 'Failed to delete generation');
     }
   };
 
