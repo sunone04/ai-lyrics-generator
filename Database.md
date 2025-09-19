@@ -406,22 +406,7 @@ CREATE TRIGGER trg_ps_lyrics_len_wc_upd
 
 COMMIT;
 
-二、可选优化（按需执行）
 
-目的：加速“按分组取样本、按时间倒序”的查询，减少聚合/扫描。
-
-SQL：
-
-CREATE INDEX IF NOT EXISTS idx_psl_group_created
-  ON public.personal_style_lyrics (style_group_id, created_at DESC);
-
-说明：
-- 若你希望“仅付费会员（不含试用）”可用，将上面两个会员函数里的判断从
-  IF NOT (prof.status = 'active' OR in_trial) THEN
-  改为
-  IF prof.status <> 'active' THEN
-  然后重新执行这两段函数/触发器即可；
-- 本节约束与现有 RLS（只能操作自己的数据）配合使用，形成 UI/接口/DB 三层一致的生产级安全与成本控制。
 
 
 
