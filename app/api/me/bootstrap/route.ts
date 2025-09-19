@@ -2,21 +2,29 @@ import { NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 
+// Run on Edge to minimize cold-start and CPU cost
+export const runtime = 'edge';
+
 // Single bootstrap endpoint to hydrate client with auth + profile + limits
 export async function GET() {
   try {
-    const CACHE_HEADERS = {
+    const AUTH_CACHE_HEADERS = {
       'Cache-Control': 'private, max-age=30, s-maxage=0, stale-while-revalidate=60',
       'Vary': 'Cookie',
     } as const;
-    // 快速返回：没有登录提示 Cookie 时直接返回匿名态，避免不必要的 Supabase 初始化
+    const ANON_CACHE_HEADERS = {
+      'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=60',
+      'Vary': 'Cookie',
+    } as const;
+
+    // Fast path for anonymous visitors: return immediately and allow CDN cache
     try {
       const store = await cookies();
       const hint = store.get('aig_auth');
       if (!hint || hint.value !== '1') {
         return NextResponse.json(
           { user: null },
-          { headers: CACHE_HEADERS }
+          { headers: ANON_CACHE_HEADERS }
         );
       }
     } catch {}
@@ -30,7 +38,8 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ user: null }, { headers: CACHE_HEADERS });
+      // No session -> treat as anonymous and make cacheable
+      return NextResponse.json({ user: null }, { headers: ANON_CACHE_HEADERS });
     }
 
     // Fetch profile once
@@ -43,7 +52,7 @@ export async function GET() {
     if (profileError || !profile) {
       return NextResponse.json(
         { user: { id: user.id, email: user.email }, error: 'User profile not found' },
-        { status: 404, headers: CACHE_HEADERS }
+        { status: 404, headers: AUTH_CACHE_HEADERS }
       );
     }
 
@@ -103,7 +112,7 @@ export async function GET() {
         usage,
         limits,
       },
-      { headers: CACHE_HEADERS }
+      { headers: AUTH_CACHE_HEADERS }
     );
   } catch (error) {
     console.error('Error in GET /api/me/bootstrap:', error);
@@ -113,3 +122,4 @@ export async function GET() {
     );
   }
 }
+

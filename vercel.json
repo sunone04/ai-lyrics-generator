@@ -12,6 +12,13 @@
   },
   "headers": [
     {
+      "source": "/api/me/bootstrap",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=600, stale-while-revalidate=60" },
+        { "key": "Vary", "value": "Cookie" }
+      ]
+    },
+    {
       "source": "/api/(.*)",
       "headers": [
         {

@@ -13,9 +13,9 @@ let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any
 };
 
 // 仅用于优化匿名访问：前端可读的登录提示 Cookie 名称
-const AUTH_HINT_COOKIE = 'aig_auth';
+export const AUTH_HINT_COOKIE = 'aig_auth';
 
-function hasAuthHintCookie(): boolean {
+export function hasAuthHintCookie(): boolean {
   if (typeof document === 'undefined') return false;
   try {
     const cookies = document.cookie?.split('; ').filter(Boolean) || [];
@@ -126,16 +126,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchBootstrap();
   }, [fetchBootstrap]);
 
+  // 全局挂载：仅在存在登录提示 Cookie 时自动拉取，
+  // 对游客（无提示 Cookie）不触发任何 API，保持零 CPU 占用。
   useEffect(() => {
     const init = async () => {
       try {
-        // 匿名访问优化：无登录提示 Cookie 时不触发 /api/me/bootstrap
-        if (!hasAuthHintCookie()) {
-          setUser(null);
-          setProfile(null);
-          return;
+        if (hasAuthHintCookie()) {
+          await fetchBootstrap();
         }
-        await fetchBootstrap();
       } finally {
         setLoading(false);
       }

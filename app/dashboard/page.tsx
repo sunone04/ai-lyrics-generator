@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/contexts/auth-context';
+import { useAuth, hasAuthHintCookie } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
 import { useTrial } from '@/lib/hooks/use-trial';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
@@ -28,7 +28,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
   const { isActiveUser, refreshData: refreshTrialData } = useTrial();
   const { 
     generations, 
@@ -48,6 +48,8 @@ function DashboardContent() {
   // 数据获取现在由useData context处理
 
   useEffect(() => {
+    // 在仪表盘尝试只在存在提示 Cookie 时拉取用户，游客不发起请求
+    try { if (!user && hasAuthHintCookie()) void refreshProfile(); } catch {}
     const handlePaymentFeedback = () => {
       // Payment feedback via query
       const params = new URLSearchParams(window.location.search);
@@ -64,7 +66,7 @@ function DashboardContent() {
     } else if (!authLoading && !user) {
       setIsLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, refreshProfile]);
 
   // 懒加载：切换到“收藏”时再获取
   useEffect(() => {
