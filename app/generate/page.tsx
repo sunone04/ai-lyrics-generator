@@ -84,6 +84,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
 
   const { personalStyles, loadingPersonalStyles, fetchPersonalStyles } = useData();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPersonalStyle, setShowPersonalStyle] = useState(false);
 
   const [customInputs, setCustomInputs] = useState({
     language: '',
@@ -169,8 +170,8 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
 
   /* 仅高级用户拉取个人风格库（SWR） */
   useEffect(() => {
-    if (user && isActiveUser) fetchPersonalStyles(false);
-  }, [user, isActiveUser, fetchPersonalStyles]);
+    if (user && isActiveUser && showPersonalStyle) fetchPersonalStyles(false);
+  }, [user, isActiveUser, showPersonalStyle, fetchPersonalStyles]);
 
   /* ---------- 提交 ---------- */
   const handleSubmit = async () => {
@@ -395,10 +396,35 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
             </div>
 
-            {/* Personal Style */}
-            {user && isActiveUser && !loadingPersonalStyles && personalStyles.length > 0 && (
+            {user && isActiveUser && (
               <div className="pl-11 mt-6">
-                <label className="block text-base font-semibold text-gray-700 mb-2">Personal Style Reference (Optional)</label>
+                {!showPersonalStyle ? (
+                  <button
+                    type="button"
+                    onClick={() => { setShowPersonalStyle(true); fetchPersonalStyles(true); }}
+                    className="inline-flex items-center px-6 py-3 text-base font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  >
+                    Choose from Personal Style
+                  </button>
+                ) : (
+                  <>
+                    {loadingPersonalStyles && (
+                      <div className="text-sm text-gray-600">Loading personal styles...</div>
+                    )}
+                    {!loadingPersonalStyles && personalStyles.length === 0 && (
+                      <div className="text-sm text-gray-700">
+                        No personal styles yet. <Link href="/personal-style" className="text-purple-700 underline">Create one</Link>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Personal Style */}
+            {showPersonalStyle && user && isActiveUser && !loadingPersonalStyles && personalStyles.length > 0 && (
+              <div className="pl-11 mt-6">
+                <label className="block text-base font-semibold text-gray-700 mb-2">Personal Style (Optional)</label>
                 <select value={params.personalStyleId || ''} onChange={(e) => setParams({ ...params, personalStyleId: e.target.value ? Number(e.target.value) : undefined })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500">
                   <option value="">None selected</option>
                   {personalStyles.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

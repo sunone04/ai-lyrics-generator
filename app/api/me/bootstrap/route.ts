@@ -5,6 +5,10 @@ import { cookies } from 'next/headers';
 // Single bootstrap endpoint to hydrate client with auth + profile + limits
 export async function GET() {
   try {
+    const CACHE_HEADERS = {
+      'Cache-Control': 'private, max-age=30, s-maxage=0, stale-while-revalidate=60',
+      'Vary': 'Cookie',
+    } as const;
     // 快速返回：没有登录提示 Cookie 时直接返回匿名态，避免不必要的 Supabase 初始化
     try {
       const store = await cookies();
@@ -12,7 +16,7 @@ export async function GET() {
       if (!hint || hint.value !== '1') {
         return NextResponse.json(
           { user: null },
-          { headers: { 'Cache-Control': 'no-store' } }
+          { headers: CACHE_HEADERS }
         );
       }
     } catch {}
@@ -26,7 +30,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ user: null }, { headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json({ user: null }, { headers: CACHE_HEADERS });
     }
 
     // Fetch profile once
@@ -39,7 +43,7 @@ export async function GET() {
     if (profileError || !profile) {
       return NextResponse.json(
         { user: { id: user.id, email: user.email }, error: 'User profile not found' },
-        { status: 404, headers: { 'Cache-Control': 'no-store' } }
+        { status: 404, headers: CACHE_HEADERS }
       );
     }
 
@@ -99,10 +103,13 @@ export async function GET() {
         usage,
         limits,
       },
-      { headers: { 'Cache-Control': 'no-store' } }
+      { headers: CACHE_HEADERS }
     );
   } catch (error) {
     console.error('Error in GET /api/me/bootstrap:', error);
-    return NextResponse.json({ user: null, error: 'Internal server error' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(
+      { user: null, error: 'Internal server error' },
+      { status: 500, headers: { 'Cache-Control': 'no-store', 'Vary': 'Cookie' } }
+    );
   }
 }
