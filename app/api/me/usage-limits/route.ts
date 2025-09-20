@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 
+type ProfileRow = {
+  id: string;
+  status: 'free' | 'active' | 'canceled' | 'past_due';
+  generation_count: number;
+  rewrite_count: number;
+  favorite_count: number;
+  trial_start_date?: string | null;
+  trial_end_date?: string | null;
+  is_trial_used: boolean;
+};
+
 // Run on Edge to minimize cold-start for this frequent, lightweight GET
 export const runtime = 'edge';
 
@@ -19,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Single round-trip: fetch profile only
-    const { data: profile, error: profileError } = await supabase
+    const result = await supabase
       .from('profiles')
       .select([
         'id',
@@ -33,6 +44,9 @@ export async function GET(request: NextRequest) {
       ].join(','))
       .eq('id', user.id)
       .single();
+
+    const profile = result.data as unknown as ProfileRow | null;
+    const profileError = result.error;
 
     if (profileError || !profile) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
