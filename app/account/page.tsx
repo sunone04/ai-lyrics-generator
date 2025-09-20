@@ -183,7 +183,7 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* Trial Status Block */}
+        {/* Trial Status Only (auto-activation handled globally) */}
         <TrialStatus />
 
         {/* Quick Actions Card */}

@@ -112,7 +112,7 @@ export default function PersonalStylePage() {
               We respect your privacy: your samples are only used at generation time as temporary references — not for model training or any other purpose.
             </div>
             <div className="mt-6 inline-flex gap-3">
-              <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-medium">Start Free Trial</Link>
+              <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-medium">Sign In to Access</Link>
               <Link href="/generate" className="px-6 py-3 rounded-lg text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 font-medium">Try The Generator</Link>
             </div>
             <div className="mt-3 text-sm text-green-700 bg-green-50 inline-block px-3 py-1 rounded-md border border-green-200">New users get a 3‑day free trial — no credit card required</div>
@@ -183,18 +183,17 @@ export default function PersonalStylePage() {
               <div className="mt-0.5"><SparklesIcon className="w-5 h-5 text-purple-600" /></div>
               <div>
                 <h3 className="font-semibold text-purple-900">Premium Feature</h3>
-                <p className="text-sm text-purple-800">Personal Style Library is available for Premium members. Start a 3-day free trial or upgrade to create and use your style groups in generations.</p>
+                <p className="text-sm text-purple-800">Personal Style Library is available for Premium members. Eligible new users get a 3-day free trial automatically after sign-in.</p>
               </div>
             </div>
             <div className="mt-3 flex gap-3">
-              <Button onClick={() => router.push('/auth/signin')} className="bg-blue-600 hover:bg-blue-700">Start Free Trial</Button>
               <Button variant="outline" onClick={() => router.push('/pricing')}>See Plans</Button>
             </div>
           </div>
         )}
         <Header isActiveUser={isActiveUser} onAddNew={() => {
           if (!isActiveUser) {
-            toast.error('This feature is for Premium members. Start a free trial or upgrade.');
+            toast.error('This feature is for Premium members. If eligible, your free trial will activate automatically after sign-in; otherwise, please upgrade.');
             router.push('/pricing');
             return;
           }

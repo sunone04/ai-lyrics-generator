@@ -134,7 +134,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
         } else {
           toast.success('登录成功');
           // 强制整页刷新以便 AuthProvider 从服务端 Cookie 重新获取用户
-          window.location.href = returnTo ? decodeURIComponent(returnTo) : '/';
+          window.location.href = returnTo ? decodeURIComponent(returnTo) : '/account';
         }
       }
     } catch (error: any) {

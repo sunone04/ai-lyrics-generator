@@ -17,6 +17,11 @@ export interface PaddleCheckoutOptions {
   customData?: Record<string, any>;
 }
 
+export type PaddleCheckoutResult =
+  | { status: 'completed'; data?: any }
+  | { status: 'closed' }
+  | { status: 'error'; error: any };
+
 export function usePaddle() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +42,7 @@ export function usePaddle() {
     return () => clearInterval(interval);
   }, []);
 
-  const openCheckout = useCallback(async (options: PaddleCheckoutOptions) => {
+  const openCheckout = useCallback(async (options: PaddleCheckoutOptions): Promise<PaddleCheckoutResult> => {
     if (!isLoaded) {
       throw new Error('Paddle not loaded');
     }
@@ -56,7 +61,8 @@ export function usePaddle() {
           quantity: 1
         }],
         settings: {
-          successUrl: options.successUrl || `${window.location.origin}/dashboard`,
+          // Do not force a redirect by default; keep overlay UX
+          ...(options.successUrl ? { successUrl: options.successUrl } : {}),
           locale: 'en'
         }
       };
@@ -73,7 +79,7 @@ export function usePaddle() {
         checkoutOptions.customData = options.customData;
       }
 
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<PaddleCheckoutResult>((resolve) => {
         window.Paddle.Checkout.open({
           ...checkoutOptions,
           onLoaded: () => {
@@ -82,15 +88,15 @@ export function usePaddle() {
           onError: (error: any) => {
             console.error('Paddle checkout error:', error);
             // Treat as closed so UI can recover
-            resolve();
+            resolve({ status: 'error', error });
           },
           onComplete: (data: any) => {
             // Paddle checkout completed
-            resolve();
+            resolve({ status: 'completed', data });
           },
           onClose: () => {
             // Ensure callers can stop loading when user closes overlay
-            resolve();
+            resolve({ status: 'closed' });
           }
         });
       });

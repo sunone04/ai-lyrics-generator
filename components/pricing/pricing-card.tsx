@@ -40,17 +40,27 @@ export default function PricingCard({ plan }: PricingCardProps) {
     }
 
     try {
-      const checkoutPromise = openCheckout({
+      const result = await openCheckout({
         priceId: plan.priceId || undefined,
         customerEmail: user.email,
-        successUrl: `${window.location.origin}/dashboard`,
-        customData: { plan_name: plan.name }
+        // No redirect by default; keep in overlay and handle via events
+        customData: { plan_name: plan.name, user_id: user.id }
       });
-      // No loading state; just fire and forget with a soft timeout to surface errors in console
-      Promise.race([
-        checkoutPromise,
-        new Promise((resolve) => setTimeout(resolve, 10000))
-      ]).catch(() => { });
+
+      if (result.status === 'completed') {
+        toast.success('Payment successful. Updating membership...');
+        try {
+          await auth?.refreshProfile?.();
+          toast.success('Membership updated!');
+        } catch {
+          // Even if refresh fails, the webhook will update shortly
+        }
+      } else if (result.status === 'error') {
+        toast.error('Payment failed. Please try again.');
+      } else {
+        // closed
+        // No toast needed; user just closed the checkout
+      }
     } catch (error: any) {
       console.error('Failed to open checkout:', error);
       toast.error(error?.message || 'Failed to open payment page');

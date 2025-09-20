@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { Profile } from '@/lib/types';
+import type { User, Session } from '@supabase/supabase-js';
+import type { Profile } from '@/lib/types';
 
-// 轻量去重缓存：避免在路由快速切换或并发初始化时重复请求 /api/me/bootstrap
+// Lightweight dedupe cache to avoid duplicate /api/me/bootstrap requests during fast route switches
 const BOOTSTRAP_DEDUPE_MS = 3000;
 let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any> | null } = {
   data: null,
@@ -12,7 +12,7 @@ let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any
   inflight: null,
 };
 
-// 仅用于优化匿名访问：前端可读的登录提示 Cookie 名称
+// Front-end readable login hint cookie name (to avoid anon bootstrap calls)
 export const AUTH_HINT_COOKIE = 'aig_auth';
 
 export function hasAuthHintCookie(): boolean {
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchBootstrap = useCallback(async () => {
     try {
-      // 命中本地短期缓存
+      // Prefer short-term local cache
       if (Date.now() < bootstrapCache.expiresAt && bootstrapCache.data) {
         const data = bootstrapCache.data;
         if (!data?.user) {
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return u;
       }
 
-      // 合并并发请求
+      // Merge concurrent in-flight
       if (bootstrapCache.inflight) {
         const data = await bootstrapCache.inflight;
         if (!data?.user) {
@@ -77,7 +77,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const inflight = (async () => {
         const res = await fetch('/api/me/bootstrap', { cache: 'no-store' });
         const data = await res.json();
-        // 设置短期缓存
         bootstrapCache.data = data;
         bootstrapCache.expiresAt = Date.now() + BOOTSTRAP_DEDUPE_MS;
         return data;
@@ -86,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bootstrapCache.inflight = inflight;
       const data = await inflight;
       bootstrapCache.inflight = null;
+
       if (!data?.user) {
         setUser(null);
         setProfile(null);
@@ -109,8 +109,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             trialStartDate: trial.trialStartDate,
             trialEndDate: trial.trialEndDate,
             loading: false,
-          };
+          } as any;
           localStorage.setItem(cacheKey, JSON.stringify({ value, expiresAt: Date.now() + TTL }));
+
+          // Automatic trial activation on first eligible login (non-blocking)
+          try {
+            const alreadyTriedKey = `trial_auto_activated_v1:${u.id}`;
+            const alreadyTried = localStorage.getItem(alreadyTriedKey);
+            const isActive = (data.profile as any)?.status === 'active';
+            if (!alreadyTried && !isActive && value.canUseTrial && !value.isInTrial) {
+              // Mark as tried; if activation fails, remove to allow future retry
+              localStorage.setItem(alreadyTriedKey, '1');
+              (async () => {
+                try {
+                  const res = await fetch('/api/trial/activate', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                  if (res.ok) {
+                    try { await fetchBootstrap(); } catch {}
+                  } else {
+                    try { localStorage.removeItem(alreadyTriedKey); } catch {}
+                  }
+                } catch {
+                  try { localStorage.removeItem(alreadyTriedKey); } catch {}
+                }
+              })();
+            }
+          } catch {}
         }
       } catch {}
 
@@ -126,8 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchBootstrap();
   }, [fetchBootstrap]);
 
-  // 全局挂载：仅在存在登录提示 Cookie 时自动拉取，
-  // 对游客（无提示 Cookie）不触发任何 API，保持零 CPU 占用。
+  // Mount: only fetch when login hint cookie exists; avoid any API for anonymous users
   useEffect(() => {
     const init = async () => {
       try {
@@ -173,11 +195,12 @@ export function useAuth() {
   return context;
 }
 
-// 可选的 Auth 读取：在未挂载 AuthProvider 时返回 undefined
+// Optional: safe read when provider not mounted; returns undefined
 export function useOptionalAuth() {
   try {
     return useContext(AuthContext);
   } catch {
-    return undefined;
+    return undefined as any;
   }
 }
+

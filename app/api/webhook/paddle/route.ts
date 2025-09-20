@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Invalid request' }, { status: 400 });
     }
 
-    // 3. 检查timestamp是否过期（5秒内）
+    // 3. 检查timestamp是否过期（容忍 5 分钟内，避免网络抖动）
     const timestampInt = parseInt(timestamp) * 1000;
     if (isNaN(timestampInt)) {
       console.error('Invalid timestamp format');
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
     }
 
     const currentTime = Date.now();
-    if (currentTime - timestampInt > 5000) {
-      console.error('Webhook event expired (timestamp is over 5 seconds old)');
+    if (currentTime - timestampInt > 5 * 60 * 1000) {
+      console.error('Webhook event expired (timestamp is over 5 minutes old)');
       return NextResponse.json({ message: 'Event expired' }, { status: 408 });
     }
 
@@ -55,8 +55,10 @@ export async function POST(request: NextRequest) {
       .update(signedPayload, 'utf8')
       .digest('hex');
 
-    // 6. 比较签名
-    if (!timingSafeEqual(Buffer.from(hashedPayload), Buffer.from(signature))) {
+    // 6. 比较签名（使用恒定时间比较，先确保长度一致）
+    const hashBuf = Buffer.from(hashedPayload, 'hex');
+    const sigBuf = Buffer.from(signature, 'hex');
+    if (hashBuf.length !== sigBuf.length || !timingSafeEqual(hashBuf, sigBuf)) {
       console.error('Computed signature does not match Paddle signature');
       return NextResponse.json({ message: 'Invalid signature' }, { status: 401 });
     }
@@ -80,6 +82,26 @@ export async function POST(request: NextRequest) {
           event_type: String(eventType),
           payload: bodyJson,
         });
+
+      // Opportunistic immediate handling (in addition to queue):
+      // If custom_data carries user_id and event denotes a successful transaction,
+      // mark the user's profile as active to unblock access quickly.
+      try {
+        const cd = (bodyJson?.data?.custom_data || bodyJson?.data?.customData || bodyJson?.custom_data || bodyJson?.customData) as any;
+        const userId = cd?.user_id || cd?.userId;
+
+        const et = String(eventType || '').toLowerCase();
+        const isPaid = et.includes('transaction.completed') || et.includes('payment.succeeded');
+
+        if (userId && isPaid) {
+          await admin
+            .from('profiles')
+            .update({ status: 'active', updated_at: new Date().toISOString() })
+            .eq('id', userId);
+        }
+      } catch (e) {
+        // Non-critical; queue processor remains source of truth
+      }
     } catch (e) {
       // 冲突等错误可忽略（幂等）
       console.warn('enqueue webhook failed (ignored):', (e as any)?.message);

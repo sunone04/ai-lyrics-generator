@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+
+export const runtime = 'edge'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -16,7 +18,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Build redirect response first so Set-Cookie can be attached to it
-    const redirectUrl = new URL(returnTo ? decodeURIComponent(returnTo) : '/', request.url)
+    // Default to account page after sign-in (avoid dashboard by default)
+    const redirectUrl = new URL(returnTo ? decodeURIComponent(returnTo) : '/account', request.url)
     const response = NextResponse.redirect(redirectUrl)
 
     if (code) {
@@ -51,18 +54,7 @@ export async function GET(request: NextRequest) {
         response.cookies.set('aig_auth', '1', sane)
       } catch {}
 
-      // Optional: auto-activate trial on first login
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: canUseTrial } = await supabase.rpc('can_user_use_trial', { user_uuid: user.id })
-          if (canUseTrial) {
-            await supabase.rpc('activate_user_trial', { user_uuid: user.id })
-          }
-        }
-      } catch (_) {
-        // ignore non-critical errors
-      }
+      // Keep callback minimal: no trial RPCs here to reduce latency and errors
     }
 
     return response

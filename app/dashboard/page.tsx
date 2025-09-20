@@ -9,7 +9,7 @@ import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { LoadingPage } from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
-import { TrialActivation, TrialStatus } from '@/components/ui/trial-activation';
+import { TrialStatus } from '@/components/ui/trial-activation';
 import { 
   HeartIcon, 
   ClockIcon, 
@@ -98,7 +98,7 @@ function DashboardContent() {
                 Please sign in to access your dashboard and view your generation history.
               </p>
               <button
-                onClick={() => router.push('/auth/signin?returnTo=/dashboard')}
+                onClick={() => router.push('/auth/signin?returnTo=/account')}
                 className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
               >
                 Sign In to Continue
@@ -282,17 +282,6 @@ function DashboardContent() {
               </div>
             </div>
           </div>
-
-          {/* Trial Activation */}
-          <TrialActivation 
-            className="mb-6" 
-            onActivated={() => {
-              refreshTrialData();
-              toast.success('Free trial activated! Enjoy 3 days of premium features.');
-            }}
-          />
-
-
 
           {/* Subscription Status */}
           {profile && (

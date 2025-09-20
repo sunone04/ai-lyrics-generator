@@ -45,7 +45,18 @@ export async function GET() {
     // Fetch profile once
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select([
+        'id',
+        'status',
+        'generation_count',
+        'rewrite_count',
+        'favorite_count',
+        'trial_start_date',
+        'trial_end_date',
+        'is_trial_used',
+        'subscription_start_date',
+        'subscription_end_date'
+      ].join(','))
       .eq('id', user.id)
       .single();
 
@@ -122,4 +133,3 @@ export async function GET() {
     );
   }
 }
-

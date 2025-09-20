@@ -59,7 +59,7 @@ function GenerateContent() {
 /* ========== 表单主组件 ========== */
 function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const { user, loading: userLoading } = useAuth();
-  const { isInTrial, isActiveUser } = useTrial();
+  const { isInTrial, isActiveUser, canUseTrial } = useTrial();
   const router = useRouter();
 
   // Max length limits for custom 'Other' inputs
@@ -182,7 +182,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     }
     // Premium gating for Personal Style
     if (params.personalStyleId && !isActiveUser) {
-      toast.error('Personal Style is a Premium feature. Start a free trial or upgrade.');
+      toast.error('Personal Style is a Premium feature. If eligible, your free trial will activate automatically after sign-in; otherwise, please upgrade.');
       router.push('/pricing');
       return;
     }
@@ -453,9 +453,17 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                   <div className="flex items-center justify-between mb-1"><h3 className="text-base font-bold text-gray-900">Standard Quality</h3><span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">Free</span></div>
                   <p className="text-sm text-gray-600">Great quality for everyday lyrics creation</p>
                 </div>
-                <div onClick={() => {
+                <div onClick={async () => {
                   if (!user) { toast.error('Please sign in'); router.push('/auth/signin?returnTo=/generate'); return; }
-                  if (!isInTrial && !isActiveUser) { toast.error('Pro model requires subscription'); return; }
+                  if (!isInTrial && !isActiveUser) {
+                    if (canUseTrial) {
+                      // Auto activation runs in background after login; guide user to retry shortly
+                      toast('Preparing your free trial... Please try again in a moment.', { icon: '⏳' } as any);
+                    } else {
+                      toast.error('Pro model requires subscription');
+                    }
+                    return;
+                  }
                   setParams({ ...params, modelType: 'pro' });
                 }} className={`p-4 border rounded-xl cursor-pointer transition-all ${params.modelType === 'pro' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'} ${!user || (!isInTrial && !isActiveUser) ? 'opacity-75' : ''}`}>
                   <div className="flex items-center justify-between mb-1"><h3 className="text-base font-bold text-gray-900">Premium Quality</h3><span className="text-sm bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold">Premium</span></div>
