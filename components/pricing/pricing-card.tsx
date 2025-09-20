@@ -51,14 +51,32 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
       if (result.status === 'completed') {
         toast.success('Payment successful. Updating membership...');
-        try {
-          // Force-bust cache to reflect fresh subscription state immediately
-          await auth?.refreshProfile?.(true);
-          toast.success('Membership updated! Redirecting...');
-        } catch {
-          // Even if refresh fails, the webhook will update shortly
-        }
-        // Navigate to the homepage after successful recharge
+        // 先尝试立即刷新
+        try { await auth?.refreshProfile?.(true); } catch {}
+
+        // 轮询最多 ~20s 等待后端（webhook/队列）完成写入，避免用户手动刷新
+        const waitUntilActive = async (timeoutMs = 20000, intervalMs = 1500) => {
+          const start = Date.now();
+          while (Date.now() - start < timeoutMs) {
+            try {
+              const res = await fetch('/api/me/bootstrap', { cache: 'no-store' });
+              if (res.ok) {
+                const data = await res.json();
+                const st = data?.profile?.status;
+                if (st === 'active') return true;
+              }
+            } catch {}
+            await new Promise((r) => setTimeout(r, intervalMs));
+          }
+          return false;
+        };
+
+        try { await waitUntilActive(); } catch {}
+
+        try { await auth?.refreshProfile?.(true); } catch {}
+        toast.success('Membership updated! Redirecting...');
+
+        // 成功后跳回首页
         try { router.push('/'); } catch { window.location.href = '/'; }
       } else if (result.status === 'error') {
         toast.error('Payment failed. Please try again.');

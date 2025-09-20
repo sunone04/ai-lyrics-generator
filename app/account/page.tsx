@@ -12,6 +12,7 @@ import {
   ChartBarIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
+import { CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
 import { useTrial } from '@/lib/hooks/use-trial';
 import { TrialStatus } from '@/components/ui/trial-activation';
@@ -201,6 +202,18 @@ export default function AccountPage() {
                 <span className="font-medium text-gray-900">View Dashboard</span>
               </div>
               <ArrowRightIcon className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            {/* Pricing Link */}
+            <Link
+              href="/pricing"
+              className="flex items-center justify-between w-full p-3 text-left bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group"
+            >
+              <div className="flex items-center space-x-3">
+                <CurrencyDollarIcon className="w-5 h-5 text-purple-600" />
+                <span className="font-medium text-gray-900">View Pricing</span>
+              </div>
+              <ArrowRightIcon className="w-5 h-5 text-purple-600 group-hover:translate-x-1 transition-transform" />
             </Link>
 
             {/* Reset Password */}
