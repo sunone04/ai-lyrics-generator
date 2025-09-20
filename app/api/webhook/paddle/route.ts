@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
       // Opportunistic immediate handling (in addition to queue):
       // If custom_data carries user_id and event denotes a successful transaction,
-      // mark the user's profile as active to unblock access quickly.
+      // mark the user's profile as active and seed start/end dates to improve UX.
       try {
         const cd = (bodyJson?.data?.custom_data || bodyJson?.data?.customData || bodyJson?.custom_data || bodyJson?.customData) as any;
         const userId = cd?.user_id || cd?.userId;
@@ -94,9 +94,43 @@ export async function POST(request: NextRequest) {
         const isPaid = et.includes('transaction.completed') || et.includes('payment.succeeded');
 
         if (userId && isPaid) {
+          // Best-effort extraction of price/interval info from payload
+          const data: any = bodyJson?.data || {};
+          const items: any[] = (data.items || data.order?.items || []);
+          const first = items && items.length > 0 ? items[0] : undefined;
+          const price = first?.price || {};
+          const priceId = first?.price?.id || first?.price_id || first?.priceId || null;
+          const cycle = price?.billing_cycle || price?.billing_period || {};
+          const interval: string | null = (cycle?.interval || null);
+          const frequency: number = Number(cycle?.frequency || 1) || 1;
+          const now = new Date();
+          const startIso = now.toISOString();
+          // Compute a naive end date based on interval/frequency when available
+          const end = new Date(now.getTime());
+          try {
+            if (interval === 'year' || interval === 'annual' || interval === 'yearly') {
+              end.setFullYear(end.getFullYear() + frequency);
+            } else {
+              // default to month if not specified
+              end.setMonth(end.getMonth() + frequency);
+            }
+          } catch {}
+          const endIso = end.toISOString();
+
+          const update: Record<string, any> = {
+            status: 'active',
+            updated_at: startIso,
+            subscription_start_date: startIso,
+            subscription_end_date: endIso,
+            next_billing_date: endIso,
+          };
+          if (priceId) update.active_price_id = String(priceId);
+          const subscriptionId = data?.subscription_id || data?.subscription?.id || null;
+          if (subscriptionId) update.paddle_subscription_id = String(subscriptionId);
+
           await admin
             .from('profiles')
-            .update({ status: 'active', updated_at: new Date().toISOString() })
+            .update(update)
             .eq('id', userId);
         }
       } catch (e) {

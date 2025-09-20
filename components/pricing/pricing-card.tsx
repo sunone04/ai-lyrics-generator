@@ -5,6 +5,7 @@ import { usePaddle } from '@/lib/hooks/use-paddle';
 import toast from 'react-hot-toast';
 import { useOptionalAuth } from '@/lib/contexts/auth-context';
 import { CheckIcon } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
 
 interface PricingPlan {
   name: string;
@@ -25,6 +26,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
   const { openCheckout, isLoaded } = usePaddle();
   const auth = useOptionalAuth();
   const user = auth?.user;
+  const router = useRouter();
 
   const handleSubscribe = async () => {
     if (!isLoaded) {
@@ -50,11 +52,14 @@ export default function PricingCard({ plan }: PricingCardProps) {
       if (result.status === 'completed') {
         toast.success('Payment successful. Updating membership...');
         try {
-          await auth?.refreshProfile?.();
-          toast.success('Membership updated!');
+          // Force-bust cache to reflect fresh subscription state immediately
+          await auth?.refreshProfile?.(true);
+          toast.success('Membership updated! Redirecting...');
         } catch {
           // Even if refresh fails, the webhook will update shortly
         }
+        // Navigate to the homepage after successful recharge
+        try { router.push('/'); } catch { window.location.href = '/'; }
       } else if (result.status === 'error') {
         toast.error('Payment failed. Please try again.');
       } else {

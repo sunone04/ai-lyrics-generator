@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Build redirect response first so Set-Cookie can be attached to it
-    // Default to account page after sign-in (avoid dashboard by default)
-    const redirectUrl = new URL(returnTo ? decodeURIComponent(returnTo) : '/account', request.url)
+    // Default to homepage after sign-in
+    const redirectUrl = new URL(returnTo ? decodeURIComponent(returnTo) : '/', request.url)
     const response = NextResponse.redirect(redirectUrl)
 
     if (code) {

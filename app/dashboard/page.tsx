@@ -98,7 +98,7 @@ function DashboardContent() {
                 Please sign in to access your dashboard and view your generation history.
               </p>
               <button
-                onClick={() => router.push('/auth/signin?returnTo=/account')}
+                onClick={() => router.push('/auth/signin?returnTo=/')}
                 className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
               >
                 Sign In to Continue

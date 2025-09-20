@@ -33,7 +33,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: (force?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -145,7 +145,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (force?: boolean) => {
+    try {
+      if (force) {
+        // Bust short-term cache to guarantee fresh data immediately
+        bootstrapCache = { data: null, expiresAt: 0, inflight: null };
+      }
+    } catch {}
     await fetchBootstrap();
   }, [fetchBootstrap]);
 
@@ -203,4 +209,3 @@ export function useOptionalAuth() {
     return undefined as any;
   }
 }
-
