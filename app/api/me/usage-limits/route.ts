@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 
+// Run on Edge to minimize cold-start for this frequent, lightweight GET
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
@@ -18,7 +21,16 @@ export async function GET(request: NextRequest) {
     // Single round-trip: fetch profile only
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select([
+        'id',
+        'status',
+        'generation_count',
+        'rewrite_count',
+        'favorite_count',
+        'trial_start_date',
+        'trial_end_date',
+        'is_trial_used'
+      ].join(','))
       .eq('id', user.id)
       .single();
 
@@ -44,7 +56,8 @@ export async function GET(request: NextRequest) {
     const maxGenerations = isActiveUser ? 30 : 1;
     const maxRewrites = isActiveUser ? 30 : 1;
     // Standardize favorites limit to 300 for active/trial users
-    const maxFavorites = isActiveUser ? 300 : 3;
+    // Free tier favorite cap aligned to 10 (per PRD/Database.md)
+    const maxFavorites = isActiveUser ? 300 : 10;
 
     // Derive canUse from counters to avoid RPCs
     const canGenerate = profile.generation_count < maxGenerations;

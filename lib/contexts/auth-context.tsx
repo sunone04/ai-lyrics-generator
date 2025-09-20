@@ -5,7 +5,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import type { Profile } from '@/lib/types';
 
 // Lightweight dedupe cache to avoid duplicate /api/me/bootstrap requests during fast route switches
-const BOOTSTRAP_DEDUPE_MS = 3000;
+const BOOTSTRAP_DEDUPE_MS = 5000;
 let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any> | null } = {
   data: null,
   expiresAt: 0,
