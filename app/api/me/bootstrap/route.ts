@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
 
+type BootProfile = {
+  id: string;
+  status: 'free' | 'active' | 'canceled' | 'past_due';
+  generation_count: number;
+  rewrite_count: number;
+  favorite_count: number;
+  trial_start_date?: string | null;
+  trial_end_date?: string | null;
+  is_trial_used: boolean;
+  subscription_start_date?: string | null;
+  subscription_end_date?: string | null;
+};
+
 // Run on Edge to minimize cold-start and CPU cost
 export const runtime = 'edge';
 
@@ -43,7 +56,7 @@ export async function GET() {
     }
 
     // Fetch profile once
-    const { data: profile, error: profileError } = await supabase
+    const { data: row, error: profileError } = await supabase
       .from('profiles')
       .select([
         'id',
@@ -60,12 +73,14 @@ export async function GET() {
       .eq('id', user.id)
       .single();
 
-    if (profileError || !profile) {
+    if (profileError || !row) {
       return NextResponse.json(
         { user: { id: user.id, email: user.email }, error: 'User profile not found' },
         { status: 404, headers: AUTH_CACHE_HEADERS }
       );
     }
+
+    const profile = (row as unknown) as BootProfile;
 
     // Derive trial flags from profile
     const now = new Date();

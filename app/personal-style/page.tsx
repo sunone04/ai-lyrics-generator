@@ -41,6 +41,17 @@ export default function PersonalStylePage() {
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [editingLyric, setEditingLyric] = useState<Lyric | null>(null);
 
+  // Remove legacy garbled trial message node if present (defensive cleanup)
+  useEffect(() => {
+    try {
+      const sel = 'div.mt-3.text-sm.text-green-700.bg-green-50.inline-block.px-3.py-1.rounded-md.border.border-green-200';
+      const el = document.querySelector(sel) as HTMLElement | null;
+      if (el && /free\s*trial/i.test(el.innerText || '')) {
+        el.remove();
+      }
+    } catch {}
+  }, []);
+
   // Try to hydrate auth only when a login hint cookie exists (avoids anon requests)
   useEffect(() => {
     try {
@@ -115,6 +126,7 @@ export default function PersonalStylePage() {
               <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-medium">Sign In to Access</Link>
               <Link href="/generate" className="px-6 py-3 rounded-lg text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 font-medium">Try The Generator</Link>
             </div>
+            <div className="mt-3 text-sm text-green-700 bg-green-50 inline-block px-3 py-1 rounded-md border border-green-200">Eligible new users get a 3-day free trial automatically after sign-in</div>
             <div className="mt-3 text-sm text-green-700 bg-green-50 inline-block px-3 py-1 rounded-md border border-green-200">New users get a 3‑day free trial — no credit card required</div>
           </div>
 
