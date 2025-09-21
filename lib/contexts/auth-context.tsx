@@ -44,10 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchBootstrap = useCallback(async () => {
+  const fetchBootstrap = useCallback(async (force?: boolean) => {
     try {
       // Prefer short-term local cache
-      if (Date.now() < bootstrapCache.expiresAt && bootstrapCache.data) {
+      if (!force && Date.now() < bootstrapCache.expiresAt && bootstrapCache.data) {
         const data = bootstrapCache.data;
         if (!data?.user) {
           setUser(null);
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Merge concurrent in-flight
-      if (bootstrapCache.inflight) {
+      if (!force && bootstrapCache.inflight) {
         const data = await bootstrapCache.inflight;
         if (!data?.user) {
           setUser(null);
@@ -124,7 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 try {
                   const res = await fetch('/api/trial/activate', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                   if (res.ok) {
-                    try { await fetchBootstrap(); } catch {}
+                    // Force-refresh bootstrap to immediately reflect Trial status
+                    try { await fetchBootstrap(true); } catch {}
+                    // Notify listeners that trial status may have changed
+                    try { window.dispatchEvent(new CustomEvent('trial:changed')); } catch {}
                   } else {
                     try { localStorage.removeItem(alreadyTriedKey); } catch {}
                   }
@@ -152,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         bootstrapCache = { data: null, expiresAt: 0, inflight: null };
       }
     } catch {}
-    await fetchBootstrap();
+    await fetchBootstrap(force);
   }, [fetchBootstrap]);
 
   // Mount: only fetch when login hint cookie exists; avoid any API for anonymous users

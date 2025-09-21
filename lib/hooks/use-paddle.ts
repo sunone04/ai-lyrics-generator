@@ -27,19 +27,41 @@ export function usePaddle() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    let intervalId: any = null;
+    let attempts = 0;
+    const maxAttempts = 50; // ~10s at 200ms
+
     const checkPaddleLoaded = () => {
-      if (window.Paddle && (window.Paddle.Initialized || typeof window.Paddle.Checkout?.open === 'function')) {
-        setIsLoaded(true);
+      try {
+        if (window.Paddle && (window.Paddle.Initialized || typeof window.Paddle.Checkout?.open === 'function')) {
+          setIsLoaded(true);
+          if (intervalId) { clearInterval(intervalId); intervalId = null; }
+          return;
+        }
+      } catch {}
+      attempts += 1;
+      if (attempts >= maxAttempts && intervalId) {
+        // Stop polling after max attempts to avoid fluid CPU usage
+        clearInterval(intervalId);
+        intervalId = null;
       }
     };
 
-    // 检查Paddle是否已加载
+    // Immediate check, then short-term polling until ready
     checkPaddleLoaded();
-    
-    // 监听Paddle加载完成
-    const interval = setInterval(checkPaddleLoaded, 200);
-    
-    return () => clearInterval(interval);
+    intervalId = setInterval(checkPaddleLoaded, 200);
+
+    // Also respond to explicit provider event
+    const onReady = () => {
+      setIsLoaded(true);
+      if (intervalId) { clearInterval(intervalId); intervalId = null; }
+    };
+    window.addEventListener('paddle:ready', onReady);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      window.removeEventListener('paddle:ready', onReady);
+    };
   }, []);
 
   const openCheckout = useCallback(async (options: PaddleCheckoutOptions): Promise<PaddleCheckoutResult> => {

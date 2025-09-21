@@ -285,21 +285,7 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* Blog Categories for Mobile */}
-            <div className="pl-4">
-              <div className="text-gray-500 text-sm font-medium mb-2">Blog Categories</div>
-              {BLOG_CATEGORIES.map((category) => (
-                <Link
-                  key={category.slug}
-                  href={`/blog/category/${category.slug}`}
-                  prefetch={false}
-                  className="text-gray-600 hover:text-blue-600 block px-3 py-1 text-sm"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {category.name}
-                </Link>
-              ))}
-            </div>
+            {/* Mobile: keep blog simple; no categories list */}
 
             {/* User actions for mobile */}
             <div className="border-t border-gray-200 pt-4">

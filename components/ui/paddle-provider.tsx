@@ -44,6 +44,7 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
         window.Paddle.Environment.set(config.environment);
         window.Paddle.Initialize({ token: config.clientId });
         try { (window.Paddle as any).Initialized = true; } catch {}
+        try { window.dispatchEvent(new Event('paddle:ready')); } catch {}
       }
     };
 
@@ -57,4 +58,3 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-

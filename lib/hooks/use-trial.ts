@@ -254,6 +254,46 @@ export function useTrial() {
     }
   }, [user, fetchTrialStatus]);
 
+  // Keep trial status in sync with profile changes for immediate UI updates
+  useEffect(() => {
+    try {
+      if (!user || !profile) return;
+      const now = new Date();
+      const trialStart = profile.trial_start_date ? new Date(profile.trial_start_date) : null;
+      const trialEnd = profile.trial_end_date ? new Date(profile.trial_end_date) : null;
+      const isInTrial = Boolean(trialStart && trialEnd && now >= trialStart && now <= trialEnd);
+      const canUseTrial = Boolean(!profile.is_trial_used && profile.status !== 'active' && (!trialEnd || now > trialEnd));
+      const nextStatus: TrialStatus = {
+        isInTrial,
+        canUseTrial,
+        trialStartDate: profile.trial_start_date || undefined,
+        trialEndDate: profile.trial_end_date || undefined,
+        isTrialUsed: !!profile.is_trial_used,
+        loading: false,
+      };
+      setTrialStatus(nextStatus);
+      // Update local cache so initial reads reuse it
+      try {
+        const cacheKey = `${TRIAL_CACHE_KEY_PREFIX}:${user.id}`;
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({ value: nextStatus, expiresAt: Date.now() + TRIAL_CACHE_TTL_MS })
+        );
+      } catch {}
+    } catch {}
+  }, [user, profile]);
+
+  // Listen for global trial change signal to refresh status
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => {
+      // Best-effort refresh from API; falls back to profile sync
+      try { void fetchTrialStatus(); } catch {}
+    };
+    window.addEventListener('trial:changed', handler);
+    return () => window.removeEventListener('trial:changed', handler);
+  }, [fetchTrialStatus]);
+
   // Calculate trial time remaining
   const getTrialTimeRemaining = () => {
     if (!trialStatus.trialEndDate) return null;
