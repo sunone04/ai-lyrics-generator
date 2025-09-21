@@ -61,6 +61,8 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
   const { user, loading: userLoading } = useAuth();
   const { isInTrial, isActiveUser, canUseTrial } = useTrial();
   const router = useRouter();
+  // Optional regen flag carried via URL when coming from a prior result
+  const incomingRegen = (typeof window !== 'undefined') ? (searchParams.get('regen') || '') : '';
 
   // Max length limits for custom 'Other' inputs
   const OTHER_LIMITS = {
@@ -234,6 +236,9 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       Object.entries(final).forEach(([k, v]) => {
         if (v !== undefined && v !== null) qs.set(k, String(v));
       });
+      if (incomingRegen) {
+        qs.set('regen', incomingRegen);
+      }
       router.push(`/generate/result/live?${qs.toString()}`);
     } catch (e: any) {
       toast.error(e.message || 'Generation failed');

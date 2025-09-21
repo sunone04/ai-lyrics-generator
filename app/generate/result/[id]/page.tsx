@@ -127,6 +127,8 @@ function GenerationResultContent() {
       syllablePattern: generation?.syllable_pattern || '',
       modelType: generation?.model_used || 'basic'
     });
+    // Mark as regeneration intent (slightly higher temperature downstream)
+    searchParams.set('regen', '1');
     
     router.push(`/generate?${searchParams.toString()}`);
   };

@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
       language, musicStyle, musicTheme, lengthOption, lyricStyle,
       intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement,
       songStructure, paragraphLength, bpm, useBpm, melody,
-      syllablePattern, modelType, personalStyleId: personalStyleGroupId
+      syllablePattern, modelType, personalStyleId: personalStyleGroupId,
+      regen
     } = body || {};
 
     // Basic required checks
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     // Simple dedup within warm instance
     const dedupTtlMinutes = parseInt(process.env.DEDUP_TTL_MINUTES || '120', 10);
-    const hashKey = paramsHash({ userId: user.id, language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType, personalStyleGroupId });
+    const hashKey = paramsHash({ userId: user.id, language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType, personalStyleGroupId, regen: !!regen });
     const cached = dedupCache.get(hashKey);
     if (cached && cached.expiresAt > Date.now()) {
       return new Response(JSON.stringify({ cached: true, result: cached.result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
     userLocks.set(user.id, current + 1);
 
     const encoder = new TextEncoder();
-    const firstChunkTimeout = parseInt(process.env.FIRST_CHUNK_TIMEOUT_MS || '30000', 10);
+    const firstChunkTimeout = parseInt(process.env.FIRST_CHUNK_TIMEOUT_MS || '45000', 10);
     const totalSoftTimeout = parseInt(process.env.TOTAL_SOFT_TIMEOUT_MS || '180000', 10);
     const heartbeatMs = parseInt(process.env.HEARTBEAT_INTERVAL_MS || '15000', 10);
 
@@ -157,10 +158,8 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         const heartbeat = setInterval(() => {
-          // send comment heartbeat only when no chunk yet
-          if (!firstChunkSent) {
-            controller.enqueue(encoder.encode(`: ping\n\n`));
-          }
+          // send SSE comment heartbeat periodically to keep connections alive (mobile/background)
+          try { controller.enqueue(encoder.encode(`: ping\n\n`)); } catch {}
         }, heartbeatMs);
 
         const firstChunkTimer = setTimeout(() => {
@@ -187,6 +186,7 @@ export async function POST(request: NextRequest) {
             { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
             personalStyleSample || undefined,
             upstreamAbortController.signal,
+            Boolean(regen),
           )) {
             if (!firstChunkSent) firstChunkSent = true;
             fullLyrics += chunk;

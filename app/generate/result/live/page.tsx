@@ -45,6 +45,7 @@ function LiveGenerationContent() {
   const melody = searchParams.get('melody') || '';
   const syllablePattern = searchParams.get('syllablePattern') || '';
   const modelType = (searchParams.get('modelType') as 'basic' | 'pro') || 'basic';
+  const regen = searchParams.get('regen') === '1' || searchParams.get('regen') === 'true';
 
   useEffect(() => {
     const startGeneration = async () => {
@@ -76,7 +77,8 @@ function LiveGenerationContent() {
             useBpm,
             melody,
             syllablePattern,
-            modelType
+            modelType,
+            regen
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -122,47 +124,108 @@ function LiveGenerationContent() {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
+        // Inactivity timeout: reset on every chunk; avoid aborting on mobile background
+        const resetTimeout = () => {
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
+          timeoutRef.current = setTimeout(() => {
+            setStatus(prev => ({ 
+              ...prev, 
+              status: 'timeout',
+              error: 'Generation timed out. Please try again.'
+            }));
+            try { abortControllerRef.current?.abort(); } catch {}
+          }, 120000);
+        };
+        // Replace initial 60s timer with a 2‑minute inactivity timer
+        try { if (timeoutRef.current) clearTimeout(timeoutRef.current); } catch {}
+        resetTimeout();
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            // Decode incrementally to handle multibyte boundaries
+            buffer += decoder.decode(value, { stream: true });
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6));
-                  
-                  if (data.type === 'chunk') {
-                    setStatus(prev => ({
-                      ...prev,
-                      liveText: prev.liveText + data.content
-                    }));
-                  } else if (data.type === 'complete') {
-                    clearTimeout(timeoutRef.current!);
-                    setStatus(prev => ({
-                      ...prev,
-                      status: 'completed',
-                      generationId: Date.now().toString(),
-                      totalTime: Date.now() - startTimeRef.current
-                    }));
-                    return;
-                  } else if (data.type === 'error') {
-                    clearTimeout(timeoutRef.current!);
-                    setStatus(prev => ({
-                      ...prev,
-                      status: 'error',
-                      error: data.message || 'Generation failed'
-                    }));
-                    return;
-                  }
-                } catch (parseError) {
-                  console.warn('Failed to parse SSE data:', parseError);
+            // Process complete SSE events separated by double newlines
+            let sepIndex: number;
+            while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+              const eventBlock = buffer.slice(0, sepIndex);
+              buffer = buffer.slice(sepIndex + 2);
+
+              // Ignore comment/heartbeat lines starting with ':'
+              const lines = eventBlock.split('\n').filter(l => l.trim() && !l.startsWith(':'));
+              const dataLines = lines.filter(l => l.startsWith('data:'));
+              if (dataLines.length === 0) continue;
+
+              // Concatenate possible multi-line data
+              const dataPayload = dataLines
+                .map(l => l.slice(5).trimStart())
+                .join('\n');
+
+              try {
+                const data = JSON.parse(dataPayload);
+
+                if (data.type === 'chunk') {
+                  setStatus(prev => ({
+                    ...prev,
+                    liveText: prev.liveText + (data.content || '')
+                  }));
+                  resetTimeout();
+                } else if (data.type === 'complete') {
+                  clearTimeout(timeoutRef.current!);
+                  setStatus(prev => ({
+                    ...prev,
+                    status: 'completed',
+                    generationId: Date.now().toString(),
+                    totalTime: Date.now() - startTimeRef.current
+                  }));
+                  return;
+                } else if (data.type === 'error') {
+                  clearTimeout(timeoutRef.current!);
+                  setStatus(prev => ({
+                    ...prev,
+                    status: 'error',
+                    error: data.message || 'Generation failed'
+                  }));
+                  return;
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', parseError);
+              }
+            }
+          }
+
+          // Flush any remaining buffered event on stream end
+          if (buffer.trim()) {
+            try {
+              const lines = buffer.split('\n').filter(l => l.trim() && !l.startsWith(':'));
+              const dataLines = lines.filter(l => l.startsWith('data:'));
+              if (dataLines.length) {
+                const dataPayload = dataLines.map(l => l.slice(5).trimStart()).join('\n');
+                const data = JSON.parse(dataPayload);
+                if (data.type === 'chunk' && data.content) {
+                  setStatus(prev => ({ ...prev, liveText: prev.liveText + data.content }));
+                  resetTimeout();
+                } else if (data.type === 'complete') {
+                  clearTimeout(timeoutRef.current!);
+                  setStatus(prev => ({
+                    ...prev,
+                    status: 'completed',
+                    generationId: Date.now().toString(),
+                    totalTime: Date.now() - startTimeRef.current
+                  }));
+                } else if (data.type === 'error') {
+                  clearTimeout(timeoutRef.current!);
+                  setStatus(prev => ({ ...prev, status: 'error', error: data.message || 'Generation failed' }));
                 }
               }
+            } catch (parseError) {
+              console.warn('Failed to parse trailing SSE data:', parseError);
             }
           }
         } finally {
@@ -206,13 +269,14 @@ function LiveGenerationContent() {
       try { abortControllerRef.current?.abort(); } catch {}
     };
     const handleVisibility = () => {
-      if (document.hidden) handlePageHide();
+      // disabled: keep streaming when tab is hidden
     };
-    window.addEventListener('pagehide', handlePageHide);
-    document.addEventListener('visibilitychange', handleVisibility);
+    // disabled on mobile: do not abort on background
+    // window.addEventListener('pagehide', handlePageHide);
+    // document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      window.removeEventListener('pagehide', handlePageHide);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      // window.removeEventListener('pagehide', handlePageHide);
+      // document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -395,9 +459,9 @@ function LiveGenerationContent() {
         <ul className="text-sm text-blue-700 space-y-1">
           <li>• Concurrent generation limit: 1 per user</li>
           <li>• Parameter deduplication: 2-hour cache</li>
-          <li>• First chunk timeout: 30 seconds</li>
-          <li>• Total soft timeout: 2 minutes</li>
-          <li>• Heartbeat only during idle periods</li>
+          <li>• First chunk timeout: 45 seconds</li>
+          <li>• Total soft timeout: 3 minutes</li>
+          <li>• Periodic heartbeat to keep connection alive</li>
         </ul>
       </div>
     </div>
@@ -411,5 +475,3 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
-

@@ -38,11 +38,11 @@ export class AIService {
     };
 
     if (isRegeneration) {
-      // Higher temperature for regeneration to create more diverse content
+      // Slightly higher temperature for regeneration (subtle variation)
       config.generationConfig = {
-        temperature: 1.3,              // High creativity for regeneration
-        topP: 0.95,                   // Diverse vocabulary selection
-        topK: 40,                     // Balanced word choice diversity
+        temperature: 1.1,
+        topP: 0.95,
+        topK: 40,
         maxOutputTokens: 1800,
         candidateCount: 1,
       };
@@ -73,9 +73,14 @@ export class AIService {
    * Stream lyrics generation using Gemini streaming API
    * Yields incremental text chunks to enable real-time UI updates
    */
-  async *streamGenerateLyrics(params: LyricsGenerationParams, personalStyle?: PersonalStyle | PersonalStyle[], abortSignal?: AbortSignal): AsyncGenerator<string> {
+  async *streamGenerateLyrics(
+    params: LyricsGenerationParams,
+    personalStyle?: PersonalStyle | PersonalStyle[],
+    abortSignal?: AbortSignal,
+    isRegeneration: boolean = false,
+  ): AsyncGenerator<string> {
 
-    const model = this.getModel(params.modelType);
+    const model = this.getModel(params.modelType, isRegeneration);
     const prompt = this.buildGenerationPrompt(params, personalStyle);
 
     try {
