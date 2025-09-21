@@ -7,6 +7,8 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 const MAX_OUTPUT_CHARS: number = parseInt(process.env.AI_MAX_OUTPUT_CHARS || '6000');
 // 外部网络软超时（毫秒），默认 45000ms；用于首个响应或整体请求
 const NETWORK_SOFT_TIMEOUT_MS: number = parseInt(process.env.AI_NETWORK_SOFT_TIMEOUT_MS || '45000');
+// 最大输出 token 数（控制模型何时停止）
+const MAX_OUTPUT_TOKENS: number = parseInt(process.env.AI_MAX_OUTPUT_TOKENS || '4096');
 
 export class AIService {
   private getModel(modelType: 'basic' | 'pro', isRegeneration: boolean = false) {
@@ -43,7 +45,7 @@ export class AIService {
         temperature: 1.1,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 1800,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
         candidateCount: 1,
       };
     } else {
@@ -52,7 +54,7 @@ export class AIService {
       config.generationConfig = {
         topP: 0.95,                   // Diverse vocabulary selection
         topK: 40,                     // Balanced word choice diversity
-        maxOutputTokens: 1800,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
         candidateCount: 1,
       };
       // Note: temperature is not set, so Gemini uses its default
@@ -101,12 +103,12 @@ export class AIService {
         try {
           const delta: string = typeof value.text === 'function' ? value.text() : '';
           if (delta && delta.length > 0) {
-            const remaining = MAX_OUTPUT_CHARS - total;
+            const remaining = (parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000')) - total;
             if (remaining <= 0) break;
             const chunk = delta.length > remaining ? delta.slice(0, remaining) : delta;
             total += chunk.length;
             yield chunk;
-            if (total >= MAX_OUTPUT_CHARS) break;
+            if (total >= parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000')) break;
           }
         } catch (_err) {
           // 忽略无法解析的块
@@ -255,8 +257,8 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
         throw new Error('Generated lyrics are too short. Please try again.');
       }
       // 截断至最大字符数
-      if (lyrics.length > MAX_OUTPUT_CHARS) {
-        lyrics = lyrics.slice(0, MAX_OUTPUT_CHARS);
+      if (lyrics.length > (parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'))) {
+        lyrics = lyrics.slice(0, parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'));
       }
       
       return lyrics.trim();
@@ -288,7 +290,7 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
         try {
           const delta: string = typeof value.text === 'function' ? value.text() : '';
           if (delta && delta.length > 0) {
-            const remaining = MAX_OUTPUT_CHARS - total;
+            const remaining = (parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000')) - total;
             if (remaining <= 0) break;
             
             const chunk = remaining < delta.length ? delta.slice(0, remaining) : delta;
@@ -397,8 +399,8 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
       if (lyrics.length < 50) {
         throw new Error('Generated lyrics are too short. Please try again.');
       }
-      if (lyrics.length > MAX_OUTPUT_CHARS) {
-        lyrics = lyrics.slice(0, MAX_OUTPUT_CHARS);
+      if (lyrics.length > (parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'))) {
+        lyrics = lyrics.slice(0, parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'));
       }
       
       return lyrics.trim();

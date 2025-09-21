@@ -144,89 +144,60 @@ function LiveGenerationContent() {
         resetTimeout();
 
         try {
+          const processEventBlock = (eventBlock: string) => {
+            const normalized = eventBlock.replace(/\r\n/g, '\n');
+            const lines = normalized.split('\n').filter(l => l.trim() && !l.startsWith(':'));
+            const dataLines = lines.filter(l => l.startsWith('data:'));
+            if (dataLines.length === 0) return;
+
+            const dataPayload = dataLines.map(l => l.slice(5).trimStart()).join('\n');
+            try {
+              const data = JSON.parse(dataPayload);
+              if (data.type === 'chunk') {
+                setStatus(prev => ({ ...prev, liveText: prev.liveText + (data.content || '') }));
+                resetTimeout();
+              } else if (data.type === 'complete') {
+                clearTimeout(timeoutRef.current!);
+                setStatus(prev => ({
+                  ...prev,
+                  status: 'completed',
+                  generationId: Date.now().toString(),
+                  totalTime: Date.now() - startTimeRef.current
+                }));
+              } else if (data.type === 'error') {
+                clearTimeout(timeoutRef.current!);
+                setStatus(prev => ({ ...prev, status: 'error', error: data.message || 'Generation failed' }));
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse SSE data:', parseError);
+            }
+          };
+
+          const findSep = (buf: string) => {
+            const idxLF = buf.indexOf('\n\n');
+            const idxCRLF = buf.indexOf('\r\n\r\n');
+            if (idxLF === -1) return idxCRLF;
+            if (idxCRLF === -1) return idxLF;
+            return Math.min(idxLF, idxCRLF);
+          };
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            // Decode incrementally to handle multibyte boundaries
             buffer += decoder.decode(value, { stream: true });
 
-            // Process complete SSE events separated by double newlines
             let sepIndex: number;
-            while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+            while ((sepIndex = findSep(buffer)) !== -1) {
               const eventBlock = buffer.slice(0, sepIndex);
-              buffer = buffer.slice(sepIndex + 2);
-
-              // Ignore comment/heartbeat lines starting with ':'
-              const lines = eventBlock.split('\n').filter(l => l.trim() && !l.startsWith(':'));
-              const dataLines = lines.filter(l => l.startsWith('data:'));
-              if (dataLines.length === 0) continue;
-
-              // Concatenate possible multi-line data
-              const dataPayload = dataLines
-                .map(l => l.slice(5).trimStart())
-                .join('\n');
-
-              try {
-                const data = JSON.parse(dataPayload);
-
-                if (data.type === 'chunk') {
-                  setStatus(prev => ({
-                    ...prev,
-                    liveText: prev.liveText + (data.content || '')
-                  }));
-                  resetTimeout();
-                } else if (data.type === 'complete') {
-                  clearTimeout(timeoutRef.current!);
-                  setStatus(prev => ({
-                    ...prev,
-                    status: 'completed',
-                    generationId: Date.now().toString(),
-                    totalTime: Date.now() - startTimeRef.current
-                  }));
-                  return;
-                } else if (data.type === 'error') {
-                  clearTimeout(timeoutRef.current!);
-                  setStatus(prev => ({
-                    ...prev,
-                    status: 'error',
-                    error: data.message || 'Generation failed'
-                  }));
-                  return;
-                }
-              } catch (parseError) {
-                console.warn('Failed to parse SSE data:', parseError);
-              }
+              const sep = buffer.substr(sepIndex, 4) === '\r\n\r\n' ? '\r\n\r\n' : '\n\n';
+              buffer = buffer.slice(sepIndex + sep.length);
+              processEventBlock(eventBlock);
             }
           }
 
-          // Flush any remaining buffered event on stream end
           if (buffer.trim()) {
-            try {
-              const lines = buffer.split('\n').filter(l => l.trim() && !l.startsWith(':'));
-              const dataLines = lines.filter(l => l.startsWith('data:'));
-              if (dataLines.length) {
-                const dataPayload = dataLines.map(l => l.slice(5).trimStart()).join('\n');
-                const data = JSON.parse(dataPayload);
-                if (data.type === 'chunk' && data.content) {
-                  setStatus(prev => ({ ...prev, liveText: prev.liveText + data.content }));
-                  resetTimeout();
-                } else if (data.type === 'complete') {
-                  clearTimeout(timeoutRef.current!);
-                  setStatus(prev => ({
-                    ...prev,
-                    status: 'completed',
-                    generationId: Date.now().toString(),
-                    totalTime: Date.now() - startTimeRef.current
-                  }));
-                } else if (data.type === 'error') {
-                  clearTimeout(timeoutRef.current!);
-                  setStatus(prev => ({ ...prev, status: 'error', error: data.message || 'Generation failed' }));
-                }
-              }
-            } catch (parseError) {
-              console.warn('Failed to parse trailing SSE data:', parseError);
-            }
+            processEventBlock(buffer);
           }
         } finally {
           reader.releaseLock();
@@ -300,7 +271,7 @@ function LiveGenerationContent() {
   const getStatusText = () => {
     switch (status.status) {
       case 'connecting':
-        return 'Connecting to AI service...';
+        return 'AI is thinking...';
       case 'generating':
         return 'AI is generating your lyrics...';
       case 'completed':
