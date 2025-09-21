@@ -236,7 +236,7 @@ function GenerationResultContent() {
         },
         body: JSON.stringify({
           originalLyrics: generation.generated_lyrics,
-          selectedPortion: selectedText,
+          selectedText: selectedText,
           rewriteRequest: rewriteRequest,
           modelType: generation.model_used || 'basic'
         }),
@@ -704,7 +704,7 @@ function GenerationResultContent() {
           {/* Privacy Notice */}
           <div className="mt-6 text-center">
             <p className="text-lg text-gray-700 font-semibold">
-              🔒 Based on privacy protection, your lyrics will be stored for a maximum of 24 hours. 
+              🔒 Based on privacy protection, your lyrics are stored for up to 3 days. 
               Please download or favorite them in time.
             </p>
           </div>

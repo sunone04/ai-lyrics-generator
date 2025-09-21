@@ -115,6 +115,66 @@
   }
 ]
 
+## 定时清理策略（每3天）
+
+为满足“未收藏的歌词每3天清理一次”的新策略，推荐在 Supabase 使用 pg_cron 安排一个清理任务。该任务仅删除未收藏且创建时间早于3天的记录；被标记为收藏（is_favorited = true）的记录不受影响。
+
+注意：下述 SQL 假设已启用 pg_cron（本实例已存在 `cron.job` 等对象）。请使用拥有足够权限的角色执行（如 SQL 编辑器默认的 postgres 角色）。
+
+1) 索引优化（可选但推荐）
+
+```
+-- 加速按收藏状态与创建时间筛选的删除操作
+CREATE INDEX IF NOT EXISTS idx_generations_fav_created_at
+  ON public.generations (is_favorited, created_at);
+```
+
+2) 清理函数
+
+```
+-- 删除 3 天前创建、且未收藏的歌词记录
+CREATE OR REPLACE FUNCTION public.purge_unfavorited_generations()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  DELETE FROM public.generations g
+  WHERE g.is_favorited = false
+    AND g.created_at < (now() AT TIME ZONE 'utc') - interval '3 days';
+END;
+$$;
+
+-- 建议将函数所有者设置为具备删除权限的角色（如 postgres）
+ALTER FUNCTION public.purge_unfavorited_generations()
+  OWNER TO postgres;
+```
+
+3) 创建 cron 任务（每3天在 03:00 UTC 运行一次）
+
+```
+-- 表达式：0 3 */3 * *   => 每 3 天的 03:00（UTC）
+SELECT cron.schedule(
+  'purge_unfavorited_generations_every_3_days',
+  '0 3 */3 * *',
+  $$SELECT public.purge_unfavorited_generations();$$
+);
+```
+
+4) 如需取消或重新安排
+
+```
+-- 取消任务
+SELECT cron.unschedule('purge_unfavorited_generations_every_3_days');
+
+-- 重新安排示例：改为每日 03:00 运行（仅示例）
+SELECT cron.schedule(
+  'purge_unfavorited_generations_every_3_days',
+  '0 3 * * *',
+  $$SELECT public.purge_unfavorited_generations();$$
+);
+```
+
 ## 变更记录 2025-09-18
 将“收藏上限”免费档从 3 首提升为 10 首（会员/试用仍为 300 首）。请在数据库执行以下 SQL 更新函数：
 

@@ -65,7 +65,7 @@ const faqData: FAQItem[] = [
   {
     category: 'Privacy & Security',
     question: 'How long do you store my lyrics?',
-    answer: 'For privacy protection, unfavorited lyrics are automatically deleted after 24 hours. Lyrics you favorite are stored permanently in your account. We recommend downloading or favoriting important lyrics promptly.'
+    answer: 'For privacy protection, unfavorited lyrics are automatically deleted after 3 days. Lyrics you favorite are stored permanently in your account. We recommend downloading or favoriting important lyrics promptly.'
   },
   {
     category: 'Privacy & Security',

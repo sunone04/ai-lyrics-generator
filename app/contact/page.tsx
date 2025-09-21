@@ -102,7 +102,7 @@ export default function ContactPage() {
                   </div>
                   
                   <div>
-                    <h4 className="font-medium text-gray-900">Why are my lyrics deleted after 24 hours?</h4>
+                    <h4 className="font-medium text-gray-900">Why are my lyrics deleted after 3 days?</h4>
                     <p className="text-gray-600 text-sm">
                       For privacy protection, unfavorited lyrics are automatically deleted. Use the favorite feature to keep lyrics permanently.
                     </p>

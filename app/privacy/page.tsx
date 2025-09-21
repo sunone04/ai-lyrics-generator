@@ -63,7 +63,7 @@ export default function PrivacyPage() {
               </p>
               <ul className="list-disc pl-6 text-gray-700 space-y-2">
                 <li>All data is encrypted in transit and at rest</li>
-                <li>Unfavorited lyrics are automatically deleted after 24 hours</li>
+                <li>Unfavorited lyrics are automatically deleted after 3 days</li>
                 <li>We use secure cloud infrastructure with regular backups</li>
                 <li>Access to your data is strictly limited to authorized personnel</li>
               </ul>

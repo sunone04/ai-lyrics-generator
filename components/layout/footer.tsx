@@ -18,7 +18,7 @@ export default function Footer() {
               Create high-quality rap lyrics, song lyrics, and hip-hop verses in 100+ languages with our advanced AI lyric generator.
             </p>
             <p className="text-sm text-gray-400">
-              Based on privacy protection, your lyrics will be stored for a maximum of 24 hours. 
+              Based on privacy protection, your lyrics are stored for up to 3 days. 
               Please download or favorite them in time.
             </p>
           </div>

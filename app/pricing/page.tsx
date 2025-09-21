@@ -27,7 +27,7 @@ const plans = [
       '1 partial optimization per day',
       'Basic AI model ',
       'Up to 3 favorite lyrics',
-      '24-hour storage for generated lyrics',
+      'Generated lyrics stored up to 3 days',
       'Community support',
     ],
     cta: 'Start Free',
@@ -111,7 +111,7 @@ export default function PricingPage() {
         acceptedAnswer: {
           "@type": "Answer",
           text:
-            "Your favorite lyrics will be permanently saved. Non-favorited lyrics will be automatically deleted after 24 hours for privacy protection."
+            "Your favorite lyrics will be permanently saved. Non-favorited lyrics will be automatically deleted after 3 days for privacy protection."
         }
       },
       {
@@ -222,7 +222,7 @@ export default function PricingPage() {
               </h3>
               <p className="text-gray-600 leading-relaxed">
                 Your favorite lyrics will be permanently saved. Non-favorited lyrics will be automatically deleted after
-                24 hours for privacy protection.
+                3 days for privacy protection.
               </p>
             </div>
 

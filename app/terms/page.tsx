@@ -108,7 +108,7 @@ export default function TermsPage() {
                 by our Privacy Policy. Key points include:
               </p>
               <ul className="list-disc pl-6 text-gray-700 space-y-2">
-                <li>Unfavorited lyrics are automatically deleted after 24 hours</li>
+                <li>Unfavorited lyrics are automatically deleted after 3 days</li>
                 <li>We do not share your personal information with third parties</li>
                 <li>All data is encrypted and securely stored</li>
                 <li>You can delete your account and data at any time</li>
