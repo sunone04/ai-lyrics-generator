@@ -1,5 +1,5 @@
 export interface PaddleConfig {
-  environment: 'sandbox' | 'live';
+  environment: 'sandbox' | 'production';
   clientId: string;
   apiKey: string;
   webhookSecret: string;
@@ -9,8 +9,9 @@ export interface PaddleConfig {
 }
 
 export const getPaddleConfig = (): PaddleConfig => {
-  const envVar = process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT as 'sandbox' | 'live' | undefined;
-  const environment: 'sandbox' | 'live' = envVar === 'sandbox' ? 'sandbox' : 'live';
+  const envVar = process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT as string | undefined;
+  const env = (envVar || '').toLowerCase();
+  const environment: 'sandbox' | 'production' = env === 'sandbox' ? 'sandbox' : 'production';
   
   return {
     environment: environment || 'sandbox',
@@ -50,5 +51,3 @@ export const getPriceId = (plan: 'monthly' | 'yearly'): string => {
   const config = getPaddleConfig();
   return plan === 'monthly' ? config.monthlyPriceId : config.yearlyPriceId;
 };
-
-

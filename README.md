@@ -1,46 +1,39 @@
-# AI Lyrics Generator
+﻿# AI Lyrics Generator
 
-一个基于AI的专业歌词生成工具，支持多种语言和风格，集成了Paddle支付系统。
+涓€涓熀浜嶢I鐨勪笓涓氭瓕璇嶇敓鎴愬伐鍏凤紝鏀寔澶氱璇█鍜岄鏍硷紝闆嗘垚浜哖addle鏀粯绯荤粺銆?
+## 鍔熻兘鐗规€?
+- 馃 **AI姝岃瘝鐢熸垚**: 浣跨敤鍏堣繘鐨凙I鎶€鏈敓鎴愪笓涓氱骇姝岃瘝
+- 馃實 **澶氳瑷€鏀寔**: 鏀寔100+璇█鐨勬瓕璇嶇敓鎴?- 馃幍 **澶氱椋庢牸**: 鏀寔娴佽銆佽鍞便€佹皯璋ｇ瓑澶氱闊充箰椋庢牸
+- 馃挸 **璁㈤槄绯荤粺**: 闆嗘垚Paddle鏀粯锛屾敮鎸佹湀浠樺拰骞翠粯璁㈤槄
+- 馃敀 **瀹夊叏璁よ瘉**: 瀹屾暣鐨勭敤鎴疯璇佸拰鎺堟潈绯荤粺
+- 馃摫 **鍝嶅簲寮忚璁?*: 鏀寔妗岄潰鍜岀Щ鍔ㄨ澶?- 馃殌 **楂樻€ц兘**: 鍩轰簬Next.js 14鏋勫缓锛屾敮鎸丼SR鍜岄潤鎬佺敓鎴?
+## 鎶€鏈爤
 
-## 功能特性
+- **鍓嶇**: Next.js 14, React 18, TypeScript
+- **鏍峰紡**: Tailwind CSS
+- **鏁版嵁搴?*: Supabase (PostgreSQL)
+- **璁よ瘉**: Supabase Auth
+- **鏀粯**: Paddle
+- **閮ㄧ讲**: Vercel
 
-- 🤖 **AI歌词生成**: 使用先进的AI技术生成专业级歌词
-- 🌍 **多语言支持**: 支持100+语言的歌词生成
-- 🎵 **多种风格**: 支持流行、说唱、民谣等多种音乐风格
-- 💳 **订阅系统**: 集成Paddle支付，支持月付和年付订阅
-- 🔒 **安全认证**: 完整的用户认证和授权系统
-- 📱 **响应式设计**: 支持桌面和移动设备
-- 🚀 **高性能**: 基于Next.js 14构建，支持SSR和静态生成
-
-## 技术栈
-
-- **前端**: Next.js 14, React 18, TypeScript
-- **样式**: Tailwind CSS
-- **数据库**: Supabase (PostgreSQL)
-- **认证**: Supabase Auth
-- **支付**: Paddle
-- **部署**: Vercel
-
-## 快速开始
-
-### 环境要求
+## 蹇€熷紑濮?
+### 鐜瑕佹眰
 
 - Node.js 18+
-- npm 或 yarn
-- Supabase 账户
-- Paddle 账户
+- npm 鎴?yarn
+- Supabase 璐︽埛
+- Paddle 璐︽埛
 
-### 安装依赖
+### 瀹夎渚濊禆
 
 ```bash
 npm install
-# 或
-yarn install
+# 鎴?yarn install
 ```
 
-### 环境变量配置
+### 鐜鍙橀噺閰嶇疆
 
-创建 `.env.local` 文件并配置以下变量：
+鍒涘缓 `.env.local` 鏂囦欢骞堕厤缃互涓嬪彉閲忥細
 
 ```bash
 # Supabase Configuration
@@ -64,49 +57,40 @@ NEXT_PUBLIC_PADDLE_API_BASE_URL=https://sandbox-api.paddle.com
 NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
-### 数据库设置
-
-1. 在Supabase中创建新项目
-2. 运行数据库迁移脚本（参考 `数据库更新.md`）
-3. 配置RLS策略和权限
-
-### 启动开发服务器
+### 鏁版嵁搴撹缃?
+1. 鍦⊿upabase涓垱寤烘柊椤圭洰
+2. 杩愯鏁版嵁搴撹縼绉昏剼鏈紙鍙傝€?`鏁版嵁搴撴洿鏂?md`锛?3. 閰嶇疆RLS绛栫暐鍜屾潈闄?
+### 鍚姩寮€鍙戞湇鍔″櫒
 
 ```bash
 npm run dev
-# 或
-yarn dev
+# 鎴?yarn dev
 ```
 
-访问 [http://localhost:3000](http://localhost:3000) 查看应用。
+璁块棶 [http://localhost:3000](http://localhost:3000) 鏌ョ湅搴旂敤銆?
+## Paddle鏀粯闆嗘垚
 
-## Paddle支付集成
+### 鍔熻兘鐗规€?
+- 鉁?**Overlay Checkout**: 浣跨敤Paddle.js鐨刼verlay妯″紡
+- 鉁?**鐜鍒囨崲**: 鏀寔娴嬭瘯鍜屾寮忕幆澧?- 鉁?**Webhook澶勭悊**: 瀹屾暣鐨剋ebhook浜嬩欢澶勭悊
+- 鉁?**璁㈤槄绠＄悊**: 鏀寔璁㈤槄鐨勫垱寤恒€佹殏鍋溿€佹仮澶嶅拰鍙栨秷
+- 鉁?**瀹夊叏楠岃瘉**: HMAC绛惧悕楠岃瘉纭繚webhook瀹夊叏
 
-### 功能特性
+### 鐜閰嶇疆
 
-- ✅ **Overlay Checkout**: 使用Paddle.js的overlay模式
-- ✅ **环境切换**: 支持测试和正式环境
-- ✅ **Webhook处理**: 完整的webhook事件处理
-- ✅ **订阅管理**: 支持订阅的创建、暂停、恢复和取消
-- ✅ **安全验证**: HMAC签名验证确保webhook安全
+閫氳繃淇敼鐜鍙橀噺 `NEXT_PUBLIC_PADDLE_ENVIRONMENT` 鏉ュ垏鎹㈢幆澧冿細
 
-### 环境配置
+- `sandbox`: 娴嬭瘯鐜
+- `production`: 姝ｅ紡鐜
 
-通过修改环境变量 `NEXT_PUBLIC_PADDLE_ENVIRONMENT` 来切换环境：
+### Webhook閰嶇疆
 
-- `sandbox`: 测试环境
-- `live`: 正式环境
-
-### Webhook配置
-
-在Paddle Dashboard中配置webhook endpoint：
-
+鍦≒addle Dashboard涓厤缃畐ebhook endpoint锛?
 ```
 https://your-domain.com/api/webhook/paddle
 ```
 
-支持的webhook事件：
-- `subscription.created`
+鏀寔鐨剋ebhook浜嬩欢锛?- `subscription.created`
 - `subscription.updated`
 - `subscription.cancelled`
 - `subscription.paused`
@@ -114,84 +98,71 @@ https://your-domain.com/api/webhook/paddle
 - `transaction.completed`
 - `transaction.billing_failed`
 
-## 项目结构
+## 椤圭洰缁撴瀯
 
 ```
-├── app/                    # Next.js 13+ App Router
-│   ├── api/               # API路由
-│   │   ├── webhook/       # Webhook处理
-│   │   └── subscription/   # 订阅管理
-│   ├── auth/              # 认证页面
-│   ├── dashboard/         # 用户仪表板
-│   ├── generate/          # 歌词生成页面
-│   └── pricing/           # 定价页面
-├── components/            # React组件
-│   ├── layout/           # 布局组件
-│   ├── pricing/          # 定价组件
-│   └── ui/               # UI组件
-├── lib/                  # 工具库
-│   ├── hooks/            # 自定义Hooks
-│   ├── paddle.ts         # Paddle配置
-│   └── supabase.ts       # Supabase客户端
-└── public/               # 静态资源
-```
+鈹溾攢鈹€ app/                    # Next.js 13+ App Router
+鈹?  鈹溾攢鈹€ api/               # API璺敱
+鈹?  鈹?  鈹溾攢鈹€ webhook/       # Webhook澶勭悊
+鈹?  鈹?  鈹斺攢鈹€ subscription/   # 璁㈤槄绠＄悊
+鈹?  鈹溾攢鈹€ auth/              # 璁よ瘉椤甸潰
+鈹?  鈹溾攢鈹€ dashboard/         # 鐢ㄦ埛浠〃鏉?鈹?  鈹溾攢鈹€ generate/          # 姝岃瘝鐢熸垚椤甸潰
+鈹?  鈹斺攢鈹€ pricing/           # 瀹氫环椤甸潰
+鈹溾攢鈹€ components/            # React缁勪欢
+鈹?  鈹溾攢鈹€ layout/           # 甯冨眬缁勪欢
+鈹?  鈹溾攢鈹€ pricing/          # 瀹氫环缁勪欢
+鈹?  鈹斺攢鈹€ ui/               # UI缁勪欢
+鈹溾攢鈹€ lib/                  # 宸ュ叿搴?鈹?  鈹溾攢鈹€ hooks/            # 鑷畾涔塇ooks
+鈹?  鈹溾攢鈹€ paddle.ts         # Paddle閰嶇疆
+鈹?  鈹斺攢鈹€ supabase.ts       # Supabase瀹㈡埛绔?鈹斺攢鈹€ public/               # 闈欐€佽祫婧?```
 
-## 部署
+## 閮ㄧ讲
 
-### Vercel部署
+### Vercel閮ㄧ讲
 
-1. 连接GitHub仓库到Vercel
-2. 配置环境变量
-3. 部署
+1. 杩炴帴GitHub浠撳簱鍒癡ercel
+2. 閰嶇疆鐜鍙橀噺
+3. 閮ㄧ讲
 
-### 环境变量配置
+### 鐜鍙橀噺閰嶇疆
 
-确保在生产环境中配置所有必要的环境变量，特别是：
+纭繚鍦ㄧ敓浜х幆澧冧腑閰嶇疆鎵€鏈夊繀瑕佺殑鐜鍙橀噺锛岀壒鍒槸锛?
+- Paddle姝ｅ紡鐜鐨勯厤缃?- 姝ｇ‘鐨剋ebhook URL
+- 鐢熶骇鐜鐨凷upabase閰嶇疆
 
-- Paddle正式环境的配置
-- 正确的webhook URL
-- 生产环境的Supabase配置
+## 寮€鍙戞寚鍗?
+### 娣诲姞鏂扮殑鏀粯璁″垝
 
-## 开发指南
+1. 鍦≒addle Dashboard涓垱寤烘柊鐨勪环鏍?2. 鏇存柊鐜鍙橀噺涓殑浠锋牸ID
+3. 鍦ㄥ畾浠烽〉闈腑娣诲姞鏂扮殑璁″垝
 
-### 添加新的支付计划
+### 鑷畾涔墂ebhook澶勭悊
 
-1. 在Paddle Dashboard中创建新的价格
-2. 更新环境变量中的价格ID
-3. 在定价页面中添加新的计划
+鍦?`app/api/webhook/paddle/route.ts` 涓坊鍔犳柊鐨勪簨浠跺鐞嗛€昏緫銆?
+### 鏍峰紡瀹氬埗
 
-### 自定义webhook处理
+浣跨敤Tailwind CSS杩涜鏍峰紡瀹氬埗锛屼富瑕侀鑹插彉閲忓湪 `tailwind.config.ts` 涓畾涔夈€?
+## 璐＄尞
 
-在 `app/api/webhook/paddle/route.ts` 中添加新的事件处理逻辑。
-
-### 样式定制
-
-使用Tailwind CSS进行样式定制，主要颜色变量在 `tailwind.config.ts` 中定义。
-
-## 贡献
-
-欢迎提交Issue和Pull Request！
-
-## 许可证
-
+娆㈣繋鎻愪氦Issue鍜孭ull Request锛?
+## 璁稿彲璇?
 MIT License
 
-## 支持
+## 鏀寔
 
-如有问题，请通过以下方式联系：
+濡傛湁闂锛岃閫氳繃浠ヤ笅鏂瑰紡鑱旂郴锛?
+- 鎻愪氦GitHub Issue
+- 鍙戦€侀偖浠跺埌 support@your-domain.com
 
-- 提交GitHub Issue
-- 发送邮件到 support@your-domain.com
-
-## 更新日志
+## 鏇存柊鏃ュ織
 
 ### v2.0.0
-- 集成Paddle支付系统
-- 添加订阅管理功能
-- 重构定价页面
-- 优化用户界面
+- 闆嗘垚Paddle鏀粯绯荤粺
+- 娣诲姞璁㈤槄绠＄悊鍔熻兘
+- 閲嶆瀯瀹氫环椤甸潰
+- 浼樺寲鐢ㄦ埛鐣岄潰
 
 ### v1.0.0
-- 初始版本发布
-- 基础AI歌词生成功能
-- 用户认证系统
+- 鍒濆鐗堟湰鍙戝竷
+- 鍩虹AI姝岃瘝鐢熸垚鍔熻兘
+- 鐢ㄦ埛璁よ瘉绯荤粺

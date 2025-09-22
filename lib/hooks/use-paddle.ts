@@ -102,24 +102,40 @@ export function usePaddle() {
       }
 
       return new Promise<PaddleCheckoutResult>((resolve) => {
+        let settled = false;
+
+        const onLoaded = (e: Event) => { /* no-op, keep for potential UI hooks */ };
+        const onClosed = (e: Event) => {
+          if (!settled) { settled = true; cleanup(); resolve({ status: 'closed' }); }
+        };
+        const onCompleted = (e: Event) => {
+          if (!settled) { settled = true; cleanup(); resolve({ status: 'completed', data: (e as CustomEvent).detail }); }
+        };
+        const onError = (e: Event) => {
+          if (!settled) { settled = true; cleanup(); resolve({ status: 'error', error: (e as CustomEvent).detail }); }
+        };
+
+        const cleanup = () => {
+          try { window.removeEventListener('paddle:checkoutLoaded', onLoaded); } catch {}
+          try { window.removeEventListener('paddle:checkoutClosed', onClosed); } catch {}
+          try { window.removeEventListener('paddle:checkoutCompleted', onCompleted); } catch {}
+          try { window.removeEventListener('paddle:checkoutError', onError); } catch {}
+          try { clearTimeout(timeoutId); } catch {}
+        };
+
+        // Attach listeners for this open call
+        window.addEventListener('paddle:checkoutLoaded', onLoaded);
+        window.addEventListener('paddle:checkoutClosed', onClosed);
+        window.addEventListener('paddle:checkoutCompleted', onCompleted);
+        window.addEventListener('paddle:checkoutError', onError);
+
+        // Safety timeout to avoid hanging forever
+        const timeoutId = setTimeout(() => {
+          if (!settled) { settled = true; cleanup(); resolve({ status: 'error', error: new Error('Checkout timeout') }); }
+        }, 120000);
+
         window.Paddle.Checkout.open({
-          ...checkoutOptions,
-          onLoaded: () => {
-            // Paddle checkout loaded
-          },
-          onError: (error: any) => {
-            console.error('Paddle checkout error:', error);
-            // Treat as closed so UI can recover
-            resolve({ status: 'error', error });
-          },
-          onComplete: (data: any) => {
-            // Paddle checkout completed
-            resolve({ status: 'completed', data });
-          },
-          onClose: () => {
-            // Ensure callers can stop loading when user closes overlay
-            resolve({ status: 'closed' });
-          }
+          ...checkoutOptions
         });
       });
     } catch (error) {

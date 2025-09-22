@@ -41,8 +41,27 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
 
     script.onload = () => {
       if (window.Paddle) {
-        window.Paddle.Environment.set(config.environment);
-        window.Paddle.Initialize({ token: config.clientId });
+        if (config.environment === 'sandbox') {
+          window.Paddle.Environment.set('sandbox');
+        }
+        window.Paddle.Initialize({ 
+          token: config.clientId,
+          // Relay Paddle events to window for local consumers
+          eventCallback: (event: any) => {
+            try {
+              const name = event?.name || '';
+              if (name === 'checkout.loaded') {
+                window.dispatchEvent(new CustomEvent('paddle:checkoutLoaded', { detail: event }));
+              } else if (name === 'checkout.closed') {
+                window.dispatchEvent(new CustomEvent('paddle:checkoutClosed', { detail: event }));
+              } else if (name === 'checkout.completed') {
+                window.dispatchEvent(new CustomEvent('paddle:checkoutCompleted', { detail: event }));
+              } else if (name === 'checkout.error') {
+                window.dispatchEvent(new CustomEvent('paddle:checkoutError', { detail: event }));
+              }
+            } catch {}
+          }
+        });
         try { (window.Paddle as any).Initialized = true; } catch {}
         try { window.dispatchEvent(new Event('paddle:ready')); } catch {}
       }
