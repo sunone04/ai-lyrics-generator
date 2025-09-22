@@ -162,7 +162,7 @@ function LiveGenerationContent() {
         resetTimeout();
 
         try {
-          const processEventBlock = (eventBlock: string) => {
+          const processEventBlock = async (eventBlock: string) => {
             const normalized = eventBlock.replace(/\r\n/g, '\n');
             const lines = normalized.split('\n').filter(l => l.trim() && !l.startsWith(':'));
             const dataLines = lines.filter(l => l.startsWith('data:'));
@@ -220,12 +220,12 @@ function LiveGenerationContent() {
               const eventBlock = buffer.slice(0, sepIndex);
               const sep = buffer.substr(sepIndex, 4) === '\r\n\r\n' ? '\r\n\r\n' : '\n\n';
               buffer = buffer.slice(sepIndex + sep.length);
-              processEventBlock(eventBlock);
+              await processEventBlock(eventBlock);
             }
           }
 
           if (buffer.trim()) {
-            processEventBlock(buffer);
+            await processEventBlock(buffer);
           }
         } finally {
           reader.releaseLock();
@@ -479,7 +479,7 @@ function LiveGenerationContent() {
         </CardContent>
       </Card>
 
-      {/* Live Generation Output */
+      {/* Live Generation Output */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Generated Lyrics</CardTitle>
