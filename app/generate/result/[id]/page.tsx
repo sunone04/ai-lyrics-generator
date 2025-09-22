@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
@@ -44,6 +44,7 @@ function GenerationResultContent() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showRewriteButton, setShowRewriteButton] = useState(false);
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
+  const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
 
   const generationId = params.id as string;
 
@@ -177,32 +178,47 @@ function GenerationResultContent() {
     }
   };
 
-  const handleTextSelection = (event: React.MouseEvent) => {
+  const updateSelectionUI = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      const selected = selection.toString().trim();
-      if (selected.length > 10) { // Minimum selection length
-        setSelectedText(selected);
-        
-        // Get selection position for button placement
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + window.scrollY + 10
-        });
-        setShowRewriteButton(true);
-        // Keep the selection active even if mouse moves slightly away
-        event.preventDefault();
-        event.stopPropagation();
-      } else {
-        setShowRewriteButton(false);
-        setSelectionPosition(null);
-      }
-    } else {
-      // Do not immediately clear selection on tiny mouse move; require outside click (handled elsewhere)
-      // Keep current selection so user has time to click the floating button
+    const container = lyricsContainerRef.current;
+    if (!selection || !container || selection.rangeCount === 0 || selection.isCollapsed) {
+      setShowRewriteButton(false);
+      setSelectionPosition(null);
+      return;
     }
+    const text = selection.toString().trim();
+    if (!text || text.length < 5) {
+      setShowRewriteButton(false);
+      setSelectionPosition(null);
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    if (!container.contains(range.startContainer) || !container.contains(range.endContainer)) {
+      setShowRewriteButton(false);
+      setSelectionPosition(null);
+      return;
+    }
+    setSelectedText(text);
+    const rects = range.getClientRects();
+    const rect = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const offset = 10;
+    let x = rect.left + rect.width / 2;
+    let y = rect.bottom + offset; // viewport coords for fixed button
+    if (rect.bottom + 48 > vh) {
+      y = Math.max(rect.top - offset - 40, 8);
+    }
+    x = Math.min(Math.max(x, 8), vw - 8);
+    setSelectionPosition({ x, y });
+    setShowRewriteButton(true);
+  };
+
+  const handleTextSelection = (event: React.MouseEvent | React.TouchEvent) => {
+    updateSelectionUI();
+    // Keep the selection active even if mouse/touch moves slightly away
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   const handleRewriteButtonClick = () => {
@@ -332,20 +348,25 @@ function GenerationResultContent() {
   // Clear selection when clicking outside (but not when modal is open or immediately after making a selection)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Don't clear selection if rewrite modal is open
       if (showRewriteModal) return;
-      
       const target = event.target as Element;
-      // If a selection is present and rewrite button is visible, keep it even if mouseup occurred slightly outside
       if (selectedText && showRewriteButton) return;
-
       if (!target.closest('.lyrics-container') && !target.closest('.rewrite-button')) {
         handleClearSelection();
       }
     };
-
+    const onSelChange = () => updateSelectionUI();
+    const onScroll = () => { if (showRewriteButton) updateSelectionUI(); };
     document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('selectionchange', onSelChange);
+    window.addEventListener('scroll', onScroll, { passive: true } as any);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('selectionchange', onSelChange);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, [showRewriteModal, selectedText, showRewriteButton]);
 
   const handleShare = async () => {
@@ -469,7 +490,12 @@ function GenerationResultContent() {
                     We recommend downloading your lyrics first as backup.
                   </p>
                 </div>
-                <div className="lyrics-container relative" onMouseUp={handleTextSelection}>
+                <div
+                  ref={lyricsContainerRef}
+                  className="lyrics-container relative"
+                  onMouseUp={handleTextSelection}
+                  onTouchEnd={handleTextSelection}
+                >
                   <pre 
                     className="whitespace-pre-wrap font-sans text-gray-900 leading-relaxed cursor-text select-text p-2"
                     style={{ userSelect: 'text' }}

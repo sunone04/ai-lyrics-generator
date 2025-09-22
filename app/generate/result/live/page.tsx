@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/auth-context';
+import toast from 'react-hot-toast';
+import { downloadTextFile } from '@/lib/utils';
+import { DocumentArrowDownIcon, ClipboardDocumentIcon, ShareIcon } from '@heroicons/react/24/outline';
 
 interface GenerationStatus {
   status: 'connecting' | 'generating' | 'completed' | 'error' | 'timeout';
@@ -20,7 +23,7 @@ interface GenerationStatus {
 function LiveGenerationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, user, profile } = useAuth();
   const [status, setStatus] = useState<GenerationStatus>({
     status: 'connecting',
     liveText: ''
@@ -37,6 +40,11 @@ function LiveGenerationContent() {
   const [showRewriteModal, setShowRewriteModal] = useState(false);
   const [rewriteRequest, setRewriteRequest] = useState('');
   const [isRewriting, setIsRewriting] = useState(false);
+  const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Share / utility state
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Parse URL parameters (align with LyricsGenerationParams)
   const language = searchParams.get('language') || '';
@@ -63,7 +71,8 @@ function LiveGenerationContent() {
         setStatus(prev => ({ ...prev, status: 'connecting' }));
         
         // 创建可中止的请求控制器
-        abortControllerRef.current = new AbortController();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
         // Check for cached result first (Active CPU optimization)
         const response = await fetch('/api/generate-stream', {
@@ -90,7 +99,7 @@ function LiveGenerationContent() {
             modelType,
             regen
           }),
-          signal: abortControllerRef.current.signal,
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -128,7 +137,7 @@ function LiveGenerationContent() {
 
         setStatus(prev => ({ ...prev, status: 'generating' }));
 
-        // 设置超时
+        // 璁剧疆瓒呮椂
         timeoutRef.current = setTimeout(() => {
           setStatus(prev => ({ 
             ...prev, 
@@ -138,8 +147,7 @@ function LiveGenerationContent() {
           if (abortControllerRef.current) {
             abortControllerRef.current.abort();
           }
-        }, 60000); // 60秒超时
-
+        }, 60000); // 60绉掕秴鏃?
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -157,7 +165,7 @@ function LiveGenerationContent() {
             try { abortControllerRef.current?.abort(); } catch {}
           }, 120000);
         };
-        // Replace initial 60s timer with a 2‑minute inactivity timer
+        // Replace initial 60s timer with a 2鈥憁inute inactivity timer
         try { if (timeoutRef.current) clearTimeout(timeoutRef.current); } catch {}
         resetTimeout();
 
@@ -262,7 +270,6 @@ function LiveGenerationContent() {
     };
   }, []);
 
-  // 当页面隐藏/卸载时立即中止（移动端后台/标签切换优化）
   useEffect(() => {
     const handlePageHide = () => {
       try { abortControllerRef.current?.abort(); } catch {}
@@ -320,24 +327,50 @@ function LiveGenerationContent() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Text selection handlers for partial rewrite
-  const handleTextSelection = (event: React.MouseEvent) => {
+  // Text selection handlers for partial rewrite (robust + mobile friendly)
+  const updateSelectionUI = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      const sel = selection.toString().trim();
-      if (sel.length > 10) {
-        setSelectedText(sel);
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setSelectionPosition({ x: rect.left + rect.width / 2, y: rect.bottom + window.scrollY + 10 });
-        setShowRewriteButton(true);
-        event.preventDefault();
-        event.stopPropagation();
-      } else {
-        setShowRewriteButton(false);
-        setSelectionPosition(null);
-      }
+    const container = lyricsContainerRef.current;
+    if (!selection || !container || selection.rangeCount === 0 || selection.isCollapsed) {
+      setShowRewriteButton(false);
+      setSelectionPosition(null);
+      return;
     }
+    const text = selection.toString().trim();
+    if (!text || text.length < 5) {
+      setShowRewriteButton(false);
+      setSelectionPosition(null);
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    const startNode = range.startContainer;
+    const endNode = range.endContainer;
+    if (!container.contains(startNode) || !container.contains(endNode)) {
+      setShowRewriteButton(false);
+      setSelectionPosition(null);
+      return;
+    }
+    setSelectedText(text);
+    const rects = range.getClientRects();
+    const rect = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const offset = 10;
+    let x = rect.left + rect.width / 2;
+    let y = rect.bottom + offset; // viewport coords (for fixed)
+    if (rect.bottom + 48 > vh) {
+      y = Math.max(rect.top - offset - 40, 8);
+    }
+    x = Math.min(Math.max(x, 8), vw - 8);
+    setSelectionPosition({ x, y });
+    setShowRewriteButton(true);
+  };
+
+  const handleTextSelection = (event: React.MouseEvent | React.TouchEvent) => {
+    updateSelectionUI();
+    // Prevent accidental clear and bubbling on selection end
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   const handleRewriteButtonClick = () => {
@@ -369,6 +402,20 @@ function LiveGenerationContent() {
     document.addEventListener('click', onClick);
     return () => document.removeEventListener('click', onClick);
   }, [showRewriteModal]);
+
+  // Global selection listeners for better reliability (desktop + mobile)
+  useEffect(() => {
+    const onSelChange = () => updateSelectionUI();
+    const onScroll = () => { if (showRewriteButton) updateSelectionUI(); };
+    document.addEventListener('selectionchange', onSelChange);
+    window.addEventListener('scroll', onScroll, { passive: true } as any);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      document.removeEventListener('selectionchange', onSelChange);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [showRewriteButton]);
 
   const handleRewrite = async () => {
     if (!selectedText || !rewriteRequest.trim() || !status.liveText) return;
@@ -433,8 +480,6 @@ function LiveGenerationContent() {
           )}
         </div>
       </div>
-
-      {/* Generation Parameters */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-lg">Generation Parameters</CardTitle>
@@ -478,8 +523,6 @@ function LiveGenerationContent() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Live Generation Output */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Generated Lyrics</CardTitle>
@@ -507,14 +550,18 @@ function LiveGenerationContent() {
           ) : (
             <div className="min-h-[400px]">
               {status.liveText ? (
-                <div className="lyrics-container relative" onMouseUp={handleTextSelection}>
+                <div
+                  ref={lyricsContainerRef}
+                  className="lyrics-container relative"
+                  onMouseUp={handleTextSelection}
+                  onTouchEnd={handleTextSelection}
+                >
                   <pre className="whitespace-pre-wrap text-gray-800 leading-relaxed cursor-text select-text p-2" style={{ userSelect: 'text' }}>
                     {status.liveText}
                   </pre>
                   {status.status === 'generating' && (
                     <span className="inline-block w-2 h-4 bg-green-500 ml-1 animate-pulse" />
                   )}
-                  {/* Floating Rewrite Button */}
                   {status.status === 'completed' && showRewriteButton && selectionPosition && (
                     <button
                       onClick={handleRewriteButtonClick}
@@ -537,33 +584,104 @@ function LiveGenerationContent() {
           )}
         </CardContent>
       </Card>
-
-      {/* Action Buttons */}
-      {status.status === 'completed' && (
-        <div className="mt-6 flex gap-4 justify-center">
-          <Button 
-            onClick={() => router.push('/generate')}
-            variant="outline"
+      {status.liveText && (
+        <div className="mt-6 flex flex-wrap gap-3 justify-center">
+          <button
+            onClick={async () => {
+              try { await navigator.clipboard.writeText(status.liveText); toast.success('Lyrics copied to clipboard!'); } catch { toast.error('Failed to copy lyrics'); }
+            }}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-            Generate New
-          </Button>
+            <ClipboardDocumentIcon className="h-5 w-5 mr-2" />
+            Copy
+          </button>
+          <button
+            onClick={() => { const filename = `lyrics-${new Date().toISOString().split('T')[0]}.txt`; downloadTextFile(status.liveText, filename); toast.success('Lyrics downloaded!'); }}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          >
+            <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
+            Download
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                if (navigator.share) {
+                  await navigator.share({ title: 'AI Generated Lyrics', text: status.liveText || '', url: `${window.location.origin}/generate/result/live` });
+                } else {
+                  await navigator.clipboard.writeText(status.liveText || '');
+                  toast.success('Lyrics copied to clipboard!');
+                }
+              } catch (e:any) { if (e?.name !== 'AbortError') toast.error('Failed to share'); }
+            }}
+            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+          >
+            <ShareIcon className="h-5 w-5 mr-2" />
+            Share
+          </button>
+          <Button onClick={() => router.push('/generate')} variant="outline">Generate New</Button>
           <Button onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
         </div>
       )}
+      {status.liveText && (
+        <div className="mt-8 bg-white shadow rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Audio Preview</h2>
+          </div>
+          {!audioFile ? (
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <div className="space-y-2">
+                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className="text-sm text-gray-600">
+                  <label htmlFor="live-audio-upload" className="cursor-pointer">
+                    <span className="text-blue-600 hover:text-blue-500">Upload an audio file</span>
+                    <span> to preview with your lyrics</span>
+                  </label>
+                  <input
+                    id="live-audio-upload"
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith('audio/')) { toast.error('Please select an audio file'); return; }
+                      if (file.size > 10 * 1024 * 1024) { toast.error('Audio file must be less than 10MB'); return; }
+                      setAudioFile(file);
+                      if (audioUrl) URL.revokeObjectURL(audioUrl);
+                      const url = URL.createObjectURL(file);
+                      setAudioUrl(url);
+                      toast.success('Audio uploaded successfully!');
+                    }}
+                    className="hidden"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">MP3, WAV, M4A up to 10MB</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{audioFile.name}</p>
+                    <p className="text-xs text-gray-500">{(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <button onClick={() => { if (audioUrl) URL.revokeObjectURL(audioUrl); setAudioUrl(null); setAudioFile(null); }} className="text-sm text-red-600 hover:text-red-700">Remove</button>
+              </div>
+              {audioUrl && (
+                <audio controls className="w-full">
+                  <source src={audioUrl} />
+                  Your browser does not support the audio element.
+                </audio>
+              )}
+            </div>
+          )}
+          <p className="mt-3 text-xs text-gray-500">Audio files are only stored temporarily in your browser and are not uploaded to our servers.</p>
+        </div>
+      )}
 
-      {/* Active CPU Optimization Info */}
-      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-medium text-blue-800 mb-2">Active CPU Optimization</h3>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Concurrent generation limit: 1 per user</li>
-          <li>• Parameter deduplication: 2-hour cache</li>
-          <li>• First chunk timeout: 45 seconds</li>
-          <li>• Total soft timeout: 3 minutes</li>
-          <li>• Periodic heartbeat to keep connection alive</li>
-        </ul>
-      </div>
-
-      {/* Rewrite Modal */}
       {showRewriteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -606,3 +724,6 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
+
+
+
