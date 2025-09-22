@@ -332,6 +332,87 @@ GRANT EXECUTE ON FUNCTION public.check_favorite_limit_optimized(uuid) TO authent
 应用侧配套：代码已统一调用 `check_favorite_limit_with_trial`，`check_favorite_limit_optimized` 作为兼容入口存在但不再单独实现逻辑。
 
 
+## 变更记录 2025-09-22
+原子维护 profiles.favorite_count（推荐）
+
+为避免每次收藏切换都做 COUNT+UPDATE，并确保任意入口（API/后台任务）都能保持计数一致，新增触发器以原子维护 `profiles.favorite_count`：
+
+```
+BEGIN;
+
+-- 原子增减入口，防止负数
+CREATE OR REPLACE FUNCTION public._favorite_count_apply_delta(user_uuid uuid, delta int)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.profiles
+  SET favorite_count = GREATEST(0, COALESCE(favorite_count, 0) + delta),
+      updated_at = now()
+  WHERE id = user_uuid;
+END;
+$$;
+
+-- 统一触发函数：对 generations 的 INSERT/UPDATE/DELETE 同步计数
+CREATE OR REPLACE FUNCTION public.trg_sync_favorite_count()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.is_favorited THEN
+      PERFORM public._favorite_count_apply_delta(NEW.user_id, 1);
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF COALESCE(OLD.is_favorited, false) <> COALESCE(NEW.is_favorited, false) THEN
+      IF NEW.is_favorited THEN
+        PERFORM public._favorite_count_apply_delta(NEW.user_id, 1);
+      ELSE
+        PERFORM public._favorite_count_apply_delta(NEW.user_id, -1);
+      END IF;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF OLD.is_favorited THEN
+      PERFORM public._favorite_count_apply_delta(OLD.user_id, -1);
+    END IF;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+-- 触发器：INSERT/UPDATE/DELETE
+DROP TRIGGER IF EXISTS trg_generations_sync_fav_ins ON public.generations;
+CREATE TRIGGER trg_generations_sync_fav_ins
+  AFTER INSERT ON public.generations
+  FOR EACH ROW EXECUTE FUNCTION public.trg_sync_favorite_count();
+
+DROP TRIGGER IF EXISTS trg_generations_sync_fav_upd ON public.generations;
+CREATE TRIGGER trg_generations_sync_fav_upd
+  AFTER UPDATE OF is_favorited ON public.generations
+  FOR EACH ROW EXECUTE FUNCTION public.trg_sync_favorite_count();
+
+DROP TRIGGER IF EXISTS trg_generations_sync_fav_del ON public.generations;
+CREATE TRIGGER trg_generations_sync_fav_del
+  AFTER DELETE ON public.generations
+  FOR EACH ROW EXECUTE FUNCTION public.trg_sync_favorite_count();
+
+COMMIT;
+```
+
+注意
+- 若历史数据存在偏差，可先用一次性 `UPDATE profiles p SET favorite_count = sub.cnt FROM (
+  SELECT user_id, COUNT(*)::int AS cnt FROM generations WHERE is_favorited = true GROUP BY user_id
+) sub WHERE sub.user_id = p.id;` 做一次校准。
+- 触发器生效后，请移除应用侧的 COUNT+UPDATE 同步逻辑（本仓库已移除）。
+
+
 
 =============================
 个人风格库（members-only）约束与优化

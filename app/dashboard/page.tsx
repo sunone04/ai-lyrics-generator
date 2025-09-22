@@ -43,6 +43,7 @@ function DashboardContent() {
   const [activeTab, setActiveTab] = useState<'recent' | 'favorites'>('recent');
   const [isLoading, setIsLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; generationId: number | null }>({ show: false, generationId: null });
+  const [favBump, setFavBump] = useState(0);
   const router = useRouter();
 
   // 数据获取现在由useData context处理
@@ -61,6 +62,7 @@ function DashboardContent() {
     // 只有在认证状态确定后才执行数据获取
     if (!authLoading && user) {
       handlePaymentFeedback();
+      try { void refreshProfile(true); } catch {}
       // 数据获取现在由useData context自动处理
       setIsLoading(false);
     } else if (!authLoading && !user) {
@@ -74,6 +76,11 @@ function DashboardContent() {
       try { fetchFavorites(false); } catch {}
     }
   }, [activeTab, fetchFavorites]);
+
+  // 当远端收藏数据或profile计数变化时，重置本地偏移，避免长期漂移
+  useEffect(() => {
+    setFavBump(0);
+  }, [favorites.length, profile?.favorite_count]);
 
   // 如果正在认证加载中，显示加载页面
   if (authLoading) {
@@ -120,14 +127,24 @@ function DashboardContent() {
       const currentGeneration = generations.find(gen => gen.id === generationId);
       const newFavoriteStatus = !currentGeneration?.is_favorited;
       const maxFavorites = isActiveUser ? 300 : 10;
-      const currentFavCount = profile?.favorite_count ?? 0;
+      const currentFavCountRaw = profile?.favorite_count ?? 0;
+      const currentFavCount = Math.max(0, currentFavCountRaw + favBump);
       if (newFavoriteStatus && currentFavCount >= maxFavorites) {
         toast.error("You've reached your favorites limit. Upgrade to save more.");
         router.push('/pricing');
         return;
       }
       await setFavorite(generationId, newFavoriteStatus);
-      await fetchFavorites(true);
+      // 仅在收藏页激活时刷新列表，其他场景依赖乐观更新和后续聚焦再校验
+      if (activeTab === 'favorites') {
+        try { await fetchFavorites(true); } catch {}
+      }
+      // 本地计数即时反馈（不超过上下限）
+      setFavBump(prev => {
+        const next = prev + (newFavoriteStatus ? 1 : -1);
+        const bounded = Math.min(maxFavorites - currentFavCountRaw, Math.max(-currentFavCountRaw, next));
+        return bounded;
+      });
       toast.success('Favorite updated');
     } catch (error: any) {
       toast.error((error && error.message) || 'Failed to update favorite');
@@ -180,7 +197,8 @@ function DashboardContent() {
   const stats = getUsageStats();
   const currentList = activeTab === 'recent' ? generations : favorites;
   const maxFavorites = isActiveUser ? 300 : 10;
-  const currentFavCount = profile?.favorite_count ?? favorites.length;
+  const currentFavCountBase = profile?.favorite_count ?? favorites.length;
+  const currentFavCount = Math.max(0, Math.min(maxFavorites, currentFavCountBase + favBump));
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">

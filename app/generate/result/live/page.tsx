@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { useAuth } from '@/lib/contexts/auth-context';
 
 interface GenerationStatus {
   status: 'connecting' | 'generating' | 'completed' | 'error' | 'timeout';
@@ -19,6 +20,7 @@ interface GenerationStatus {
 function LiveGenerationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { refreshProfile } = useAuth();
   const [status, setStatus] = useState<GenerationStatus>({
     status: 'connecting',
     liveText: ''
@@ -27,6 +29,14 @@ function LiveGenerationContent() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+
+  // Partial rewrite state
+  const [selectedText, setSelectedText] = useState('');
+  const [showRewriteButton, setShowRewriteButton] = useState(false);
+  const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
+  const [showRewriteModal, setShowRewriteModal] = useState(false);
+  const [rewriteRequest, setRewriteRequest] = useState('');
+  const [isRewriting, setIsRewriting] = useState(false);
 
   // Parse URL parameters (align with LyricsGenerationParams)
   const language = searchParams.get('language') || '';
@@ -96,9 +106,17 @@ function LiveGenerationContent() {
               status: 'completed',
               liveText: cachedData.result,
               cached: true,
-              generationId: Date.now().toString(),
+              // Generation will be fetched after completion
               totalTime: Date.now() - startTimeRef.current
             });
+            try { await refreshProfile(true); } catch {}
+            // Try to resolve the newest generation id
+            try {
+              const res = await fetch('/api/me/generations?page=1&pageSize=1', { cache: 'no-store' });
+              const j = await res.json();
+              const gen = j?.generations?.[0];
+              if (gen?.id) setStatus(prev => ({ ...prev, generationId: String(gen.id) }));
+            } catch {}
             return;
           }
         }
@@ -161,9 +179,19 @@ function LiveGenerationContent() {
                 setStatus(prev => ({
                   ...prev,
                   status: 'completed',
-                  generationId: Date.now().toString(),
+                  generationId: (data.id ? String(data.id) : prev.generationId),
                   totalTime: Date.now() - startTimeRef.current
                 }));
+                try { await refreshProfile(true); } catch {}
+                // Fetch the latest generation id for persistence/navigation
+                try {
+                  if (!data.id) {
+                    const res = await fetch('/api/me/generations?page=1&pageSize=1', { cache: 'no-store' });
+                    const j = await res.json();
+                    const gen = j?.generations?.[0];
+                    if (gen?.id) setStatus(prev => ({ ...prev, generationId: String(gen.id) }));
+                  }
+                } catch {}
               } else if (data.type === 'error') {
                 clearTimeout(timeoutRef.current!);
                 setStatus(prev => ({ ...prev, status: 'error', error: data.message || 'Generation failed' }));
@@ -292,6 +320,98 @@ function LiveGenerationContent() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Text selection handlers for partial rewrite
+  const handleTextSelection = (event: React.MouseEvent) => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      const sel = selection.toString().trim();
+      if (sel.length > 10) {
+        setSelectedText(sel);
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setSelectionPosition({ x: rect.left + rect.width / 2, y: rect.bottom + window.scrollY + 10 });
+        setShowRewriteButton(true);
+        event.preventDefault();
+        event.stopPropagation();
+      } else {
+        setShowRewriteButton(false);
+        setSelectionPosition(null);
+      }
+    }
+  };
+
+  const handleRewriteButtonClick = () => {
+    setShowRewriteButton(false);
+    setSelectionPosition(null);
+    setShowRewriteModal(true);
+  };
+
+  const handleCloseRewriteModal = () => {
+    setShowRewriteModal(false);
+    setRewriteRequest('');
+  };
+
+  const handleClearSelection = () => {
+    setShowRewriteButton(false);
+    setSelectionPosition(null);
+    setSelectedText('');
+    try { window.getSelection()?.removeAllRanges(); } catch {}
+  };
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (showRewriteModal) return;
+      const target = e.target as Element;
+      if (!target.closest('.lyrics-container') && !target.closest('.rewrite-button')) {
+        handleClearSelection();
+      }
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [showRewriteModal]);
+
+  const handleRewrite = async () => {
+    if (!selectedText || !rewriteRequest.trim() || !status.liveText) return;
+    setIsRewriting(true);
+    try {
+      const response = await fetch('/api/rewrite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalLyrics: status.liveText,
+          selectedText,
+          rewriteRequest,
+          modelType,
+        }),
+      });
+      if (!response.ok) throw new Error('Rewrite failed');
+      const resp = await response.json();
+      const rewrittenPortion: string = resp.rewrittenLyrics || resp.rewrittenPortion;
+      const updatedLyrics = status.liveText.replace(selectedText, rewrittenPortion);
+      setStatus(prev => ({ ...prev, liveText: updatedLyrics }));
+
+      // Persist to DB if we resolved a generation id
+      if (status.generationId) {
+        try {
+          await fetch(`/api/generations/${status.generationId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ generated_lyrics: updatedLyrics }),
+          });
+        } catch {}
+      }
+
+      try { await refreshProfile(true); } catch {}
+      setShowRewriteModal(false);
+      setRewriteRequest('');
+      handleClearSelection();
+    } catch (e) {
+      // ignore
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-6">
@@ -359,7 +479,7 @@ function LiveGenerationContent() {
         </CardContent>
       </Card>
 
-      {/* Live Generation Output */}
+      {/* Live Generation Output */
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Generated Lyrics</CardTitle>
@@ -387,10 +507,22 @@ function LiveGenerationContent() {
           ) : (
             <div className="min-h-[400px]">
               {status.liveText ? (
-                <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                  {status.liveText}
+                <div className="lyrics-container relative" onMouseUp={handleTextSelection}>
+                  <pre className="whitespace-pre-wrap text-gray-800 leading-relaxed cursor-text select-text p-2" style={{ userSelect: 'text' }}>
+                    {status.liveText}
+                  </pre>
                   {status.status === 'generating' && (
                     <span className="inline-block w-2 h-4 bg-green-500 ml-1 animate-pulse" />
+                  )}
+                  {/* Floating Rewrite Button */}
+                  {status.status === 'completed' && showRewriteButton && selectionPosition && (
+                    <button
+                      onClick={handleRewriteButtonClick}
+                      className="rewrite-button fixed z-50 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-200 flex items-center space-x-2 text-sm font-medium"
+                      style={{ left: `${selectionPosition.x}px`, top: `${selectionPosition.y}px`, transform: 'translateX(-50%)' }}
+                    >
+                      Rewrite Selected
+                    </button>
                   )}
                 </div>
               ) : (
@@ -410,17 +542,12 @@ function LiveGenerationContent() {
       {status.status === 'completed' && (
         <div className="mt-6 flex gap-4 justify-center">
           <Button 
-            onClick={() => router.push(`/generate/result/${status.generationId}`)}
-            className="min-w-[120px]"
-          >
-            View Details
-          </Button>
-          <Button 
             onClick={() => router.push('/generate')}
             variant="outline"
           >
             Generate New
           </Button>
+          <Button onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
         </div>
       )}
 
@@ -435,6 +562,39 @@ function LiveGenerationContent() {
           <li>• Periodic heartbeat to keep connection alive</li>
         </ul>
       </div>
+
+      {/* Rewrite Modal */}
+      {showRewriteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Rewrite Selected Lyrics</h3>
+              <p className="text-sm text-gray-600">Tell AI how you want to improve the selected text</p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Selected Text:</label>
+              <div className="p-3 bg-gray-50 rounded-lg border">
+                <pre className="whitespace-pre-wrap text-sm text-gray-900">{selectedText}</pre>
+              </div>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">How would you like to rewrite this? *</label>
+              <textarea
+                value={rewriteRequest}
+                onChange={(e) => setRewriteRequest(e.target.value)}
+                className="w-full h-24 p-3 border border-gray-300 rounded-lg text-black resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., Make it more emotional, change the rhyme scheme, use different metaphors..."
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Button onClick={handleCloseRewriteModal} variant="outline" disabled={isRewriting}>Cancel</Button>
+              <Button onClick={handleRewrite} disabled={isRewriting || !rewriteRequest.trim()}>
+                {isRewriting ? 'Rewriting...' : 'Rewrite with AI'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -111,6 +111,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update favorite status' }, { status: 500 });
     }
 
+    // Note: favorite_count 由数据库触发器原子维护，无需在应用侧额外 COUNT + UPDATE。
+
     return NextResponse.json({ success: true });
 
   } catch (error) {

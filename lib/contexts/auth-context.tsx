@@ -12,6 +12,10 @@ let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any
   inflight: null,
 };
 
+// Persisted local cache to speed up perceived auth/profile load on revisit
+const BOOTSTRAP_LOCAL_CACHE_KEY = 'bootstrap_cache_v1';
+const BOOTSTRAP_LOCAL_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
 // Front-end readable login hint cookie name (to avoid anon bootstrap calls)
 export const AUTH_HINT_COOKIE = 'aig_auth';
 
@@ -96,6 +100,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       if (data.profile) setProfile(data.profile as Profile);
 
+      // Persist a compact cache for fast warm start
+      try {
+        if (typeof window !== 'undefined') {
+          const compact = {
+            user: { id: u.id, email: u.email },
+            profile: data.profile || null,
+          };
+          localStorage.setItem(
+            BOOTSTRAP_LOCAL_CACHE_KEY,
+            JSON.stringify({ value: compact, expiresAt: Date.now() + BOOTSTRAP_LOCAL_TTL_MS })
+          );
+          // Refresh front-visible hint cookie to keep bootstrap fast
+          try {
+            const secure = typeof location !== 'undefined' && location.protocol === 'https:';
+            document.cookie = `aig_auth=1; Max-Age=${60 * 60 * 24 * 7}; Path=/; SameSite=Lax${secure ? '; Secure' : ''}`;
+          } catch {}
+        }
+      } catch {}
+
       // Seed trial cache for useTrial hook to avoid extra GET
       try {
         const trial = data.trial;
@@ -158,14 +181,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchBootstrap(force);
   }, [fetchBootstrap]);
 
-  // Mount: only fetch when login hint cookie exists; avoid any API for anonymous users
+  // Mount: show local cached auth/profile quickly; revalidate in background when possible
   useEffect(() => {
-    const init = async () => {
+    const init = () => {
       try {
-        if (hasAuthHintCookie()) {
-          await fetchBootstrap();
+        let shownFromCache = false;
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem(BOOTSTRAP_LOCAL_CACHE_KEY);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && parsed.expiresAt && Date.now() < parsed.expiresAt && parsed.value?.user) {
+                const u = parsed.value.user as { id: string; email?: string };
+                const p = parsed.value.profile as Profile | null;
+                setUser({ id: u.id, email: u.email } as User);
+                if (p) setProfile(p);
+                shownFromCache = true;
+              }
+            }
+          } catch {}
         }
-      } finally {
+
+        if (shownFromCache) {
+          setLoading(false);
+          // Background refresh to ensure freshness if we have a hint
+          try { if (hasAuthHintCookie()) void fetchBootstrap(); } catch {}
+        } else {
+          if (hasAuthHintCookie()) {
+            fetchBootstrap().finally(() => setLoading(false));
+          } else {
+            setLoading(false);
+          }
+        }
+      } catch {
         setLoading(false);
       }
     };

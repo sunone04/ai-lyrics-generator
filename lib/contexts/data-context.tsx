@@ -127,7 +127,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try { const j = await res.json(); throw new Error(j?.error || 'Failed to update favorite'); } catch { throw new Error('Failed to update favorite'); }
     }
     updateGeneration(id, { is_favorited: isFavorited });
-  }, [user, updateGeneration]);
+    // Optimistically maintain favorites collection
+    try {
+      mutateFavorites((cur: any) => {
+        if (!cur) return cur;
+        const list: any[] = Array.isArray(cur.generations) ? cur.generations : [];
+        if (isFavorited) {
+          // Add if missing
+          if (!list.some((g: any) => g.id === id)) {
+            const source = generations.find((g) => g.id === id);
+            const item = source ? { ...source, is_favorited: true } : { id, is_favorited: true } as any;
+            return { ...cur, generations: [item, ...list] };
+          }
+          // Otherwise just mark favorited
+          return { ...cur, generations: list.map((g: any) => g.id === id ? { ...g, is_favorited: true } : g) };
+        }
+        // Unfavorite: remove from list
+        return { ...cur, generations: list.filter((g: any) => g.id !== id) };
+      }, { revalidate: false });
+    } catch {}
+  }, [user, updateGeneration, mutateFavorites, generations]);
 
   const deleteGenerationById = useCallback(async (id: number) => {
     if (!user) throw new Error('Unauthenticated');
@@ -177,6 +196,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setEnablePersonalStyles(false);
     }
   }, [user, profile, pathname]);
+
+  // Lightweight visibility/focus revalidation when enabled
+  useEffect(() => {
+    if (!user) return;
+    const onFocus = () => {
+      try { if (enableGenerations) void mutateGenerations(); } catch {}
+      try { if (enableFavorites) void mutateFavorites(); } catch {}
+    };
+    try { window.addEventListener('focus', onFocus); } catch {}
+    try { document.addEventListener('visibilitychange', onFocus); } catch {}
+    return () => {
+      try { window.removeEventListener('focus', onFocus); } catch {}
+      try { document.removeEventListener('visibilitychange', onFocus); } catch {}
+    };
+  }, [user, enableGenerations, enableFavorites, mutateGenerations, mutateFavorites]);
 
   const value: DataContextType = {
     generations,

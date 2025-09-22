@@ -194,8 +194,9 @@ export async function POST(request: NextRequest) {
           }
 
           // Save generation record
+          let insertedId: number | null = null;
           if (fullLyrics && fullLyrics.trim().length > 0) {
-            await supabase.from('generations').insert({
+            const { data: inserted, error: insertError } = await supabase.from('generations').insert({
               user_id: user.id,
               language,
               music_style: musicStyle,
@@ -216,7 +217,11 @@ export async function POST(request: NextRequest) {
               generation_type: 'full',
               personal_style_group_id: personalStyleGroupId || null,
               is_favorited: false
-            });
+            }).select('id').single();
+
+            if (!insertError && inserted?.id) {
+              insertedId = inserted.id as number;
+            }
 
             // Increment usage count (best-effort)
             try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
@@ -225,7 +230,7 @@ export async function POST(request: NextRequest) {
           // Cache result for dedup
           dedupCache.set(hashKey, { result: fullLyrics, expiresAt: Date.now() + dedupTtlMinutes * 60 * 1000 });
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', id: insertedId })}\n\n`));
           controller.close();
         } catch (error) {
           console.error('Error in lyrics generation stream:', error);
