@@ -28,6 +28,7 @@ function LiveGenerationContent() {
     status: 'connecting',
     liveText: ''
   });
+  const [rationaleText, setRationaleText] = useState('');
   const eventSourceRef = useRef<EventSource | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -64,6 +65,10 @@ function LiveGenerationContent() {
   const syllablePattern = searchParams.get('syllablePattern') || '';
   const modelType = (searchParams.get('modelType') as 'basic' | 'pro') || 'basic';
   const regen = searchParams.get('regen') === '1' || searchParams.get('regen') === 'true';
+  const includeRationaleParam = (searchParams.get('includeRationale') || '').toLowerCase();
+  const includeRationale = includeRationaleParam === ''
+    ? true
+    : !(includeRationaleParam === 'false' || includeRationaleParam === '0' || includeRationaleParam === 'off');
 
   useEffect(() => {
     const startGeneration = async () => {
@@ -97,7 +102,8 @@ function LiveGenerationContent() {
             melody,
             syllablePattern,
             modelType,
-            regen
+            regen,
+            includeRationale
           }),
           signal: controller.signal,
         });
@@ -182,6 +188,8 @@ function LiveGenerationContent() {
               if (data.type === 'chunk') {
                 setStatus(prev => ({ ...prev, liveText: prev.liveText + (data.content || '') }));
                 resetTimeout();
+              } else if (data.type === 'rationale') {
+                if (typeof data.content === 'string') setRationaleText(data.content);
               } else if (data.type === 'complete') {
                 clearTimeout(timeoutRef.current!);
                 setStatus(prev => ({
@@ -584,6 +592,18 @@ function LiveGenerationContent() {
           )}
         </CardContent>
       </Card>
+      {rationaleText && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Creative Rationale</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose max-w-none text-gray-800">
+              <pre className="whitespace-pre-wrap leading-relaxed">{rationaleText}</pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {status.liveText && (
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <button
@@ -683,8 +703,8 @@ function LiveGenerationContent() {
       )}
 
       {showRewriteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/90 backdrop-blur-md rounded-xl max-w-2xl w-full p-6 shadow-2xl border border-white/60 max-h-[90vh] overflow-y-auto">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Rewrite Selected Lyrics</h3>
               <p className="text-sm text-gray-600">Tell AI how you want to improve the selected text</p>

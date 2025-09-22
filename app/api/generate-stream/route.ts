@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
       intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement,
       songStructure, paragraphLength, bpm, useBpm, melody,
       syllablePattern, modelType, personalStyleId: personalStyleGroupId,
-      regen
+      regen,
+      includeRationale
     } = body || {};
 
     // Basic required checks
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
     const dedupTtlMinutes = parseInt(process.env.DEDUP_TTL_MINUTES || '120', 10);
     const hashKey = paramsHash({ userId: user.id, language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType, personalStyleGroupId, regen: !!regen });
     const cached = dedupCache.get(hashKey);
-    if (cached && cached.expiresAt > Date.now()) {
+    if (cached && cached.expiresAt > Date.now() && !includeRationale) {
       return new Response(JSON.stringify({ cached: true, result: cached.result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
@@ -181,21 +182,34 @@ export async function POST(request: NextRequest) {
         }, totalSoftTimeout);
 
         try {
-          // 使用支持中止信号的生成器，客户端断开后立即停止读取与处理
-          for await (const chunk of aiService.streamGenerateLyrics(
-            { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
-            personalStyleSample || undefined,
-            upstreamAbortController.signal,
-            Boolean(regen),
-          )) {
-            if (!firstChunkSent) firstChunkSent = true;
-            fullLyrics += chunk;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
+          // If we have a cached lyrics result and the user requested rationale, replay cached lyrics to client,
+          // then compute rationale without re-calling the AI for lyrics.
+          const useCachedReplay = Boolean(cached && includeRationale && cached.expiresAt > Date.now());
+
+          if (useCachedReplay) {
+            firstChunkSent = true;
+            fullLyrics = cached!.result;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: cached!.result })}\n\n`));
+          } else {
+            // 使用支持中止信号的生成器，客户端断开后立即停止读取与处理
+            for await (const chunk of aiService.streamGenerateLyrics(
+              { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
+              personalStyleSample || undefined,
+              upstreamAbortController.signal,
+              Boolean(regen),
+            )) {
+              if (!firstChunkSent) firstChunkSent = true;
+              fullLyrics += chunk;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
+            }
           }
+
+          // Optionally generate creative rationale before completing (do not block chunks)
+          let rationaleText: string | null = null;
 
           // Save generation record
           let insertedId: number | null = null;
-          if (fullLyrics && fullLyrics.trim().length > 0) {
+          if (fullLyrics && fullLyrics.trim().length > 0 && !(cached && includeRationale && cached.expiresAt > Date.now())) {
             const { data: inserted, error: insertError } = await supabase.from('generations').insert({
               user_id: user.id,
               language,
@@ -225,6 +239,44 @@ export async function POST(request: NextRequest) {
 
             // Increment usage count (best-effort)
             try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
+          }
+
+          // Compute rationale (if requested) after lyrics are ready to avoid polluting lyric output
+          try {
+            if (includeRationale && fullLyrics && fullLyrics.trim()) {
+              rationaleText = await aiService.generateRationale(
+                fullLyrics,
+                { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') } as any,
+                Boolean(regen) ? 'regenerate' : 'generate'
+              );
+              if (rationaleText) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'rationale', content: rationaleText })}\n\n`));
+                // Best-effort persistence: attach rationale to the inserted generation, or try to find latest matching record
+                try {
+                  const updatePayload: any = {
+                    creative_rationale: rationaleText,
+                    rationale_lang: 'en',
+                    rationale_generated_at: new Date().toISOString(),
+                  };
+                  if (insertedId) {
+                    await supabase.from('generations').update(updatePayload).eq('id', insertedId);
+                  } else {
+                    const { data: recent } = await supabase
+                      .from('generations')
+                      .select('id, generated_lyrics, created_at')
+                      .eq('user_id', user.id)
+                      .order('created_at', { ascending: false })
+                      .limit(5);
+                    const found = (recent || []).find((r: any) => r.generated_lyrics === fullLyrics);
+                    if (found?.id) {
+                      await supabase.from('generations').update(updatePayload).eq('id', found.id);
+                    }
+                  }
+                } catch {}
+              }
+            }
+          } catch (e) {
+            // Non-fatal; continue to complete
           }
 
           // Cache result for dedup

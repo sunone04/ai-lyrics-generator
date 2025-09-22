@@ -345,6 +345,55 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     );
   }
 
+  async generateRationale(
+    lyrics: string,
+    params: LyricsGenerationParams,
+    context: 'generate' | 'regenerate' | 'rewrite' = 'generate'
+  ): Promise<string> {
+    return this.retryWithBackoff(async () => {
+      const model = this.getModel(params.modelType);
+
+      const parts: string[] = [];
+      parts.push(`Language: ${params.language}`);
+      parts.push(`Genre: ${params.musicStyle}`);
+      parts.push(`Theme: ${params.musicTheme}`);
+      parts.push(`Lyric Style: ${params.lyricStyle}`);
+      parts.push(`Structure: ${params.songStructure}`);
+      if (params.rhymeRequirement) parts.push(`Rhyme: ${params.rhymeRequirement}`);
+      if (params.useBpm && params.bpm) parts.push(`BPM: ${params.bpm}`);
+      if (params.emotionIntensity) parts.push(`Emotion: ${params.emotionIntensity}`);
+      if (params.syllablePattern) parts.push(`Syllable Pattern: ${params.syllablePattern}`);
+      if (params.paragraphLength) parts.push(`Paragraph Length: ${params.paragraphLength}`);
+      if (params.artistStyle) parts.push(`Artist Ref: ${params.artistStyle}`);
+      if (params.intentOrRequest) parts.push(`Direction: ${params.intentOrRequest}`);
+      const paramSummary = parts.join('\n');
+
+      const prompt = `You are a professional songwriter. Provide a concise Creative Rationale explaining why the following lyrics were crafted this way.
+Requirements:
+- 3 short bullet points OR ~80–120 words
+- Cover: theme/imagery; structure & rhyme/rhythm; alignment with user inputs
+- Be specific; avoid generic phrases and do not include the lyrics
+- Avoid first-person ('I') or references to AI; write objectively
+Context: ${context.toUpperCase()}
+USER INPUT SUMMARY:
+${paramSummary}
+
+LYRICS:
+${lyrics}
+
+OUTPUT:
+Write the rationale only, in a clear professional tone.`;
+
+      const result = await this.withTimeout(model.generateContent(prompt), NETWORK_SOFT_TIMEOUT_MS, 'AI request');
+      const response = await result.response;
+      const text = (response as any)?.text ? (response as any).text() : '';
+      const rationale = (text || '').toString().trim();
+      if (!rationale) throw new Error('No rationale generated');
+      const cap = parseInt(process.env.RATIONALE_MAX_CHARS || '1000');
+      return rationale.length > cap ? rationale.slice(0, cap) : rationale;
+    }, 'generate rationale');
+  }
+
   async rewriteLyrics(
     originalLyrics: string, 
     selectedPortion: string, 

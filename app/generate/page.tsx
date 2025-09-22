@@ -41,6 +41,7 @@ interface LyricsGenerationParams {
   syllablePattern: string;
   modelType: 'basic' | 'pro';
   personalStyleId?: number;
+  includeRationale?: boolean;
 }
 
 interface PersonalStyleGroup {
@@ -114,7 +115,8 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     useBpm: false,
     melody: '',
     syllablePattern: '',
-    modelType: 'basic'
+    modelType: 'basic',
+    includeRationale: true,
   });
 
   // 前端硬限制：当自由文本超过上限时，立即截断到上限（与 maxLength 体验一致）
@@ -398,6 +400,25 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               <div>
                 <label className="block text-base font-semibold text-gray-700 mb-2">Paragraph Length Preference</label>
                 <input type="text" value={params.paragraphLength} onChange={(e) => setParams({ ...params, paragraphLength: e.target.value })} placeholder="e.g., 4 lines per verse" maxLength={FREE_TEXT_LIMITS.paragraphLength} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+              </div>
+            </div>
+
+            {/* Creative Rationale (default on) */}
+            <div className="pl-11 mt-6 flex items-start gap-3">
+              <input
+                id="includeRationale"
+                type="checkbox"
+                checked={params.includeRationale ?? true}
+                onChange={(e) => setParams({ ...params, includeRationale: e.target.checked })}
+                className="mt-1 w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500"
+              />
+              <div>
+                <label htmlFor="includeRationale" className="text-base font-semibold text-gray-700">
+                  Explain creative rationale (Why these lyrics)
+                </label>
+                <p className="text-sm text-gray-600 mt-1">
+                  When enabled, AI also provides a short, professional songwriter explanation of the theme, structure, rhyme and stylistic choices — so you understand why the lyrics were crafted this way.
+                </p>
               </div>
             </div>
 

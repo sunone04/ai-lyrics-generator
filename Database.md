@@ -234,6 +234,39 @@ GRANT EXECUTE ON FUNCTION public.check_favorite_limit_optimized(uuid) TO authent
 
 ---
 
+## 变更记录 2025-09-22 — 创作理据字段（Creative Rationale）
+
+为支持“创作理据（AI 解释歌词为什么这样写）”功能，向 `public.generations` 增加以下字段：
+
+SQL（已执行）
+```
+BEGIN;
+
+ALTER TABLE public.generations
+  ADD COLUMN IF NOT EXISTS creative_rationale text,
+  ADD COLUMN IF NOT EXISTS rationale_lang varchar(10),
+  ADD COLUMN IF NOT EXISTS rationale_generated_at timestamptz;
+
+COMMENT ON COLUMN public.generations.creative_rationale IS 'Optional creative rationale (AI explanation of lyric choices)';
+COMMENT ON COLUMN public.generations.rationale_lang IS 'Language code for rationale, e.g., en, zh';
+COMMENT ON COLUMN public.generations.rationale_generated_at IS 'Timestamp when rationale was generated';
+
+COMMIT;
+```
+
+使用说明
+- 正常生成歌词完成后，若用户在前端勾选“Explain creative rationale (Why these lyrics)”，后端会追加一次短调用生成解释文本，并通过 SSE `type: rationale` 推送给前端展示；同时尽力将解释写入本次或最近一次对应的 `generations` 记录的上述字段。
+- 解释文本为可选（nullable），未生成/未勾选情况下保持 `NULL`。
+- 语言标记（`rationale_lang`）默认存 `en`（站点主语言为英文）。如需按用户语言生成/标注，可在后端按需调整。
+
+成本与缓存
+- 若命中歌词去重缓存且用户仅需解释，则后端会“回放缓存的歌词”并只请求解释文本，避免重复长生成，降低成本。
+- 也可改为“展开时再请求解释”，进一步减少不必要的调用（见 PRD）。
+
+前端展示（摘要）
+- 结果页会在歌词卡片下方显示一个“Creative Rationale”卡片，仅在收到 `type: rationale` 时出现。
+- 若需要，也可在历史详情页读取 `generations.creative_rationale` 直接展示，无需再次调用。
+
 ## 变更记录 2025-09-17
 为修复“注册时报 Database error saving new user”的问题，做了如下数据库调整并已执行：
 

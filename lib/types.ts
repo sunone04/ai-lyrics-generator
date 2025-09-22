@@ -54,6 +54,9 @@ export interface Generation {
   parent_generation_id?: number;
   optimization_request?: string;
   personal_style_group_id?: number;
+  creative_rationale?: string;
+  rationale_lang?: string;
+  rationale_generated_at?: string;
 }
 
 // Lightweight list item used by client-side lists to reduce transfer and typing friction
@@ -155,4 +158,3 @@ export interface PersonalStyleCreateResponse {
   personalStyle?: PersonalStyle;
   error?: string;
 }
-
