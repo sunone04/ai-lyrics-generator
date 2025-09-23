@@ -3,6 +3,14 @@ import { LyricsGenerationParams, PersonalStyle } from './types';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
+// Explicit section markers for combined lyrics + rationale streaming
+export const MARKERS = {
+  LYRICS_START: '<<<LYRICS_START>>>',
+  LYRICS_END: '<<<LYRICS_END>>>',
+  RATIONALE_START: '<<<RATIONALE_START>>>',
+  RATIONALE_END: '<<<RATIONALE_END>>>',
+} as const;
+
 // 输出最大字符数（软上限，超过将截断）
 const MAX_OUTPUT_CHARS: number = parseInt(process.env.AI_MAX_OUTPUT_CHARS || '6000');
 // 外部网络软超时（毫秒），默认 45000ms；用于首个响应或整体请求
@@ -63,6 +71,50 @@ export class AIService {
     return genAI.getGenerativeModel(config);
   }
 
+  private buildCombinedPrompt(params: LyricsGenerationParams, personalStyle?: PersonalStyle | PersonalStyle[]): string {
+    const cap = parseInt(process.env.RATIONALE_MAX_CHARS || '1000');
+    const parts: string[] = [];
+    parts.push(`Language: ${params.language}`);
+    parts.push(`Genre: ${params.musicStyle}`);
+    parts.push(`Theme: ${params.musicTheme}`);
+    parts.push(`Lyric Style: ${params.lyricStyle}`);
+    if (params.songStructure) parts.push(`Structure: ${params.songStructure}`);
+    if (params.rhymeRequirement) parts.push(`Rhyme: ${params.rhymeRequirement}`);
+    if (params.useBpm && params.bpm) parts.push(`BPM: ${params.bpm}`);
+    if (params.emotionIntensity) parts.push(`Emotion: ${params.emotionIntensity}`);
+    if (params.syllablePattern) parts.push(`Syllable Pattern: ${params.syllablePattern}`);
+    if (params.paragraphLength) parts.push(`Paragraph Length: ${params.paragraphLength}`);
+    if (params.artistStyle) parts.push(`Artist Ref: ${params.artistStyle}`);
+    if (params.intentOrRequest) parts.push(`Direction: ${params.intentOrRequest}`);
+    if (personalStyle) {
+      const psArray = Array.isArray(personalStyle) ? personalStyle : [personalStyle];
+      const psNames = psArray.map((p: any) => p?.title || '').filter(Boolean).join(', ');
+      if (psNames) parts.push(`Personal Style Examples: ${psNames}`);
+    }
+    const paramSummary = parts.join('\n');
+
+    return `You are a world-class professional songwriter and lyricist. Create exceptional, original lyrics that avoid clichés and generic expressions.
+
+Follow the instructions and produce TWO sections in this exact order, using the exact boundary markers on their own lines:
+
+${MARKERS.LYRICS_START}
+[LYRICS ONLY] Provide complete song lyrics with appropriate structural tags such as [Verse], [Chorus], [Bridge], etc. Do not include any explanations.
+${MARKERS.LYRICS_END}
+
+${MARKERS.RATIONALE_START}
+[CREATIVE RATIONALE] Provide a concise objective rationale (~80–120 words or 3 bullets, max ${cap} characters) explaining theme/imagery, structure & rhyme/rhythm, and how the lyrics align with user inputs. Do not repeat the lyrics, avoid first-person and avoid any AI self-references.
+${MARKERS.RATIONALE_END}
+
+Rules:
+- Output NOTHING before ${MARKERS.LYRICS_START} and NOTHING after ${MARKERS.RATIONALE_END}.
+- The markers must appear exactly as shown and must NOT appear inside the content.
+- The lyrics must strictly follow all user parameters.
+
+User Parameters:\n${paramSummary}
+
+Output the two sections as specified with the exact markers.`;
+  }
+
   private withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
     let timer: NodeJS.Timeout;
     const timeout = new Promise<never>((_, reject) => {
@@ -80,10 +132,13 @@ export class AIService {
     personalStyle?: PersonalStyle | PersonalStyle[],
     abortSignal?: AbortSignal,
     isRegeneration: boolean = false,
+    includeRationale: boolean = false,
   ): AsyncGenerator<string> {
 
     const model = this.getModel(params.modelType, isRegeneration);
-    const prompt = this.buildGenerationPrompt(params, personalStyle);
+    const prompt = includeRationale
+      ? this.buildCombinedPrompt(params, personalStyle)
+      : this.buildGenerationPrompt(params, personalStyle);
 
     try {
       // 生成流，整体调用设置软超时

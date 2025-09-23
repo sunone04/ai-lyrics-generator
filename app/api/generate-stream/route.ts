@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server'
-import { aiService } from '@/lib/ai-service';
+import { aiService, MARKERS } from '@/lib/ai-service';
 
 // In-memory per-instance concurrency guard and simple dedup cache
 const userLocks = new Map<string, number>();
@@ -145,6 +145,9 @@ export async function POST(request: NextRequest) {
 
     let firstChunkSent = false;
     let fullLyrics = '';
+    // IDs and rationale text captured during combined streaming
+    let insertedId: number | null = null;
+    let rationaleText: string | null = null;
 
     // 将客户端断开与上游AI调用关联：客户端断开 -> 中止生成
     const upstreamAbortController = new AbortController();
@@ -192,24 +195,178 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: cached!.result })}\n\n`));
           } else {
             // 使用支持中止信号的生成器，客户端断开后立即停止读取与处理
-            for await (const chunk of aiService.streamGenerateLyrics(
-              { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
-              personalStyleSample || undefined,
-              upstreamAbortController.signal,
-              Boolean(regen),
-            )) {
-              if (!firstChunkSent) firstChunkSent = true;
-              fullLyrics += chunk;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
+            if (includeRationale) {
+              // Combined streaming: expect markers to split lyrics and rationale
+              const guardLen = 64;
+              let buffer = '';
+              let seenLyricsStart = false;
+              let seenLyricsEnd = false;
+              let seenRationaleStart = false;
+              let rationaleStreamed = false;
+              let lyricsSentIndex = 0;
+              let rationaleBuf = '';
+
+              for await (const rawChunk of aiService.streamGenerateLyrics(
+                { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
+                personalStyleSample || undefined,
+                upstreamAbortController.signal,
+                Boolean(regen),
+                true,
+              )) {
+                buffer += rawChunk;
+
+                // Detect lyrics start
+                if (!seenLyricsStart) {
+                  const sIdx = buffer.indexOf(MARKERS.LYRICS_START);
+                  if (sIdx !== -1) {
+                    buffer = buffer.slice(sIdx + MARKERS.LYRICS_START.length);
+                    seenLyricsStart = true;
+                    lyricsSentIndex = 0;
+                  } else {
+                    // Don't emit anything until lyrics start marker
+                    // Keep buffer bounded to avoid memory growth
+                    if (buffer.length > 4096) buffer = buffer.slice(-1024);
+                    continue;
+                  }
+                }
+
+                // Stream lyrics until LYRICS_END
+                if (seenLyricsStart && !seenLyricsEnd) {
+                  const eIdx = buffer.indexOf(MARKERS.LYRICS_END);
+                  if (eIdx === -1) {
+                    const safeEnd = Math.max(0, buffer.length - guardLen);
+                    if (safeEnd > lyricsSentIndex) {
+                      const toSend = buffer.slice(lyricsSentIndex, safeEnd);
+                      if (toSend) {
+                        if (!firstChunkSent) firstChunkSent = true;
+                        fullLyrics += toSend;
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: toSend })}\n\n`));
+                      }
+                      lyricsSentIndex = safeEnd;
+                    }
+                    continue;
+                  } else {
+                    // Flush remaining lyrics content up to end marker
+                    const toSend = buffer.slice(lyricsSentIndex, eIdx);
+                    if (toSend) {
+                      if (!firstChunkSent) firstChunkSent = true;
+                      fullLyrics += toSend;
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: toSend })}\n\n`));
+                    }
+                    // Move buffer past end marker
+                    buffer = buffer.slice(eIdx + MARKERS.LYRICS_END.length);
+                    lyricsSentIndex = 0;
+                    seenLyricsEnd = true;
+
+                    // Persist the generation record as soon as lyrics complete (if not cached path)
+                    if (fullLyrics && fullLyrics.trim().length > 0) {
+                      try {
+                        const { data: inserted, error: insertError } = await supabase.from('generations').insert({
+                          user_id: user.id,
+                          language,
+                          music_style: musicStyle,
+                          music_theme: musicTheme,
+                          length_option: lengthOption,
+                          lyric_style: lyricStyle,
+                          intent_or_request: intentOrRequest,
+                          artist_style: artistStyle,
+                          emotion_intensity: emotionIntensity,
+                          rhyme_requirement: rhymeRequirement,
+                          song_structure: songStructure,
+                          paragraph_length: paragraphLength,
+                          bpm,
+                          melody,
+                          syllable_pattern: syllablePattern,
+                          generated_lyrics: fullLyrics,
+                          model_used: modelType || 'basic',
+                          generation_type: 'full',
+                          personal_style_group_id: personalStyleGroupId || null,
+                          is_favorited: false
+                        }).select('id').single();
+                        if (!insertError && inserted?.id) {
+                          insertedId = inserted.id as number;
+                        }
+                        try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
+                      } catch {}
+                    }
+                  }
+                }
+
+                // Accumulate rationale
+                if (seenLyricsEnd) {
+                  if (!seenRationaleStart) {
+                    const rStart = buffer.indexOf(MARKERS.RATIONALE_START);
+                    if (rStart !== -1) {
+                      buffer = buffer.slice(rStart + MARKERS.RATIONALE_START.length);
+                      seenRationaleStart = true;
+                    } else {
+                      // Still waiting for rationale start; bound buffer size
+                      if (buffer.length > 4096) buffer = buffer.slice(-1024);
+                      continue;
+                    }
+                  }
+
+                  // We are in rationale section
+                  const rEnd = buffer.indexOf(MARKERS.RATIONALE_END);
+                  if (rEnd === -1) {
+                    const safeEnd = Math.max(0, buffer.length - guardLen);
+                    if (safeEnd > 0) {
+                      rationaleBuf += buffer.slice(0, safeEnd);
+                      buffer = buffer.slice(safeEnd);
+                    }
+                  } else {
+                    rationaleBuf += buffer.slice(0, rEnd);
+                    buffer = buffer.slice(rEnd + MARKERS.RATIONALE_END.length);
+                    const rationaleOut = (rationaleBuf || '').trim();
+                    if (rationaleOut) {
+                      rationaleText = rationaleOut;
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'rationale', content: rationaleOut })}\n\n`));
+                      // Persist rationale to DB
+                      try {
+                        const updatePayload: any = {
+                          creative_rationale: rationaleOut,
+                          rationale_lang: 'en',
+                          rationale_generated_at: new Date().toISOString(),
+                        };
+                        if (insertedId) {
+                          await supabase.from('generations').update(updatePayload).eq('id', insertedId);
+                        } else if (fullLyrics) {
+                          const { data: recent } = await supabase
+                            .from('generations')
+                            .select('id, generated_lyrics, created_at')
+                            .eq('user_id', user.id)
+                            .order('created_at', { ascending: false })
+                            .limit(5);
+                          const found = (recent || []).find((r: any) => r.generated_lyrics === fullLyrics);
+                          if (found?.id) {
+                            await supabase.from('generations').update(updatePayload).eq('id', found.id);
+                          }
+                        }
+                      } catch {}
+                    }
+                    rationaleStreamed = true;
+                  }
+                }
+              }
+            } else {
+              for await (const chunk of aiService.streamGenerateLyrics(
+                { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
+                personalStyleSample || undefined,
+                upstreamAbortController.signal,
+                Boolean(regen),
+                false,
+              )) {
+                if (!firstChunkSent) firstChunkSent = true;
+                fullLyrics += chunk;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`));
+              }
             }
           }
 
-          // Optionally generate creative rationale before completing (do not block chunks)
-          let rationaleText: string | null = null;
+          // Optionally generate creative rationale before completing (fallback-only)
 
-          // Save generation record
-          let insertedId: number | null = null;
-          if (fullLyrics && fullLyrics.trim().length > 0 && !(cached && includeRationale && cached.expiresAt > Date.now())) {
+          // Save generation record (if not already persisted during combined streaming)
+          if (!insertedId && fullLyrics && fullLyrics.trim().length > 0 && !(cached && includeRationale && cached.expiresAt > Date.now())) {
             const { data: inserted, error: insertError } = await supabase.from('generations').insert({
               user_id: user.id,
               language,
@@ -241,9 +398,9 @@ export async function POST(request: NextRequest) {
             try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
           }
 
-          // Compute rationale (if requested) after lyrics are ready to avoid polluting lyric output
+          // Compute rationale (if requested) after lyrics are ready (fallback when combined markers not streamed)
           try {
-            if (includeRationale && fullLyrics && fullLyrics.trim()) {
+            if (includeRationale && fullLyrics && fullLyrics.trim() && !rationaleText) {
               rationaleText = await aiService.generateRationale(
                 fullLyrics,
                 { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') } as any,

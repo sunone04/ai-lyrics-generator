@@ -267,6 +267,40 @@ COMMIT;
 - 结果页会在歌词卡片下方显示一个“Creative Rationale”卡片，仅在收到 `type: rationale` 时出现。
 - 若需要，也可在历史详情页读取 `generations.creative_rationale` 直接展示，无需再次调用。
 
+### 性能优化：建议索引（按需）
+
+基于当前接口的查询/更新路径，建议如下索引以优化常用读取：
+
+```
+-- 1) 用户列表页/分页：按用户查最近生成记录
+CREATE INDEX IF NOT EXISTS idx_generations_user_created
+  ON public.generations (user_id, created_at DESC);
+
+-- 2) 用户“仅收藏”筛选：按用户 + 收藏状态 + 时间排序
+CREATE INDEX IF NOT EXISTS idx_generations_user_fav_created
+  ON public.generations (user_id, is_favorited, created_at DESC);
+
+-- 3) 定时清理（全局维度）：未收藏且早于阈值的删除（若尚未建）
+-- 注：此前文档已建议过 (is_favorited, created_at) 组合索引；保留或使用以下名称均可。
+CREATE INDEX IF NOT EXISTS idx_generations_fav_created_at
+  ON public.generations (is_favorited, created_at);
+
+-- 4) 仅当需要统计/筛选“已生成理据”的列表时再添加（可选）
+-- 该部分索引用于快速定位“有理据且按生成时间倒序”的用户记录
+CREATE INDEX IF NOT EXISTS idx_generations_user_rationale_recent
+  ON public.generations (user_id, rationale_generated_at DESC)
+  WHERE creative_rationale IS NOT NULL;
+
+-- 5) 生成页读取“个人风格样本”：按用户+分组+时间
+CREATE INDEX IF NOT EXISTS idx_psl_user_group_created
+  ON public.personal_style_lyrics (user_id, style_group_id, created_at DESC);
+```
+
+说明：
+- 本次新增字段 `creative_rationale` 本身不需要索引用于等值/排序；仅当你要做“是否存在理据”的筛选或按理据时间排序时，参考第4条的部分索引（带 WHERE 过滤）更合适。
+- 第1/2条分别覆盖“用户分页列表”和“用户收藏筛选”的主流路径；与第3条（清理）互补，彼此不冲突。
+- 每个索引都会带来写入开销与存储占用，请按数据量与访问模式决定是否全部落地。通常在数据量 > 1–2 万行后价值更明显。
+
 ## 变更记录 2025-09-17
 为修复“注册时报 Database error saving new user”的问题，做了如下数据库调整并已执行：
 
