@@ -378,7 +378,8 @@ export default function EditPage() {
                           className="text-blue-600 hover:text-blue-800 ml-2 text-xs"
                           title="Clear selection"
                         >
-                          鉁?                        </button>
+                          Clear
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -442,9 +443,9 @@ export default function EditPage() {
                         <strong>Quick tips:</strong>
                       </p>
                       <ul className="text-xs text-yellow-700 mt-1 space-y-1">
-                        <li>鈥?Highlight a verse or chorus</li>
-                        <li>鈥?Select problematic lines</li>
-                        <li>鈥?Choose specific phrases to improve</li>
+                        <li>- Highlight a verse or chorus</li>
+                        <li>- Select problematic lines</li>
+                        <li>- Choose specific phrases to improve</li>
                       </ul>
                     </div>
                   )}

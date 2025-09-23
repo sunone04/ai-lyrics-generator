@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -15,7 +15,8 @@ import {
   HeartIcon,
   ArrowPathIcon,
   PencilIcon,
-  ShareIcon
+  ShareIcon,
+  MusicalNoteIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
@@ -478,19 +479,7 @@ function GenerationResultContent() {
               </div>
             ) : (
               <div className="prose max-w-none">
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 mb-1">
-                    �?AI Rewrite Feature
-                  </p>
-                  <p className="text-sm text-blue-700 mb-2">
-                    Select any part of the lyrics below and click the "Rewrite Selected" button that appears. 
-                    Perfect for improving specific verses, chorus, or lines!
-                  </p>
-                  <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1">
-                    ⚠️ Warning: Selected lyrics will be replaced with new AI-generated content. 
-                    We recommend downloading your lyrics first as backup.
-                  </p>
-                </div>
+                {/* Info panel moved to bottom of page */}
                 <div
                   ref={lyricsContainerRef}
                   className="lyrics-container relative"
@@ -537,9 +526,7 @@ function GenerationResultContent() {
               {!audioFile ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <div className="space-y-2">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                      <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <MusicalNoteIcon className="mx-auto h-12 w-12 text-purple-600" />
                     <div className="text-sm text-gray-600">
                       <label htmlFor="audio-upload" className="cursor-pointer">
                         <span className="text-blue-600 hover:text-blue-500">Upload an audio file</span>
@@ -594,7 +581,7 @@ function GenerationResultContent() {
             <div className="flex flex-wrap gap-4 justify-center text-base">
               <button
                 onClick={handleCopy}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
               >
                 <ClipboardDocumentIcon className="h-5 w-5 mr-2" />
                 Copy
@@ -602,7 +589,7 @@ function GenerationResultContent() {
 
               <button
                 onClick={handleDownload}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors cursor-pointer"
               >
                 <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
                 Download
@@ -611,7 +598,7 @@ function GenerationResultContent() {
               <button
                 onClick={handleToggleFavorite}
                 disabled={isToggling}
-                className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                className={`flex items-center px-4 py-2 rounded-md transition-colors cursor-pointer ${
                   generation.is_favorited
                     ? 'bg-red-600 text-white hover:bg-red-700'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -627,7 +614,7 @@ function GenerationResultContent() {
 
               <button
                 onClick={handleRegenerate}
-                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors cursor-pointer"
               >
                 <ArrowPathIcon className="h-5 w-5 mr-2" />
                 Regenerate
@@ -635,21 +622,13 @@ function GenerationResultContent() {
 
               <button
                 onClick={handleShare}
-                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors cursor-pointer"
               >
                 <ShareIcon className="h-5 w-5 mr-2" />
                 Share
               </button>
 
-              {canEdit && (
-                <button
-                  onClick={() => router.push(`/edit/${generation.id}`)}
-                  className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-                >
-                  <PencilIcon className="h-5 w-5 mr-2" />
-                  Edit
-                </button>
-              )}
+              {/* Removed secondary Edit button (handled elsewhere) */}
             </div>
           </div>
 
@@ -730,10 +709,21 @@ function GenerationResultContent() {
             </div>
           </div>
 
+          {/* AI Rewrite Info (moved from above lyrics) */}
+          <div className="mt-8 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm font-medium text-blue-800 mb-1">AI Rewrite Feature</p>
+            <p className="text-sm text-blue-700 mb-2">
+              Select any part of the lyrics above and click the "Rewrite Selected" button that appears.
+              Perfect for improving specific verses, chorus, or lines!
+            </p>
+            <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1">
+              Warning: Selected lyrics will be replaced with new AI-generated content. We recommend downloading your lyrics first as backup.
+            </p>
+          </div>
           {/* Privacy Notice */}
           <div className="mt-6 text-center">
             <p className="text-lg text-gray-700 font-semibold">
-              🔒 Based on privacy protection, your lyrics are stored for up to 3 days. 
+              Based on privacy protection, your lyrics are stored for up to 3 days. 
               Please download or favorite them in time.
             </p>
           </div>

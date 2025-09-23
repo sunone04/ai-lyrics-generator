@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { User, Session } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/lib/types';
 
 // Lightweight dedupe cache to avoid duplicate /api/me/bootstrap requests during fast route switches
-const BOOTSTRAP_DEDUPE_MS = 5000;
+// Align with server private cache (~30s) to reduce redundant calls
+const BOOTSTRAP_DEDUPE_MS = 30000;
 let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any> | null } = {
   data: null,
   expiresAt: 0,
@@ -14,7 +15,9 @@ let bootstrapCache: { data: any | null; expiresAt: number; inflight: Promise<any
 
 // Persisted local cache to speed up perceived auth/profile load on revisit
 const BOOTSTRAP_LOCAL_CACHE_KEY = 'bootstrap_cache_v1';
-const BOOTSTRAP_LOCAL_TTL_MS = 15 * 60 * 1000; // 15 minutes
+// Extend local cache TTL to reduce cold auth fetch on revisit
+// Keep background revalidation so data stays fresh without blocking UI
+const BOOTSTRAP_LOCAL_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 // Front-end readable login hint cookie name (to avoid anon bootstrap calls)
 export const AUTH_HINT_COOKIE = 'aig_auth';
@@ -34,7 +37,6 @@ export function hasAuthHintCookie(): boolean {
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
-  session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: (force?: boolean) => Promise<void>;
@@ -47,7 +49,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchBootstrap = useCallback(async (force?: boolean) => {
@@ -208,8 +209,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (shownFromCache) {
           setLoading(false);
-          // Background refresh to ensure freshness if we have a hint
-          try { if (hasAuthHintCookie()) void fetchBootstrap(); } catch {}
+          // If cookie hint exists, refresh in background; otherwise clear stale cache immediately
+          let hint = false;
+          try { hint = hasAuthHintCookie(); } catch { hint = false; }
+          if (hint) {
+            try { void fetchBootstrap(); } catch {}
+          } else {
+            try {
+              setUser(null);
+              setProfile(null);
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem(BOOTSTRAP_LOCAL_CACHE_KEY);
+              }
+            } catch {}
+          }
         } else {
           if (hasAuthHintCookie()) {
             fetchBootstrap().finally(() => setLoading(false));
@@ -227,15 +240,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     const res = await fetch('/api/auth/signout', { method: 'POST' });
     if (!res.ok) throw new Error('Sign out failed');
-    setSession(null);
     setUser(null);
     setProfile(null);
+    // Clear local caches to avoid stale logged-in UI after sign out
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(BOOTSTRAP_LOCAL_CACHE_KEY);
+      }
+      bootstrapCache = { data: null, expiresAt: 0, inflight: null };
+    } catch {}
   };
 
   const value = {
     user,
     profile,
-    session,
     loading,
     signOut,
     refreshProfile,

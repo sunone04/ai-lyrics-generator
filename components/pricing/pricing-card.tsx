@@ -55,14 +55,14 @@ export default function PricingCard({ plan }: PricingCardProps) {
         try { await auth?.refreshProfile?.(true); } catch {}
 
         // 轮询最多 ~20s 等待后端（webhook/队列）完成写入，避免用户手动刷新
-        const waitUntilActive = async (timeoutMs = 20000, intervalMs = 1500) => {
+        const waitUntilActive = async (timeoutMs = 15000, intervalMs = 2500) => {
           const start = Date.now();
           while (Date.now() - start < timeoutMs) {
             try {
-              const res = await fetch('/api/me/bootstrap', { cache: 'no-store' });
+              const res = await fetch('/api/subscription/status', { cache: 'no-store' });
               if (res.ok) {
                 const data = await res.json();
-                const st = data?.profile?.status;
+                const st = data?.status;
                 if (st === 'active') return true;
               }
             } catch {}

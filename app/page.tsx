@@ -1,4 +1,4 @@
-﻿import Link from 'next/link';
+﻿﻿﻿﻿import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRightIcon, SparklesIcon, LanguageIcon, PencilIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { SITE_CONFIG } from '@/lib/constants';
@@ -67,7 +67,7 @@ export default function Home() {
 
               </div>
               <p className="text-sm text-gray-600 mt-[-4px] md:mt-[-8px] mb-8 md:mb-12">
-                New users get a 3-day free trial membership 鈥?no credit card required.
+                New users get a 3-day free trial membership - no credit card required.
               </p>
 
               {/* Trust Indicators */}
@@ -355,7 +355,7 @@ export default function Home() {
           </div>
 
           <div className="mt-12 text-gray-600 text-sm">
-            鉁?No credit card required 鈥?Start with 3 free generations daily
+            - No credit card required - Start with 3 free generations daily
           </div>
         </div>
       </section>

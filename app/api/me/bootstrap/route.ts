@@ -40,6 +40,26 @@ export async function GET() {
           { headers: ANON_CACHE_HEADERS }
         );
       }
+
+      // If no Supabase auth cookie present (session expired), avoid hitting auth.getUser()
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        let projectRef = 'supabase';
+        try {
+          const u = new URL(supabaseUrl);
+          const host = u.hostname;
+          projectRef = host.replace('.supabase.co', '') || 'supabase';
+        } catch {}
+        const authCookiePrefix = `sb-${projectRef}-auth-token`;
+        const all = store.getAll();
+        const hasSbCookie = all.some(c => c.name === authCookiePrefix || c.name.startsWith(`${authCookiePrefix}.`));
+        if (!hasSbCookie) {
+          return NextResponse.json(
+            { user: null },
+            { headers: ANON_CACHE_HEADERS }
+          );
+        }
+      } catch {}
     } catch {}
 
     const supabase = await createServerComponentClient();

@@ -78,6 +78,11 @@ export async function GET(request: NextRequest) {
     const canRewrite = profile.rewrite_count < maxRewrites;
     const canFavorite = profile.favorite_count < maxFavorites;
 
+    const AUTH_CACHE_HEADERS = {
+      'Cache-Control': 'private, max-age=30, s-maxage=0, stale-while-revalidate=60',
+      'Vary': 'Cookie',
+    } as const;
+
     return NextResponse.json({
       profile: {
         id: profile.id,
@@ -114,7 +119,7 @@ export async function GET(request: NextRequest) {
         maxFavorites,
         isActiveUser,
       },
-    });
+    }, { headers: AUTH_CACHE_HEADERS });
   } catch (error) {
     console.error('Error in usage limits API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

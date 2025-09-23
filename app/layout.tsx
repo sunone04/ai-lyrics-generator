@@ -92,6 +92,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabaseOrigin = (() => {
+    try {
+      const raw = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      if (!raw) return null;
+      const u = new URL(raw);
+      return `${u.protocol}//${u.host}`;
+    } catch {
+      return null;
+    }
+  })();
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -128,6 +138,12 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
+        {supabaseOrigin ? (
+          <>
+            <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
+        ) : null}
         {process.env.NODE_ENV === 'production' && GA_MEASUREMENT_ID ? (
           <>
             <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />

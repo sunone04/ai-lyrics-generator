@@ -171,7 +171,7 @@ function LiveGenerationContent() {
             try { abortControllerRef.current?.abort(); } catch {}
           }, 120000);
         };
-        // Replace initial 60s timer with a 2鈥憁inute inactivity timer
+        // Replace initial 60s timer with a 2-inute inactivity timer
         try { if (timeoutRef.current) clearTimeout(timeoutRef.current); } catch {}
         resetTimeout();
 

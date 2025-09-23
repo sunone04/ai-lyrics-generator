@@ -1,8 +1,8 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, hasAuthHintCookie } from '@/lib/contexts/auth-context';
+import { useAuth } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
 import { useTrial } from '@/lib/hooks/use-trial';
 import { SUBSCRIPTION_LIMITS } from '@/lib/constants';
@@ -28,7 +28,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { user, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { isActiveUser, refreshData: refreshTrialData } = useTrial();
   const { 
     generations, 
@@ -50,7 +50,6 @@ function DashboardContent() {
 
   useEffect(() => {
     
-    try { if (!user && hasAuthHintCookie()) void refreshProfile(); } catch {}
     const handlePaymentFeedback = () => {
       // Payment feedback via query
       const params = new URLSearchParams(window.location.search);
@@ -62,13 +61,13 @@ function DashboardContent() {
     
     if (!authLoading && user) {
       handlePaymentFeedback();
-      try { void refreshProfile(); } catch {}
+      
       // 鏁版嵁鑾峰彇鐜板湪鐢眜seData context鑷姩澶勭悊
       setIsLoading(false);
     } else if (!authLoading && !user) {
       setIsLoading(false);
     }
-  }, [user, authLoading, refreshProfile]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (activeTab === 'favorites') {
@@ -348,7 +347,7 @@ function DashboardContent() {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  Favorites ({favorites.length})
+                  Favorites
                 </button>
               </nav>
             </div>
@@ -382,7 +381,7 @@ function DashboardContent() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <span className="text-sm font-medium text-gray-900">
-                              {generation.music_style} 鈥?{generation.music_theme}
+                              {generation.music_style} - {generation.music_theme}
                             </span>
                             {generation.model_used === 'pro' && (
                               <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { useAuth, hasAuthHintCookie } from '@/lib/contexts/auth-context';
+import { useAuth } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,7 +27,7 @@ interface Lyric {
 }
 // Main Page Component
 export default function PersonalStylePage() {
-  const { user, refreshProfile } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { isActiveUser } = useTrial();
   const { personalStyles, loadingPersonalStyles, fetchPersonalStyles } = useData();
@@ -52,15 +52,7 @@ export default function PersonalStylePage() {
     } catch {}
   }, []);
 
-  // Try to hydrate auth only when a login hint cookie exists (avoids anon requests)
-  useEffect(() => {
-    try {
-      if (!user && hasAuthHintCookie()) {
-        void refreshProfile();
-      }
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, refreshProfile]);
+  // Provider 已基于提示 Cookie 做了懒加载与去重，此处不再重复触发 refreshProfile
   // 首次登录后触发一次强制拉取，避免依赖函数引用造成死循环
   useEffect(() => {
     if (user) fetchPersonalStyles(true);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth, hasAuthHintCookie } from '@/lib/contexts/auth-context';
+import { useAuth } from '@/lib/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -18,7 +18,7 @@ import { useTrial } from '@/lib/hooks/use-trial';
 import { TrialStatus } from '@/components/ui/trial-activation';
 
 export default function AccountPage() {
-  const { user, profile, loading, signOut, refreshProfile } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -27,8 +27,8 @@ export default function AccountPage() {
   useEffect(() => {
     // 仅在存在登录提示 Cookie 时尝试拉取用户信息，避免游客访问产生请求
     try {
-      if (!user && hasAuthHintCookie()) {
-        void refreshProfile();
+      if (!user) {
+        // no-op: Provider handles background auth refresh
       }
     } catch {}
     return () => {

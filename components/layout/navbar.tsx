@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NAVIGATION_ITEMS, BLOG_CATEGORIES } from '@/lib/constants';
@@ -14,31 +14,35 @@ import {
   StarIcon,
   UserIcon
 } from '@heroicons/react/24/outline';
-import { useOptionalAuth } from '@/lib/contexts/auth-context';
+import { useOptionalAuth, hasAuthHintCookie } from '@/lib/contexts/auth-context';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
   const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [authHint, setAuthHint] = useState(false);
   const router = useRouter();
   const auth = useOptionalAuth();
   const user = auth?.user || null;
   const profile = auth?.profile || null;
-  const signOut = auth?.signOut || (async () => {});
+  const loading = !!auth?.loading;
   const isInTrial = !!(profile?.trial_end_date && new Date(profile.trial_end_date) > new Date() && profile?.status !== 'active');
+
+  // Avoid hydration mismatch; detect cookie only on client
+  useEffect(() => {
+    setMounted(true);
+    try { setAuthHint(hasAuthHintCookie()); } catch { setAuthHint(false); }
+  }, []);
 
   const handleSignIn = () => {
     router.push('/auth/signin');
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
-  };
+  // Sign out action is handled on the Account page
 
   // 从profile中获取订阅状态
   const isPro = profile?.status === 'active';
-  const isFree = !isPro;
 
   return (
     <nav className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
@@ -177,7 +181,15 @@ export default function Navbar() {
           {/* User Menu */}
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
-              {user ? (
+              {/* Loading/skeleton state: if we likely have a session (hint cookie) but auth is hydrating */}
+              {(!mounted || (loading && authHint)) ? (
+                <div className="flex items-center gap-3">
+                  {/* Badge skeleton */}
+                  <div className="h-7 w-16 bg-gray-100 rounded-full animate-pulse" aria-hidden />
+                  {/* Account button skeleton */}
+                  <div className="h-9 w-28 bg-gray-200 rounded-full animate-pulse" aria-hidden />
+                </div>
+              ) : user ? (
                 <div className="flex items-center gap-3">
                   {/* Subscription Status Badge */}
                   <div className="flex items-center gap-2">
@@ -289,7 +301,14 @@ export default function Navbar() {
 
             {/* User actions for mobile */}
             <div className="border-t border-gray-200 pt-4">
-              {user ? (
+              {(!mounted || (loading && authHint)) ? (
+                <div className="space-y-2">
+                  <div className="px-3">
+                    <div className="h-8 w-36 bg-gray-100 rounded-full animate-pulse" aria-hidden />
+                  </div>
+                  <div className="h-10 w-full bg-gray-200 rounded-md animate-pulse" aria-hidden />
+                </div>
+              ) : user ? (
                 <div className="space-y-2">
                   {/* Subscription Status Badge */}
                   <div className="px-3">

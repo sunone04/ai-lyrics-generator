@@ -382,8 +382,8 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* BPM */}
             <div className="flex items-center space-x-3 pl-11 mb-6">
-              <input id="useBpm" type="checkbox" checked={params.useBpm} onChange={(e) => setParams({ ...params, useBpm: e.target.checked })} className="w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500" />
-              <label htmlFor="useBpm" className="text-base font-semibold text-gray-700">Specify BPM</label>
+              <input id="useBpm" type="checkbox" checked={params.useBpm} onChange={(e) => setParams({ ...params, useBpm: e.target.checked })} className="w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500 cursor-pointer" />
+              <label htmlFor="useBpm" className="text-base font-semibold text-gray-700 cursor-pointer">Specify BPM</label>
               {params.useBpm && <input type="number" min={60} max={200} value={params.bpm} onChange={(e) => setParams({ ...params, bpm: Number(e.target.value) })} className="w-24 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />}
             </div>
 
@@ -410,10 +410,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 type="checkbox"
                 checked={params.includeRationale ?? true}
                 onChange={(e) => setParams({ ...params, includeRationale: e.target.checked })}
-                className="mt-1 w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500"
+                className="mt-1 w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500 cursor-pointer"
               />
               <div>
-                <label htmlFor="includeRationale" className="text-base font-semibold text-gray-700">
+                <label htmlFor="includeRationale" className="text-base font-semibold text-gray-700 cursor-pointer">
                   Explain creative rationale (Why these lyrics)
                 </label>
                 <p className="text-sm text-gray-600 mt-1">

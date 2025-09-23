@@ -48,12 +48,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // SWR: generations (auto on dashboard or when explicitly enabled)
   const genKey = user && enableGenerations ? ['/api/me/generations', { page: 1, pageSize }] : null;
-  const { data: genResp, isLoading: swrLoadingGenerations, mutate: mutateGenerations } = useSWR(genKey);
+  const { data: genResp, isLoading: swrLoadingGenerations, mutate: mutateGenerations } = useSWR(genKey, null, { dedupingInterval: 120000 });
   const generations: GenerationListItem[] = (genResp?.generations as GenerationListItem[]) || [];
 
   // SWR: favorites (lazy enable on demand)
   const favKey = user && enableFavorites ? ['/api/me/generations', { favorites: true, page: 1, pageSize }] : null;
-  const { data: favResp, isLoading: swrLoadingFavorites, mutate: mutateFavorites } = useSWR(favKey);
+  const { data: favResp, isLoading: swrLoadingFavorites, mutate: mutateFavorites } = useSWR(favKey, null, { dedupingInterval: 120000 });
   const favorites: GenerationListItem[] = (favResp?.generations as GenerationListItem[]) || [];
 
   // SWR: personal styles (gated by active/trial)
@@ -61,7 +61,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     profile?.status === 'active' || (profile?.trial_end_date && new Date(profile?.trial_end_date) > new Date())
   );
   const psKey = user && enablePersonalStyles && canFetchPersonalStyles ? ['/api/personal-styles', { page: 1, pageSize }] : null;
-  const { data: psResp, isLoading: swrLoadingPersonalStyles, mutate: mutatePersonalStyles } = useSWR(psKey);
+  const { data: psResp, isLoading: swrLoadingPersonalStyles, mutate: mutatePersonalStyles } = useSWR(psKey, null, { dedupingInterval: 300000 });
   const personalStyles: any[] = (psResp?.styleGroups as any[]) || [];
 
   // Public loading flags
