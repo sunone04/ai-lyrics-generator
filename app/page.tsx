@@ -1,20 +1,19 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRightIcon, SparklesIcon, LanguageIcon, PencilIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { SITE_CONFIG } from '@/lib/constants';
 
-// 强制静态生成 - 首页内容变化缓慢
+// 寮哄埗闈欐€佺敓鎴?- 棣栭〉鍐呭鍙樺寲缂撴參
 export const dynamic = 'force-static';
 
 // Metadata moved to layout.tsx for client component
 
 export default function Home() {
-  // 首页完全静态，无需状态管理
-
+  // 棣栭〉瀹屽叏闈欐€侊紝鏃犻渶鐘舵€佺鐞?
   return (
     <div className="min-h-screen">
         {/* Hero Section */}
-        <section className="relative bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-16 lg:py-24">
+        <section className="relative bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-10 lg:py-24">
           {/* Decorative Elements */}
           <div className="absolute top-20 left-10 w-20 h-20 bg-blue-200 rounded-full opacity-20 blur-xl"></div>
           <div className="absolute bottom-20 right-10 w-32 h-32 bg-purple-200 rounded-full opacity-20 blur-xl"></div>
@@ -22,26 +21,41 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               {/* Main SEO-Optimized Heading */}
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+              <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-4 md:mb-6 leading-tight">
                 <span className="gradient-title">
                   AI Lyrics Generator
                 </span>
                 <span className="block text-gray-900">
                   Create Professional Song Lyrics & Rap Lyrics
                 </span>
-                <span className="block text-gray-700 text-3xl md:text-4xl lg:text-5xl mt-2">
+                <span className="block text-gray-700 text-xl md:text-4xl lg:text-5xl mt-2">
                   with Advanced AI Technology
                 </span>
               </h1>
+              {/* Mobile-first CTA placed above the fold */}
+              <div className="sm:hidden flex justify-center items-center mt-4 mb-6">
+                <Link
+                  href="/generate"
+                  prefetch={false}
+                  className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg text-lg font-bold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center shadow-xl hover:shadow-2xl transform hover:scale-[1.03] min-w-[220px]"
+                >
+                  Generate AI Lyrics Now
+                  <ArrowRightIcon className="ml-2 h-5 w-5 group-hover:translate-x-1.5 transition-transform" />
+                </Link>
+              </div>
               
-              {/* SEO-Rich Subtitle */}
-              <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
+              {/* SEO-Rich Subtitle (desktop/tablet) */}
+              <p className="hidden sm:block text-xl md:text-2xl text-gray-600 mb-10 md:mb-12 max-w-4xl mx-auto leading-relaxed">
                 The most advanced AI lyrics generator and rap lyrics generator for musicians, rappers, and songwriters. 
                 Create professional song lyrics, rap verses, and hip-hop lyrics in 100+ languages with our cutting-edge AI lyric generator technology.
               </p>
+              {/* Shorter mobile subtitle to keep CTA in view */}
+              <p className="block sm:hidden text-base text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
+                Create professional lyrics in seconds. 100+ languages, all styles.
+              </p>
               
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+              {/* CTA Buttons (desktop/tablet) */}
+              <div className="hidden sm:flex sm:flex-row gap-4 justify-center items-center mb-12 md:mb-16">
                 <Link
                   href="/generate"
                   prefetch={false}
@@ -52,8 +66,8 @@ export default function Home() {
                 </Link>
 
               </div>
-              <p className="text-sm text-gray-600 mt-[-8px] mb-12">
-                New users get a 3-day free trial membership — no credit card required.
+              <p className="text-sm text-gray-600 mt-[-4px] md:mt-[-8px] mb-8 md:mb-12">
+                New users get a 3-day free trial membership 鈥?no credit card required.
               </p>
 
               {/* Trust Indicators */}
@@ -212,8 +226,7 @@ export default function Home() {
                       <h4 className="text-xl font-bold text-gray-900">Maya Rodriguez</h4>
                       <p className="text-blue-600 font-medium">Pop Singer & Songwriter</p>
                       <div className="flex text-yellow-500 text-sm mt-1">
-                        ★★★★★
-                      </div>
+                        鈽呪槄鈽呪槄鈽?                      </div>
                     </div>
                   </div>
                   <blockquote className="text-gray-700 leading-relaxed mb-6">
@@ -240,8 +253,7 @@ export default function Home() {
                                           <h4 className="text-xl font-bold text-gray-900">Jordan Blake</h4>
                     <p className="text-purple-600 font-medium">Music Producer</p>
                       <div className="flex text-yellow-500 text-sm mt-1">
-                        ★★★★★
-                      </div>
+                        鈽呪槄鈽呪槄鈽?                      </div>
                     </div>
                   </div>
                                   <blockquote className="text-gray-700 leading-relaxed mb-6">
@@ -268,8 +280,7 @@ export default function Home() {
                       <h4 className="text-xl font-bold text-gray-900">Marcus "MK" King</h4>
                       <p className="text-pink-600 font-medium">Hip-Hop Artist & Rapper</p>
                       <div className="flex text-yellow-500 text-sm mt-1">
-                        ★★★★★
-                      </div>
+                        鈽呪槄鈽呪槄鈽?                      </div>
                     </div>
                   </div>
                                   <blockquote className="text-gray-700 leading-relaxed mb-6">
@@ -344,10 +355,12 @@ export default function Home() {
           </div>
 
           <div className="mt-12 text-gray-600 text-sm">
-            ✨ No credit card required • Start with 3 free generations daily
+            鉁?No credit card required 鈥?Start with 3 free generations daily
           </div>
         </div>
       </section>
     </div>
   );
 }
+
+

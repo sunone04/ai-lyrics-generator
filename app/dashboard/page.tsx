@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -46,10 +46,10 @@ function DashboardContent() {
   const [favBump, setFavBump] = useState(0);
   const router = useRouter();
 
-  // 数据获取现在由useData context处理
+  // 鏁版嵁鑾峰彇鐜板湪鐢眜seData context澶勭悊
 
   useEffect(() => {
-    // 在仪表盘尝试只在存在提示 Cookie 时拉取用户，游客不发起请求
+    
     try { if (!user && hasAuthHintCookie()) void refreshProfile(); } catch {}
     const handlePaymentFeedback = () => {
       // Payment feedback via query
@@ -59,36 +59,35 @@ function DashboardContent() {
       if (payment === 'failed') toast.error('Payment failed or canceled. Please try again.');
     };
 
-    // 只有在认证状态确定后才执行数据获取
+    
     if (!authLoading && user) {
       handlePaymentFeedback();
-      try { void refreshProfile(true); } catch {}
-      // 数据获取现在由useData context自动处理
+      try { void refreshProfile(); } catch {}
+      // 鏁版嵁鑾峰彇鐜板湪鐢眜seData context鑷姩澶勭悊
       setIsLoading(false);
     } else if (!authLoading && !user) {
       setIsLoading(false);
     }
   }, [user, authLoading, refreshProfile]);
 
-  // 懒加载：切换到“收藏”时再获取
   useEffect(() => {
     if (activeTab === 'favorites') {
       try { fetchFavorites(false); } catch {}
     }
   }, [activeTab, fetchFavorites]);
 
-  // 当远端收藏数据或profile计数变化时，重置本地偏移，避免长期漂移
+  // 褰撹繙绔敹钘忔暟鎹垨profile璁℃暟鍙樺寲鏃讹紝閲嶇疆鏈湴鍋忕Щ锛岄伩鍏嶉暱鏈熸紓绉?
   useEffect(() => {
     setFavBump(0);
   }, [favorites.length, profile?.favorite_count]);
 
-  // 如果正在认证加载中，显示加载页面
-  if (authLoading) {
+  
+    if (authLoading) {
     return <LoadingPage text="Checking authentication..." />;
   }
 
-  // 如果用户未登录，显示登录提示
-  if (!user) {
+  
+    if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -135,11 +134,11 @@ function DashboardContent() {
         return;
       }
       await setFavorite(generationId, newFavoriteStatus);
-      // 仅在收藏页激活时刷新列表，其他场景依赖乐观更新和后续聚焦再校验
+      // Refresh list only when viewing favorites
       if (activeTab === 'favorites') {
         try { await fetchFavorites(true); } catch {}
       }
-      // 本地计数即时反馈（不超过上下限）
+      // 鏈湴璁℃暟鍗虫椂鍙嶉锛堜笉瓒呰繃涓婁笅闄愶級
       setFavBump(prev => {
         const next = prev + (newFavoriteStatus ? 1 : -1);
         const bounded = Math.min(maxFavorites - currentFavCountRaw, Math.max(-currentFavCountRaw, next));
@@ -208,7 +207,7 @@ function DashboardContent() {
         <div className="mt-8">
           {currentFavCount >= maxFavorites && (
             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
-              <div className="mt-0.5">⚠️</div>
+              <div className="mt-0.5">鈿狅笍</div>
               <div>
                 <p className="text-sm text-yellow-800">
                   You've reached your favorites limit ({currentFavCount}/{maxFavorites}). Remove some items or upgrade to Premium to save more.
@@ -383,7 +382,7 @@ function DashboardContent() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <span className="text-sm font-medium text-gray-900">
-                              {generation.music_style} • {generation.music_theme}
+                              {generation.music_style} 鈥?{generation.music_theme}
                             </span>
                             {generation.model_used === 'pro' && (
                               <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
@@ -490,3 +489,6 @@ function DashboardContent() {
     </div>
   );
 }
+
+
+

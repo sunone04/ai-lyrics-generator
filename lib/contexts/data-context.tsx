@@ -36,7 +36,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { user, profile } = useAuth();
+  const { user, profile, bumpProfileCounts } = useAuth();
   const pathname = usePathname();
 
   // Enable flags for on-demand SWR fetching
@@ -127,6 +127,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try { const j = await res.json(); throw new Error(j?.error || 'Failed to update favorite'); } catch { throw new Error('Failed to update favorite'); }
     }
     updateGeneration(id, { is_favorited: isFavorited });
+    // Optimistically bump profile favorite_count locally
+    try { bumpProfileCounts({ favorites: isFavorited ? 1 : -1 }); } catch {}
     // Optimistically maintain favorites collection
     try {
       mutateFavorites((cur: any) => {

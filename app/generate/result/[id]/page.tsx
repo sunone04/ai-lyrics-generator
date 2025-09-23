@@ -27,7 +27,7 @@ export default function ResultPage() {
 function GenerationResultContent() {
   const params = useParams();
   const router = useRouter();
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile, bumpProfileCounts } = useAuth();
   const { setFavorite } = useData();
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,7 +100,7 @@ function GenerationResultContent() {
       const newFavoriteStatus = !generation.is_favorited;
       await setFavorite(generation.id, newFavoriteStatus);
       setGeneration(prev => prev ? { ...prev, is_favorited: newFavoriteStatus } : null);
-      try { await refreshProfile(true); } catch {}
+      
       toast.success(newFavoriteStatus ? 'Added to favorites' : 'Removed from favorites');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update favorite');
@@ -283,7 +283,8 @@ function GenerationResultContent() {
       if (updateResponse.ok) {
         const updatedGeneration = await updateResponse.json();
         setGeneration(updatedGeneration);
-        try { await refreshProfile(true); } catch {}
+        try { bumpProfileCounts({ rewrite: 1 }); } catch {}
+        
         toast.success('Lyrics rewritten successfully!');
       }
 
@@ -479,7 +480,7 @@ function GenerationResultContent() {
               <div className="prose max-w-none">
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm font-medium text-blue-800 mb-1">
-                    ✨ AI Rewrite Feature
+                    �?AI Rewrite Feature
                   </p>
                   <p className="text-sm text-blue-700 mb-2">
                     Select any part of the lyrics below and click the "Rewrite Selected" button that appears. 
@@ -854,3 +855,6 @@ function GenerationResultContent() {
     </div>
   );
 }
+
+
+

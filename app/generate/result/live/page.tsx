@@ -23,7 +23,7 @@ interface GenerationStatus {
 function LiveGenerationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { refreshProfile, user, profile } = useAuth();
+  const { refreshProfile, user, profile, bumpProfileCounts } = useAuth();
   const [status, setStatus] = useState<GenerationStatus>({
     status: 'connecting',
     liveText: ''
@@ -124,8 +124,8 @@ function LiveGenerationContent() {
               // Generation will be fetched after completion
               totalTime: Date.now() - startTimeRef.current
             });
-            try { await refreshProfile(true); } catch {}
-            // Try to resolve the newest generation id
+            try { bumpProfileCounts({ generation: 1 }); } catch {}
+                // Try to resolve the newest generation id
             try {
               const res = await fetch('/api/me/generations?page=1&pageSize=1', { cache: 'no-store' });
               const j = await res.json();
@@ -198,7 +198,7 @@ function LiveGenerationContent() {
                   generationId: (data.id ? String(data.id) : prev.generationId),
                   totalTime: Date.now() - startTimeRef.current
                 }));
-                try { await refreshProfile(true); } catch {}
+                try { bumpProfileCounts({ generation: 1 }); } catch {}
                 // Fetch the latest generation id for persistence/navigation
                 try {
                   if (!data.id) {
@@ -456,7 +456,7 @@ function LiveGenerationContent() {
         } catch {}
       }
 
-      try { await refreshProfile(true); } catch {}
+      try { bumpProfileCounts({ rewrite: 1 }); } catch {}
       setShowRewriteModal(false);
       setRewriteRequest('');
       handleClearSelection();
@@ -744,6 +744,12 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
+
+
+
+
+
+
 
 
 

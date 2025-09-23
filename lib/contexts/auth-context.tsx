@@ -38,6 +38,8 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: (force?: boolean) => Promise<void>;
+  // Optimistic local counters update to avoid redundant bootstrap calls
+  bumpProfileCounts: (delta: { generation?: number; rewrite?: number; favorites?: number }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,7 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const inflight = (async () => {
-        const res = await fetch('/api/me/bootstrap', { cache: 'no-store' });
+        // Allow HTTP caching (private, max-age) set by the API route
+        // Removing `no-store` lets the browser reuse the response for ~30s.
+        const res = await fetch('/api/me/bootstrap');
         const data = await res.json();
         bootstrapCache.data = data;
         bootstrapCache.expiresAt = Date.now() + BOOTSTRAP_DEDUPE_MS;
@@ -235,6 +239,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signOut,
     refreshProfile,
+    bumpProfileCounts: (delta: { generation?: number; rewrite?: number; favorites?: number }) => {
+      try {
+        setProfile((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev } as Profile;
+          const dg = delta.generation ?? 0;
+          const dr = delta.rewrite ?? 0;
+          const df = delta.favorites ?? 0;
+          // Clamp to >= 0 to avoid negative UI states
+          next.generation_count = Math.max(0, (next.generation_count || 0) + dg);
+          next.rewrite_count = Math.max(0, (next.rewrite_count || 0) + dr);
+          next.favorite_count = Math.max(0, (next.favorite_count || 0) + df);
+
+          // Keep short-term in-memory cache consistent
+          try {
+            if (bootstrapCache?.data?.profile) {
+              const p = bootstrapCache.data.profile as any;
+              p.generation_count = next.generation_count;
+              p.rewrite_count = next.rewrite_count;
+              p.favorite_count = next.favorite_count;
+            }
+          } catch {}
+
+          // Keep localStorage bootstrap cache consistent
+          try {
+            if (typeof window !== 'undefined') {
+              const raw = localStorage.getItem(BOOTSTRAP_LOCAL_CACHE_KEY);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed?.value) {
+                  parsed.value.profile = {
+                    ...(parsed.value.profile || {}),
+                    generation_count: next.generation_count,
+                    rewrite_count: next.rewrite_count,
+                    favorite_count: next.favorite_count,
+                  };
+                  localStorage.setItem(
+                    BOOTSTRAP_LOCAL_CACHE_KEY,
+                    JSON.stringify(parsed)
+                  );
+                }
+              }
+            }
+          } catch {}
+
+          return next;
+        });
+      } catch {}
+    },
   };
 
   return (
