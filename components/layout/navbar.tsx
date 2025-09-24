@@ -15,6 +15,7 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline';
 import { useOptionalAuth, hasAuthHintCookie } from '@/lib/contexts/auth-context';
+import { useTrial } from '@/lib/hooks/use-trial';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -27,7 +28,11 @@ export default function Navbar() {
   const user = auth?.user || null;
   const profile = auth?.profile || null;
   const loading = !!auth?.loading;
-  const isInTrial = !!(profile?.trial_end_date && new Date(profile.trial_end_date) > new Date() && profile?.status !== 'active');
+  // Prefer trial state from useTrial (immediate UI update post-activation),
+  // fallback to profile-derived value if hook not yet loaded.
+  const { isInTrial: trialHookInTrial } = useTrial();
+  const profileDerivedTrial = !!(profile?.trial_end_date && new Date(profile.trial_end_date) > new Date() && profile?.status !== 'active');
+  const isInTrial = !!(trialHookInTrial || profileDerivedTrial);
 
   // Avoid hydration mismatch; detect cookie only on client
   useEffect(() => {

@@ -82,9 +82,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const inflight = (async () => {
-        // Allow HTTP caching (private, max-age) set by the API route
-        // Removing `no-store` lets the browser reuse the response for ~30s.
-        const res = await fetch('/api/me/bootstrap');
+        // Allow HTTP caching (private, max-age) set by the API route for normal loads
+        // On force refresh (e.g., after trial activation), bypass any browser cache.
+        const url = force ? `/api/me/bootstrap?fresh=1&ts=${Date.now()}` : '/api/me/bootstrap';
+        const init: RequestInit | undefined = force ? { cache: 'no-store' } : undefined;
+        const res = await fetch(url, init);
         const data = await res.json();
         bootstrapCache.data = data;
         bootstrapCache.expiresAt = Date.now() + BOOTSTRAP_DEDUPE_MS;
@@ -125,9 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {}
 
       // Seed trial cache for useTrial hook to avoid extra GET
-      try {
-        const trial = data.trial;
-        if (trial && typeof window !== 'undefined') {
+          try {
+            const trial = data.trial;
+            if (trial && typeof window !== 'undefined') {
           const TTL = 6 * 60 * 60 * 1000; // 6 hours
           const cacheKey = `trial_status_cache_v1:${u.id}`;
           const value = {
@@ -152,7 +154,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 try {
                   const res = await fetch('/api/trial/activate', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                   if (res.ok) {
-                    // Force-refresh bootstrap to immediately reflect Trial status
+                    // Optimistically update in-memory/state/local caches with returned profile
+                    try {
+                      const actData = await res.json();
+                      const newProfile = actData?.profile as any;
+                      if (newProfile) {
+                        // Update state profile immediately
+                        setProfile(newProfile as Profile);
+                        // Update short-term in-memory bootstrap cache
+                        try {
+                          if (bootstrapCache?.data) {
+                            const d = bootstrapCache.data as any;
+                            d.profile = newProfile;
+                          }
+                        } catch {}
+                        // Update persisted bootstrap local cache
+                        try {
+                          if (typeof window !== 'undefined') {
+                            const raw = localStorage.getItem(BOOTSTRAP_LOCAL_CACHE_KEY);
+                            if (raw) {
+                              const parsed = JSON.parse(raw);
+                              if (parsed?.value) {
+                                parsed.value.profile = newProfile;
+                                localStorage.setItem(BOOTSTRAP_LOCAL_CACHE_KEY, JSON.stringify(parsed));
+                              }
+                            }
+                          }
+                        } catch {}
+                        // Update trial local cache for useTrial
+                        try {
+                          if (typeof window !== 'undefined') {
+                            const tKey = `trial_status_cache_v1:${u.id}`;
+                            const tVal = {
+                              isInTrial: true,
+                              canUseTrial: false,
+                              isTrialUsed: true,
+                              trialStartDate: newProfile.trial_start_date,
+                              trialEndDate: newProfile.trial_end_date,
+                              loading: false,
+                            } as any;
+                            const ttl = 6 * 60 * 60 * 1000;
+                            localStorage.setItem(tKey, JSON.stringify({ value: tVal, expiresAt: Date.now() + ttl }));
+                          }
+                        } catch {}
+                      }
+                    } catch {}
+                    // Force-refresh bootstrap to immediately reflect Trial status (bypass browser cache)
                     try { await fetchBootstrap(true); } catch {}
                     // Notify listeners that trial status may have changed
                     try { window.dispatchEvent(new CustomEvent('trial:changed')); } catch {}
