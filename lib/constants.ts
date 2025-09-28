@@ -56,15 +56,14 @@ export const SUBSCRIPTION_LIMITS = {
 export const FORM_OPTIONS = {
   languages: [
     'English',
-    'Spanish', 
-    'French',
-    'German',
-    'Italian',
-    'Portuguese',
     'Chinese',
-    'Japanese',
-    'Korean',
-    'Other'
+    'French',
+    'Russian',
+    'Arabic',
+    'Spanish',
+    'German',
+    'Portuguese',
+    'Japanese'
   ],
   musicStyles: [
     'Pop',

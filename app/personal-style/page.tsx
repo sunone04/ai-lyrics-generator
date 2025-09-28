@@ -579,8 +579,7 @@ const LyricsViewerModal = ({ group, onClose }: {
             )}
             {drafts.map((d, idx) => (
               <div key={d.id ?? `new-${idx}`} className={`p-4 border rounded-lg ${d._deleted ? 'opacity-50' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">{d.id ? `#${d.id}` : 'New'}</span>
+                <div className="flex items-center justify-end">
                   <button type="button" className={`text-xs ${d._deleted ? 'text-gray-600' : 'text-red-600'} hover:underline`} onClick={() => removeDraft(idx)}>
                     {d._deleted ? 'Undo Remove' : 'Remove'}
                   </button>
