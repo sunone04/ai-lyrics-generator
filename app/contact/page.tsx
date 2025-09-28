@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+﻿import { Metadata } from 'next';
 import Link from 'next/link';
 // Static breadcrumb to avoid client-side JS
 import { EnvelopeIcon, ChatBubbleLeftRightIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
@@ -124,27 +124,27 @@ export default function ContactPage() {
                     href="/faq"
                     className="block text-blue-600 hover:text-blue-500 transition-colors"
                   >
-                    → Comprehensive FAQ
+                    -{'>'} Comprehensive FAQ
                   </a>
 
                   <a
                     href="/terms"
                     className="block text-blue-600 hover:text-blue-500 transition-colors"
                   >
-                    → Terms of Service
+                    -{'>'} Terms of Service
                   </a>
                   <a
                     href="/privacy"
                     className="block text-blue-600 hover:text-blue-500 transition-colors"
                   >
-                    → Privacy Policy
+                    -{'>'} Privacy Policy
                   </a>
                   <Link
                     href="/blog"
                     prefetch={false}
                     className="block text-blue-600 hover:text-blue-500 transition-colors"
                   >
-                    → Songwriting Tips & Guides
+                    -{'>'} Songwriting Tips & Guides
                   </Link>
                 </div>
               </div>

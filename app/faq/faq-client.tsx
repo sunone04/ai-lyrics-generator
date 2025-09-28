@@ -24,8 +24,8 @@ const faqData: FAQItem[] = [
   },
   {
     category: 'Features',
-    question: 'What languages are supported?',
-    answer: 'We support over 100 languages including English, Spanish, French, German, Italian, Portuguese, Chinese, Japanese, Korean, and many more. You can select your preferred language from the dropdown menu when generating lyrics.'
+    question: 'What music types are supported?',
+    answer: 'We support various music genres and styles. Choose the genre and style that best fits your creative direction when generating lyrics.'
   },
   {
     category: 'Features',

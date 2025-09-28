@@ -39,16 +39,7 @@ export default function PersonalStylePage() {
   const [currentGroup, setCurrentGroup] = useState<StyleGroup | null>(null);
   
 
-  // Remove legacy garbled trial message node if present (defensive cleanup)
-  useEffect(() => {
-    try {
-      const sel = 'div.mt-3.text-sm.text-green-700.bg-green-50.inline-block.px-3.py-1.rounded-md.border.border-green-200';
-      const el = document.querySelector(sel) as HTMLElement | null;
-      if (el && /free\s*trial/i.test(el.innerText || '')) {
-        el.remove();
-      }
-    } catch {}
-  }, []);
+  // Removed brittle DOM cleanup: fix texts at source instead
 
   // Provider 已基于提示 Cookie 做了懒加载与去重，此处不再重复触发 refreshProfile
   // 首次登录后触发一次强制拉取，避免依赖函数引用造成死循环
@@ -77,7 +68,7 @@ export default function PersonalStylePage() {
           acceptedAnswer: {
             '@type': 'Answer',
             text:
-              'New users get a 3‑day free trial (no credit card required). During trial, you can experience premium features including Personal Style Library.'
+              'New users get a 3-day free trial (no credit card required). During trial, you can experience premium features including Personal Style Library.'
           }
         },
         {
@@ -86,7 +77,7 @@ export default function PersonalStylePage() {
           acceptedAnswer: {
             '@type': 'Answer',
             text:
-              'Each style group supports up to 5 short samples (≤ 500 characters per sample). The AI will use the entire group when generating lyrics.'
+              'Each style group supports up to 5 short samples (<= 500 characters per sample). The AI will use the entire group when generating lyrics.'
           }
         }
         // 额外：支持一次性批量添加多条样本（最多5条）
@@ -107,18 +98,16 @@ export default function PersonalStylePage() {
               <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mt-2">Teach the AI Your Unique Writing Style</span>
             </h1>
             <p className="mt-5 text-lg text-gray-700 leading-relaxed">
-              Create your own style library by adding short samples of lyrics you wrote. These samples act as private reference cues so the AI can write in your voice, structure, and wording — as if you wrote it yourself.
+              Create your own style library by adding short samples of lyrics you wrote. These samples act as private reference cues so the AI can write in your voice, structure, and wording - as if you wrote it yourself.
             </p>
             <div className="mt-3 text-sm text-gray-700 bg-gray-50 inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200">
               <ShieldCheckIcon className="w-4 h-4 text-green-600" />
-              We respect your privacy: your samples are only used at generation time as temporary references — not for model training or any other purpose.
+              We respect your privacy: your samples are only used at generation time as temporary references - not for model training or any other purpose.
             </div>
             <div className="mt-6 inline-flex gap-3">
               <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-medium">Sign In to Access</Link>
               <Link href="/generate" className="px-6 py-3 rounded-lg text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 font-medium">Try The Generator</Link>
             </div>
-            <div className="mt-3 text-sm text-green-700 bg-green-50 inline-block px-3 py-1 rounded-md border border-green-200">Eligible new users get a 3-day free trial automatically after sign-in</div>
-            <div className="mt-3 text-sm text-green-700 bg-green-50 inline-block px-3 py-1 rounded-md border border-green-200">New users get a 3‑day free trial — no credit card required</div>
           </div>
 
           {/* Benefits */}
@@ -151,8 +140,8 @@ export default function PersonalStylePage() {
               </div>
               <div className="bg-white rounded-xl p-6 border border-gray-100">
                 <div className="text-xs font-semibold text-blue-700">Step 2</div>
-                <h3 className="mt-1 font-semibold">Add 3–5 Short Samples</h3>
-                <p className="mt-2 text-sm text-gray-600">Each sample ≤ 500 characters. The AI uses the entire group.</p>
+                <h3 className="mt-1 font-semibold">Add 3-5 Short Samples</h3>
+                <p className="mt-2 text-sm text-gray-600">Each sample {'<='} 500 characters. The AI uses the entire group.</p>
               </div>
               <div className="bg-white rounded-xl p-6 border border-gray-100">
                 <div className="text-xs font-semibold text-blue-700">Step 3</div>
@@ -186,7 +175,6 @@ export default function PersonalStylePage() {
               <div className="mt-0.5"><SparklesIcon className="w-5 h-5 text-purple-600" /></div>
               <div>
                 <h3 className="font-semibold text-purple-900">Premium Feature</h3>
-                <p className="text-sm text-purple-800">Personal Style Library is available for Premium members. Eligible new users get a 3-day free trial automatically after sign-in.</p>
               </div>
             </div>
             <div className="mt-3 flex gap-3">
@@ -250,7 +238,7 @@ const Header = ({ isActiveUser, onAddNew }: { isActiveUser: boolean, onAddNew: (
     <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700">
         <div className="flex items-start gap-2"><MusicalNoteIcon className="w-4 h-4 text-blue-600 mt-0.5" /><span>1) Create a style group for a singer persona, mood, or genre.</span></div>
-        <div className="flex items-start gap-2"><BookOpenIcon className="w-4 h-4 text-purple-600 mt-0.5" /><span>2) Add 3–5 short lyric samples (≤ 500 chars each).</span></div>
+        <div className="flex items-start gap-2"><BookOpenIcon className="w-4 h-4 text-purple-600 mt-0.5" /><span>2) Add 3-5 short lyric samples ({'<='} 500 chars each).</span></div>
         <div className="flex items-start gap-2"><ShieldCheckIcon className="w-4 h-4 text-emerald-600 mt-0.5" /><span>3) On the Generate page, pick this group to write in your voice.</span></div>
       </div>
     </div>
@@ -402,7 +390,7 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
                 <textarea
                   value={s.lyrics}
                   onChange={e => updateSample(idx, 'lyrics', e.target.value)}
-                  placeholder="Paste lyrics here (≤ 500 chars)"
+                  placeholder="Paste lyrics here (<= 500 chars)"
                   className="w-full p-2 border rounded bg-white text-gray-900"
                   rows={6}
                   maxLength={500}
@@ -548,7 +536,7 @@ const LyricsViewerModal = ({ group, onClose }: {
       <div className="flex flex-col gap-3 mb-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-xl font-semibold">Edit "{group.name}"</h3>
-          <div className="flex items-center gap-2" />
+          <div className="flex items-center gap-2"><Link href="/generate" className="text-sm text-blue-600 hover:text-blue-800 font-medium">Use in Generator -{'>'}</Link></div>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -667,3 +655,5 @@ const DeleteButton = ({ id, onSuccess, apiPath }: { id: number, onSuccess: () =>
     </>
   );
 };
+
+

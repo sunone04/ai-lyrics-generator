@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     if (personalStyleGroupId) {
       const { data: styles } = await supabase
         .from('personal_style_lyrics')
-        .select('title, lyrics, language, music_style')
+        .select('title, lyrics')
         .eq('style_group_id', personalStyleGroupId)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -113,8 +113,9 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           title: style.title,
           lyrics: style.lyrics,
-          language: style.language,
-          music_style: style.music_style || '',
+          // Optional fields omitted as DB may not have them
+          language: undefined as any,
+          music_style: '',
           word_count: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

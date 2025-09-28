@@ -76,10 +76,10 @@ export class AIService {
     const parts: string[] = [];
     parts.push(`Language: ${params.language}`);
     parts.push(`Genre: ${params.musicStyle}`);
-    parts.push(`Theme: ${params.musicTheme}`);
-    parts.push(`Lyric Style: ${params.lyricStyle}`);
-    if (params.songStructure) parts.push(`Structure: ${params.songStructure}`);
-    if (params.rhymeRequirement) parts.push(`Rhyme: ${params.rhymeRequirement}`);
+    if (params.musicTheme && params.musicTheme !== 'Default') parts.push(`Theme: ${params.musicTheme}`);
+    if (params.lyricStyle && params.lyricStyle !== 'Default') parts.push(`Lyric Style: ${params.lyricStyle}`);
+    if (params.songStructure && params.songStructure !== 'Default') parts.push(`Structure: ${params.songStructure}`);
+    if (params.rhymeRequirement && params.rhymeRequirement !== 'Default') parts.push(`Rhyme: ${params.rhymeRequirement}`);
     if (params.useBpm && params.bpm) parts.push(`BPM: ${params.bpm}`);
     if (params.emotionIntensity) parts.push(`Emotion: ${params.emotionIntensity}`);
     if (params.syllablePattern) parts.push(`Syllable Pattern: ${params.syllablePattern}`);
@@ -178,19 +178,28 @@ Output the two sections as specified with the exact markers.`;
   private buildGenerationPrompt(params: LyricsGenerationParams, personalStyle?: PersonalStyle | PersonalStyle[]): string {
     // Build dynamic specifications based on provided parameters
     let specifications = `CREATIVE SPECIFICATIONS:
-- Language: ${params.language}
-- Music Style: ${params.musicStyle}
-- Theme: ${params.musicTheme}
-- Length: ${params.lengthOption}
-- Lyric Style: ${params.lyricStyle}
-- Song Structure: ${params.songStructure}`;
+ - Language: ${params.language}
+ - Music Style: ${params.musicStyle}`;
+
+    if (params.musicTheme && params.musicTheme !== 'Default') {
+      specifications += `\n- Theme: ${params.musicTheme}`;
+    }
+    if (params.lengthOption && params.lengthOption !== 'Default') {
+      specifications += `\n- Length: ${params.lengthOption}`;
+    }
+    if (params.lyricStyle && params.lyricStyle !== 'Default') {
+      specifications += `\n- Lyric Style: ${params.lyricStyle}`;
+    }
+    if (params.songStructure && params.songStructure !== 'Default') {
+      specifications += `\n- Song Structure: ${params.songStructure}`;
+    }
 
     // Add optional parameters only if they exist and are meaningful
     if (params.artistStyle && params.artistStyle.trim() && params.artistStyle !== 'Other') {
       specifications += `\n- Artist Style Reference: ${params.artistStyle}`;
     }
     
-    if (params.rhymeRequirement && params.rhymeRequirement.trim() && params.rhymeRequirement !== 'No specific requirement') {
+    if (params.rhymeRequirement && params.rhymeRequirement.trim() && params.rhymeRequirement !== 'No specific requirement' && params.rhymeRequirement !== 'Default') {
       specifications += `\n- Rhyme Requirements: ${params.rhymeRequirement}`;
     }
     
@@ -411,10 +420,10 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
       const parts: string[] = [];
       parts.push(`Language: ${params.language}`);
       parts.push(`Genre: ${params.musicStyle}`);
-      parts.push(`Theme: ${params.musicTheme}`);
-      parts.push(`Lyric Style: ${params.lyricStyle}`);
-      parts.push(`Structure: ${params.songStructure}`);
-      if (params.rhymeRequirement) parts.push(`Rhyme: ${params.rhymeRequirement}`);
+      if (params.musicTheme && params.musicTheme !== 'Default') parts.push(`Theme: ${params.musicTheme}`);
+      if (params.lyricStyle && params.lyricStyle !== 'Default') parts.push(`Lyric Style: ${params.lyricStyle}`);
+      if (params.songStructure && params.songStructure !== 'Default') parts.push(`Structure: ${params.songStructure}`);
+      if (params.rhymeRequirement && params.rhymeRequirement !== 'Default') parts.push(`Rhyme: ${params.rhymeRequirement}`);
       if (params.useBpm && params.bpm) parts.push(`BPM: ${params.bpm}`);
       if (params.emotionIntensity) parts.push(`Emotion: ${params.emotionIntensity}`);
       if (params.syllablePattern) parts.push(`Syllable Pattern: ${params.syllablePattern}`);

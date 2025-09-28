@@ -1,4 +1,4 @@
-'use client'; // <= 让 Next.js 13+ 知道这是客户端组件，可使用 hooks（useState、useEffect…）
+﻿'use client'; // <= 让 Next.js 13+ 知道这是客户端组件，可使用 hooks（useState、useEffect...）
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -103,13 +103,13 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     language: 'English',
     musicStyle: 'Pop',
     musicTheme: 'Love & Romance',
-    lengthOption: 'Medium (2-3 verses + chorus)',
-    lyricStyle: 'Narrative',
+    lengthOption: 'Default',
+    lyricStyle: 'Default',
     intentOrRequest: '',
     artistStyle: '',
     emotionIntensity: 50,
     rhymeRequirement: 'Perfect rhymes',
-    songStructure: 'Verse-Chorus',
+    songStructure: 'Default',
     paragraphLength: '',
     bpm: 120,
     useBpm: false,
@@ -255,7 +255,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading…</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -283,7 +283,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
           <div className="mb-10">
             <div className="flex items-center mb-6">
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">1</div>
-              <h2 className="text-base font-semibold text-gray-900">Basic Information</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Basic Information</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-11">
               {/* Language */}
@@ -319,13 +319,17 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 {params.lengthOption === 'Other' && <input type="text" value={customInputs.lengthOption} onChange={(e) => setCustomInputs({ ...customInputs, lengthOption: e.target.value })} placeholder="Specify length" maxLength={OTHER_LIMITS.lengthOption} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
               </div>
             </div>
+            <div className="pl-11 mt-2 text-sm text-gray-500">
+              <p>Tip: Selecting 'Other' enables custom input fields.</p>
+              <p>Tip: Choosing 'Default' lets the AI pick what best fits your song.</p>
+            </div>
           </div>
 
           {/* -------- Style & Creative Direction -------- */}
           <div className="mb-10">
             <div className="flex items-center mb-6">
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">2</div>
-              <h2 className="text-base font-semibold text-gray-900">Style & Creative Direction</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Style & Creative Direction</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-11">
               {/* Lyric Style */}
@@ -361,11 +365,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Creative Direction */}
             <div className="pl-11 mt-6">
-              <label className="block text-base font-semibold text-gray-700 mb-2">Creative Direction & Special Requirements</label>
-              <textarea value={params.intentOrRequest} onChange={(e) => setParams({ ...params, intentOrRequest: e.target.value })} placeholder="Describe mood, direction…" rows={3} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
+              <label className="block text-base font-semibold text-gray-700 mb-1">Motivation & Background</label>
+              <textarea value={params.intentOrRequest} onChange={(e) => setParams({ ...params, intentOrRequest: e.target.value })} placeholder="Why you're writing this song: share the background and your thoughts/feelings (what inspired it and what you want to express)." rows={4} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
             </div>
-
-            {/* Emotion Intensity */}
+{/* Emotion Intensity */}{/* Emotion Intensity */}
             <div className="pl-11 mt-6">
               <label className="block text-base font-semibold text-gray-700 mb-2">Emotion Intensity: <span className="text-purple-600 font-bold">{params.emotionIntensity}%</span></label>
               <input type="range" min={1} max={100} value={params.emotionIntensity} onChange={(e) => setParams({ ...params, emotionIntensity: Number(e.target.value) })} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
@@ -377,7 +380,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
           <div className="mb-8">
             <div className="flex items-center mb-6">
               <div className="bg-gradient-to-r from-pink-500 to-pink-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">3</div>
-              <h2 className="text-base font-semibold text-gray-900">Advanced Options</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Advanced Options <span className="text-gray-500 font-normal">(Optional)</span></h2>
             </div>
 
             {/* BPM */}
@@ -391,7 +394,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
             <div className="grid grid-cols-1 gap-6 pl-11">
               <div>
                 <label className="block text-base font-semibold text-gray-700 mb-2">Melody Description</label>
-                <input type="text" value={params.melody} onChange={(e) => setParams({ ...params, melody: e.target.value })} placeholder="Describe melody…" className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                <input type="text" value={params.melody} onChange={(e) => setParams({ ...params, melody: e.target.value })} placeholder="Describe melody..." className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
               <div>
                 <label className="block text-base font-semibold text-gray-700 mb-2">Syllable Pattern</label>
@@ -417,7 +420,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                   Explain creative rationale (Why these lyrics)
                 </label>
                 <p className="text-sm text-gray-600 mt-1">
-                  When enabled, AI also provides a short, professional songwriter explanation of the theme, structure, rhyme and stylistic choices — so you understand why the lyrics were crafted this way.
+                  When enabled, AI also provides a short, professional songwriter explanation of the theme, structure, rhyme and stylistic choices - so you understand why the lyrics were crafted this way.
                 </p>
               </div>
             </div>
@@ -502,13 +505,13 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
           {/* -------- Generate Button -------- */}
           <div className="flex justify-center pt-6 border-t border-gray-200">
             <LoadingButton isLoading={isLoading} onClick={handleSubmit} className="px-10 py-3 text-base font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer">
-              {!user ? 'Sign In to Generate Lyrics ✨' : 'Generate AI Lyrics Now ✨'}
+              {!user ? 'Sign In to Generate Lyrics' : 'Generate AI Lyrics Now'}
             </LoadingButton>
           </div>
 
           {/* SEO & Sign-in Tip */}
           <div className="mt-10 p-4 bg-gray-50 rounded-lg border">
-            <h2 className="text-base font-bold text-gray-900 mb-2">🎵 Professional AI Lyrics Generator</h2>
+            <h2 className="text-base font-bold text-gray-900 mb-2">Professional AI Lyrics Generator</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
               Our AI lyrics generator uses advanced artificial intelligence to create professional song lyrics and rap lyrics. Whether you need a <strong>rap lyrics generator</strong>, <strong>song lyrics generator</strong>, or custom <strong>lyric generator</strong> for any music style, our AI lyric generator delivers high-quality results instantly.
             </p>
@@ -531,7 +534,7 @@ export default function GeneratePage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading…</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     }>

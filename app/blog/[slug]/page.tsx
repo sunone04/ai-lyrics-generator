@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+﻿import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { cacheService } from '@/lib/cache-service';
@@ -293,7 +293,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                         href={`/blog/${relatedPost.slug}`}
                         className="inline-block mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
                       >
-                        Read more →
+                        Read more -{'>'}
                       </Link>
                     </div>
                   </article>
@@ -320,7 +320,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     href="/blog"
                     className="inline-block text-blue-600 hover:text-blue-700 text-sm font-medium"
                   >
-                    View All Posts →
+                    View All Posts -{'>'}
                   </Link>
                 </div>
               </div>

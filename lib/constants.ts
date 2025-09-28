@@ -63,7 +63,8 @@ export const FORM_OPTIONS = {
     'Spanish',
     'German',
     'Portuguese',
-    'Japanese'
+    'Japanese',
+    'Other'
   ],
   musicStyles: [
     'Pop',
@@ -95,17 +96,19 @@ export const FORM_OPTIONS = {
     'Other'
   ],
   lengthOptions: [
+    'Default',
     'Short (1-2 verses)',
     'Medium (2-3 verses + chorus)',
     'Long (3+ verses + chorus + bridge)',
     'Other'
   ],
   lyricStyles: [
+    'Default',
     'Narrative',
     'Abstract',
     'Conversational',
     'Poetic',
-    'Direct',
+    'Straightforward',
     'Metaphorical',
     'Other'
   ],
@@ -113,14 +116,16 @@ export const FORM_OPTIONS = {
     'Perfect rhymes',
     'Near rhymes',
     'Internal rhymes',
-    'No specific requirement',
+    'Flexible (mix near/internal)',
     'Other'
   ],
   songStructures: [
+    'Default',
     'Verse-Chorus',
     'Verse-Chorus-Bridge',
     'AABA',
     'Verse-Pre-Chorus-Chorus',
+    'Verse-Hook (Rap)',
     'Free form',
     'Other'
   ]
