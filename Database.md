@@ -115,6 +115,19 @@
   }
 ]
 
+## Personal Style Library 说明（2025-09）
+
+- 结构维持不变：
+  - `personal_style_groups(id, user_id, name, created_at, updated_at, ...)`
+  - `personal_style_lyrics(id, user_id, style_group_id, title, lyrics, word_count, created_at, updated_at, ...)`
+- 权限：均由 RLS 保证“仅本人可见/可写”。现有策略已覆盖 INSERT/UPDATE/DELETE/SELECT。
+- 字段限制（由 API 校验）：分组名 ≤ 100 字符；样本标题 ≤ 100 字符；样本正文 ≤ 500 字符。
+- 接口：
+  - `GET /api/personal-styles` 返回用户分组及每组样本计数（前端不再展示计数，仅用于内部用途）。
+  - `POST /api/personal-styles` 创建分组；`PUT /api/personal-styles/{id}` 更新分组名；`DELETE /api/personal-styles/{id}` 删除分组（级联删除样本由外键/触发器策略处理）。
+  - `POST /api/personal-styles/lyrics` 新增样本；`PUT/DELETE /api/personal-styles/lyrics/{id}` 编辑/删除样本。
+- 新增能力：新建分组后，前端可一次性批量创建多条样本（最多 5 条），通过多次调用 `POST /api/personal-styles/lyrics` 实现，无需修改数据库结构或新增存储过程。
+
 ## 定时清理策略（每3天）
 
 为满足“未收藏的歌词每3天清理一次”的新策略，推荐在 Supabase 使用 pg_cron 安排一个清理任务。该任务仅删除未收藏且创建时间早于3天的记录；被标记为收藏（is_favorited = true）的记录不受影响。
