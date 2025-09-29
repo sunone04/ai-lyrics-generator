@@ -186,15 +186,9 @@ export async function POST(request: NextRequest) {
         }, totalSoftTimeout);
 
         try {
-          // If we have a cached lyrics result and the user requested rationale, replay cached lyrics to client,
-          // then compute rationale without re-calling the AI for lyrics.
-          const useCachedReplay = Boolean(cached && includeRationale && cached.expiresAt > Date.now());
-
-          if (useCachedReplay) {
-            firstChunkSent = true;
-            fullLyrics = cached!.result;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: cached!.result })}\n\n`));
-          } else {
+          // Always use combined streaming when rationale is requested
+          // so that lyrics and rationale are generated together in one call.
+          {
             // 使用支持中止信号的生成器，客户端断开后立即停止读取与处理
             if (includeRationale) {
               // Combined streaming: expect markers to split lyrics and rationale
@@ -259,7 +253,7 @@ export async function POST(request: NextRequest) {
                     lyricsSentIndex = 0;
                     seenLyricsEnd = true;
 
-                    // Persist the generation record as soon as lyrics complete (if not cached path)
+                    // Persist the generation record as soon as lyrics complete
                     if (fullLyrics && fullLyrics.trim().length > 0) {
                       try {
                         const { data: inserted, error: insertError } = await supabase.from('generations').insert({
@@ -364,10 +358,8 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Optionally generate creative rationale before completing (fallback-only)
-
           // Save generation record (if not already persisted during combined streaming)
-          if (!insertedId && fullLyrics && fullLyrics.trim().length > 0 && !(cached && includeRationale && cached.expiresAt > Date.now())) {
+          if (!insertedId && fullLyrics && fullLyrics.trim().length > 0) {
             const { data: inserted, error: insertError } = await supabase.from('generations').insert({
               user_id: user.id,
               language,
@@ -397,44 +389,6 @@ export async function POST(request: NextRequest) {
 
             // Increment usage count (best-effort)
             try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
-          }
-
-          // Compute rationale (if requested) after lyrics are ready (fallback when combined markers not streamed)
-          try {
-            if (includeRationale && fullLyrics && fullLyrics.trim() && !rationaleText) {
-              rationaleText = await aiService.generateRationale(
-                fullLyrics,
-                { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') } as any,
-                Boolean(regen) ? 'regenerate' : 'generate'
-              );
-              if (rationaleText) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'rationale', content: rationaleText })}\n\n`));
-                // Best-effort persistence: attach rationale to the inserted generation, or try to find latest matching record
-                try {
-                  const updatePayload: any = {
-                    creative_rationale: rationaleText,
-                    rationale_lang: 'en',
-                    rationale_generated_at: new Date().toISOString(),
-                  };
-                  if (insertedId) {
-                    await supabase.from('generations').update(updatePayload).eq('id', insertedId);
-                  } else {
-                    const { data: recent } = await supabase
-                      .from('generations')
-                      .select('id, generated_lyrics, created_at')
-                      .eq('user_id', user.id)
-                      .order('created_at', { ascending: false })
-                      .limit(5);
-                    const found = (recent || []).find((r: any) => r.generated_lyrics === fullLyrics);
-                    if (found?.id) {
-                      await supabase.from('generations').update(updatePayload).eq('id', found.id);
-                    }
-                  }
-                } catch {}
-              }
-            }
-          } catch (e) {
-            // Non-fatal; continue to complete
           }
 
           // Cache result for dedup

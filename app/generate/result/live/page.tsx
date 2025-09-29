@@ -524,7 +524,7 @@ function LiveGenerationContent() {
             )}
             {syllablePattern && (
               <div>
-                <span className="font-medium">Syllable Pattern:</span>
+              <span className="font-medium">Syllable Pattern (per line):</span>
                 <p className="text-gray-600 truncate">{syllablePattern}</p>
               </div>
             )}
@@ -744,7 +744,6 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
 
 

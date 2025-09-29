@@ -217,8 +217,8 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
     checkField('intentOrRequest', 'Creative direction');
     checkField('artistStyle', 'Artist style');
     checkField('melody', 'Melody');
-    checkField('syllablePattern', 'Syllable pattern');
-    checkField('paragraphLength', 'Paragraph length');
+    checkField('syllablePattern', 'Syllable pattern (per line)');
+    checkField('paragraphLength', 'Section length');
     if (errors.length) { toast.error(errors[0]); return; }
 
     setIsLoading(true);
@@ -350,7 +350,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
               {/* Rhyme */}
               <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><SparklesIcon className="w-5 h-5 mr-2 text-purple-600" />Rhyme Requirements</label>
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><SparklesIcon className="w-5 h-5 mr-2 text-purple-600" />Rhyme Preference</label>
                 <select value={params.rhymeRequirement} onChange={(e) => setParams({ ...params, rhymeRequirement: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                   {FORM_OPTIONS.rhymeRequirements.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
@@ -358,7 +358,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
               {/* Artist Style */}
               <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MicrophoneIcon className="w-5 h-5 mr-2 text-purple-600" />Artist Style Reference</label>
+                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MicrophoneIcon className="w-5 h-5 mr-2 text-purple-600" />Reference Artist <span className="text-gray-500 font-normal text-sm">(optional)</span></label>
                 <input type="text" value={params.artistStyle} onChange={(e) => setParams({ ...params, artistStyle: e.target.value })} placeholder="e.g., Taylor Swift, Drake" maxLength={FREE_TEXT_LIMITS.artistStyle} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
               </div>
             </div>
@@ -370,9 +370,13 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
             </div>
 {/* Emotion Intensity */}{/* Emotion Intensity */}
             <div className="pl-11 mt-6">
-              <label className="block text-base font-semibold text-gray-700 mb-2">Emotion Intensity: <span className="text-purple-600 font-bold">{params.emotionIntensity}%</span></label>
+              <label className="block text-base font-semibold text-gray-700 mb-2">Emotional Intensity: <span className="text-purple-600 font-bold">{params.emotionIntensity}%</span></label>
               <input type="range" min={1} max={100} value={params.emotionIntensity} onChange={(e) => setParams({ ...params, emotionIntensity: Number(e.target.value) })} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
-              <div className="flex justify-between text-sm text-gray-600 mt-1"><span>Subtle</span><span>Intense</span></div>
+              <div className="flex justify-between text-sm text-gray-600 mt-1">
+                <span>Subtle</span>
+                <span>Moderate</span>
+                <span>Intense</span>
+              </div>
             </div>
           </div>
 
@@ -397,11 +401,11 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
                 <input type="text" value={params.melody} onChange={(e) => setParams({ ...params, melody: e.target.value })} placeholder="Describe melody..." className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
               <div>
-                <label className="block text-base font-semibold text-gray-700 mb-2">Syllable Pattern</label>
-                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8-8-6-6" maxLength={FREE_TEXT_LIMITS.syllablePattern} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                <label className="block text-base font-semibold text-gray-700 mb-2">Syllable Pattern <span className="text-gray-500 font-normal text-sm">(per line)</span></label>
+                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8–8–10–8" maxLength={FREE_TEXT_LIMITS.syllablePattern} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
               <div>
-                <label className="block text-base font-semibold text-gray-700 mb-2">Paragraph Length Preference</label>
+                <label className="block text-base font-semibold text-gray-700 mb-2">Section Length <span className="text-gray-500 font-normal text-sm">(Verse/Chorus)</span></label>
                 <input type="text" value={params.paragraphLength} onChange={(e) => setParams({ ...params, paragraphLength: e.target.value })} placeholder="e.g., 4 lines per verse" maxLength={FREE_TEXT_LIMITS.paragraphLength} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
             </div>

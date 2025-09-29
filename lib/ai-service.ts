@@ -79,12 +79,12 @@ export class AIService {
     if (params.musicTheme && params.musicTheme !== 'Default') parts.push(`Theme: ${params.musicTheme}`);
     if (params.lyricStyle && params.lyricStyle !== 'Default') parts.push(`Lyric Style: ${params.lyricStyle}`);
     if (params.songStructure && params.songStructure !== 'Default') parts.push(`Structure: ${params.songStructure}`);
-    if (params.rhymeRequirement && params.rhymeRequirement !== 'Default') parts.push(`Rhyme: ${params.rhymeRequirement}`);
+    if (params.rhymeRequirement && params.rhymeRequirement !== 'Default') parts.push(`Rhyme Preference: ${params.rhymeRequirement}`);
     if (params.useBpm && params.bpm) parts.push(`BPM: ${params.bpm}`);
-    if (params.emotionIntensity) parts.push(`Emotion: ${params.emotionIntensity}`);
-    if (params.syllablePattern) parts.push(`Syllable Pattern: ${params.syllablePattern}`);
-    if (params.paragraphLength) parts.push(`Paragraph Length: ${params.paragraphLength}`);
-    if (params.artistStyle) parts.push(`Artist Ref: ${params.artistStyle}`);
+    if (params.emotionIntensity) parts.push(`Emotional Intensity: ${params.emotionIntensity}`);
+    if (params.syllablePattern) parts.push(`Syllable Pattern (per line): ${params.syllablePattern}`);
+    if (params.paragraphLength) parts.push(`Section Length: ${params.paragraphLength}`);
+    if (params.artistStyle) parts.push(`Reference Artist: ${params.artistStyle}`);
     if (params.intentOrRequest) parts.push(`Direction: ${params.intentOrRequest}`);
     if (personalStyle) {
       const psArray = Array.isArray(personalStyle) ? personalStyle : [personalStyle];
@@ -98,21 +98,46 @@ export class AIService {
 Follow the instructions and produce TWO sections in this exact order, using the exact boundary markers on their own lines:
 
 ${MARKERS.LYRICS_START}
-[LYRICS ONLY] Provide complete song lyrics with appropriate structural tags such as [Verse], [Chorus], [Bridge], etc. Do not include any explanations.
+[LYRICS ONLY] Provide complete song lyrics with appropriate structural tags such as [Verse], [Chorus], [Bridge], etc.
+Do not include any explanations.
 ${MARKERS.LYRICS_END}
 
 ${MARKERS.RATIONALE_START}
-[CREATIVE RATIONALE] Provide a concise objective rationale (~80–120 words or 3 bullets, max ${cap} characters) explaining theme/imagery, structure & rhyme/rhythm, and how the lyrics align with user inputs. Do not repeat the lyrics, avoid first-person and avoid any AI self-references.
+[CREATIVE RATIONALE] Provide a clear creative rationale (approximately 80–240 words, or up to ${cap} characters in 3 bullet points) from the perspective of a professional lyricist, explaining why these lyrics were crafted as they are. Address the theme/imagery, structural and rhyme/rhythmic choices, alignment with user requirements, and the underlying meaning conveyed. Do not restate lyrics, reference AI or the generation process, or resort to vague generalizations.
 ${MARKERS.RATIONALE_END}
 
 Rules:
-- Output NOTHING before ${MARKERS.LYRICS_START} and NOTHING after ${MARKERS.RATIONALE_END}.
-- The markers must appear exactly as shown and must NOT appear inside the content.
-- The lyrics must strictly follow all user parameters.
 
-User Parameters:\n${paramSummary}
+Output NOTHING before ${MARKERS.LYRICS_START} and NOTHING after ${MARKERS.RATIONALE_END}.
+The markers must appear exactly as shown and must NOT appear inside the content.
+The lyrics must strictly follow all user parameters.
 
-Output the two sections as specified with the exact markers.`;
+LYRIC REQUIREMENTS:
+
+1. Write from the singer’s perspective with authentic, concrete emotions that evoke audience empathy.
+
+2. Use fresh, meaningful imagery at appropriate moments; avoid stale, formulaic tropes.
+
+3. Keep language precise, concise, and punchy; avoid redundancy and repetition.
+
+4. Ensure rhymes feel natural and the rhythm flows smoothly.
+
+5. Maintain a clear, complete structure with coherent narrative, logical development, and purposeful negative space.
+
+6. When a theme is present, pursue intellectual depth that refracts universal human feelings or social reality through personal experience.
+
+7. Perfectly satisfy all user‑provided parameters, including syllable counts, line length, and rhythm.
+
+8. Use structural tags as requested by the user, such as [Verse 1], [Chorus], [Bridge], etc.
+
+In the event of any conflict between general guidelines and specific user requirements, the user's requirements take precedence.
+
+AVOID:
+
+Artificial expressions, confusion of theme and perspective, limited vocabulary, outdated or inconsistent imagery, conflicts between melody and lyrics, chaotic or illogical structure, poor and rigid language
+
+User Parameters:
+${paramSummary}`;
   }
 
   private withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -196,11 +221,11 @@ Output the two sections as specified with the exact markers.`;
 
     // Add optional parameters only if they exist and are meaningful
     if (params.artistStyle && params.artistStyle.trim() && params.artistStyle !== 'Other') {
-      specifications += `\n- Artist Style Reference: ${params.artistStyle}`;
+      specifications += `\n- Reference Artist: ${params.artistStyle}`;
     }
     
     if (params.rhymeRequirement && params.rhymeRequirement.trim() && params.rhymeRequirement !== 'No specific requirement' && params.rhymeRequirement !== 'Default') {
-      specifications += `\n- Rhyme Requirements: ${params.rhymeRequirement}`;
+      specifications += `\n- Rhyme Preference: ${params.rhymeRequirement}`;
     }
     
     if (params.useBpm && params.bpm && params.bpm > 0) {
@@ -208,11 +233,11 @@ Output the two sections as specified with the exact markers.`;
     }
     
     if (params.emotionIntensity && params.emotionIntensity > 0) {
-      specifications += `\n- Emotion Intensity (1-100): ${params.emotionIntensity}`;
+      specifications += `\n- Emotional Intensity (1-100): ${params.emotionIntensity}`;
     }
     
     if (params.paragraphLength && params.paragraphLength.trim() && params.paragraphLength !== 'Other') {
-      specifications += `\n- Paragraph Length: ${params.paragraphLength}`;
+      specifications += `\n- Section Length: ${params.paragraphLength}`;
     }
     
     if (params.melody && params.melody.trim()) {
@@ -220,7 +245,7 @@ Output the two sections as specified with the exact markers.`;
     }
     
     if (params.syllablePattern && params.syllablePattern.trim()) {
-      specifications += `\n- Syllable Pattern: ${params.syllablePattern}`;
+      specifications += `\n- Syllable Pattern (per line): ${params.syllablePattern}`;
     }
     
     if (params.intentOrRequest && params.intentOrRequest.trim()) {
@@ -242,17 +267,23 @@ Your task is to generate excellent lyrics that perfectly match the user's provid
 
 LYRIC REQUIREMENTS:
 
-1. Adopt the singer's perspective with authentic and concrete emotions
+1. Write from the singer’s perspective with authentic, concrete emotions that evoke audience empathy.
 
-2. Use fresh and meaningful imagery when appropriate  
+2. Use fresh, meaningful imagery at appropriate moments; avoid stale, formulaic tropes.
 
-3. Concise and powerful language, avoiding verbosity and repetition
+3. Keep language precise, concise, and punchy; avoid redundancy and repetition.
 
-4. Natural rhyming with rhythmic flow
+4. Ensure rhymes feel natural and the rhythm flows smoothly.
 
-5. Clear, complete structure with narrative quality. Use appropriate structural tags as requested by the user, such as [Verse 1], [Chorus], [Bridge], etc.
+5. Maintain a clear, complete structure with coherent narrative, logical development, and purposeful negative space.
 
-6. Lyrics must perfectly match all user-provided parameters, including syllables, line length, and rhythm
+6. When a theme is present, pursue intellectual depth that refracts universal human feelings or social reality through personal experience.
+
+7. Perfectly satisfy all user‑provided parameters, including syllable counts, line length, and rhythm.
+
+8. Use structural tags as requested by the user, such as [Verse 1], [Chorus], [Bridge], etc.
+
+In the event of any conflict between general guidelines and specific user requirements, the user's requirements take precedence.
 
 AVOID:
 
@@ -272,13 +303,19 @@ Your task is to rewrite the selected portion of lyrics based on the user's input
 
 LYRIC REQUIREMENTS:
 
-1. Maintain the same style, theme, and emotional tone as the complete lyrics
+1. Maintain the same style, theme, and emotional tone as the complete lyrics.
 
-2. Ensure seamless integration with surrounding lyrics
+2. Seamlessly integrate with the surrounding lyrics; do not introduce motifs that conflict with the existing piece.
 
-3. Follow the user's requirements as the standard
+3. Exactly match the local prosody and form of the selected context: keep syllable counts per line, line length/scansion, the section’s rhyme scheme, and smooth meter/rhythm. Keep the number of lines unchanged unless the user requests otherwise.
 
-4. Provide only the rewritten portion with structural tags, no explanations
+4. Preserve point of view and tense (narrator identity and pronouns), and maintain narrative continuity and logic. Keep the imagery palette consistent.
+
+5. If BPM or melody constraints exist, align phrasing and stress with the melodic accents to remain singable.
+
+6. Follow the user's requirements as the standard. In the event of any conflict between general guidelines and specific user requirements, the user's requirements take precedence.
+
+7. Provide only the rewritten portion with structural tags; do not include explanations. Do not modify any text outside the selected portion.
 
 AVOID:
 
@@ -409,54 +446,7 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     );
   }
 
-  async generateRationale(
-    lyrics: string,
-    params: LyricsGenerationParams,
-    context: 'generate' | 'regenerate' | 'rewrite' = 'generate'
-  ): Promise<string> {
-    return this.retryWithBackoff(async () => {
-      const model = this.getModel(params.modelType);
-
-      const parts: string[] = [];
-      parts.push(`Language: ${params.language}`);
-      parts.push(`Genre: ${params.musicStyle}`);
-      if (params.musicTheme && params.musicTheme !== 'Default') parts.push(`Theme: ${params.musicTheme}`);
-      if (params.lyricStyle && params.lyricStyle !== 'Default') parts.push(`Lyric Style: ${params.lyricStyle}`);
-      if (params.songStructure && params.songStructure !== 'Default') parts.push(`Structure: ${params.songStructure}`);
-      if (params.rhymeRequirement && params.rhymeRequirement !== 'Default') parts.push(`Rhyme: ${params.rhymeRequirement}`);
-      if (params.useBpm && params.bpm) parts.push(`BPM: ${params.bpm}`);
-      if (params.emotionIntensity) parts.push(`Emotion: ${params.emotionIntensity}`);
-      if (params.syllablePattern) parts.push(`Syllable Pattern: ${params.syllablePattern}`);
-      if (params.paragraphLength) parts.push(`Paragraph Length: ${params.paragraphLength}`);
-      if (params.artistStyle) parts.push(`Artist Ref: ${params.artistStyle}`);
-      if (params.intentOrRequest) parts.push(`Direction: ${params.intentOrRequest}`);
-      const paramSummary = parts.join('\n');
-
-      const prompt = `You are a professional songwriter. Provide a concise Creative Rationale explaining why the following lyrics were crafted this way.
-Requirements:
-- 3 short bullet points OR ~80–120 words
-- Cover: theme/imagery; structure & rhyme/rhythm; alignment with user inputs
-- Be specific; avoid generic phrases and do not include the lyrics
-- Avoid first-person ('I') or references to AI; write objectively
-Context: ${context.toUpperCase()}
-USER INPUT SUMMARY:
-${paramSummary}
-
-LYRICS:
-${lyrics}
-
-OUTPUT:
-Write the rationale only, in a clear professional tone.`;
-
-      const result = await this.withTimeout(model.generateContent(prompt), NETWORK_SOFT_TIMEOUT_MS, 'AI request');
-      const response = await result.response;
-      const text = (response as any)?.text ? (response as any).text() : '';
-      const rationale = (text || '').toString().trim();
-      if (!rationale) throw new Error('No rationale generated');
-      const cap = parseInt(process.env.RATIONALE_MAX_CHARS || '1000');
-      return rationale.length > cap ? rationale.slice(0, cap) : rationale;
-    }, 'generate rationale');
-  }
+  // Deprecated rationale-only generator removed to reduce confusion.
 
   async rewriteLyrics(
     originalLyrics: string, 

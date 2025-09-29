@@ -668,7 +668,7 @@ function GenerationResultContent() {
               )}
               {generation.emotion_intensity && (
                 <div className="text-gray-900">
-                  <span className="font-semibold text-gray-700">Emotion Intensity:</span> 
+                  <span className="font-semibold text-gray-700">Emotional Intensity:</span> 
                   <span className="ml-2">{generation.emotion_intensity}/100</span>
                 </div>
               )}
@@ -692,7 +692,7 @@ function GenerationResultContent() {
               )}
               {generation.syllable_pattern && (
                 <div className="text-gray-900">
-                  <span className="font-semibold text-gray-700">Syllable Pattern:</span> 
+                  <span className="font-semibold text-gray-700">Syllable Pattern (per line):</span> 
                   <span className="ml-2">{generation.syllable_pattern}</span>
                 </div>
               )}
@@ -845,6 +845,5 @@ function GenerationResultContent() {
     </div>
   );
 }
-
 
 
