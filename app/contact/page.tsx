@@ -9,6 +9,9 @@ export const dynamic = 'force-static';
 export const metadata: Metadata = {
   title: 'Contact Us',
   description: 'Get in touch with the AI Lyrics Generator team. We\'re here to help with any questions or support needs.',
+  alternates: {
+    canonical: '/contact',
+  },
 };
 
 export default function ContactPage() {

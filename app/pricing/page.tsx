@@ -6,13 +6,16 @@ import { CheckIcon } from '@heroicons/react/24/outline'
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'Pricing - AI Lyrics Generator | Choose Your Plan',
-  description: 'Choose the perfect plan for your songwriting needs. Start free or upgrade to unlock unlimited AI lyrics generation and advanced features.',
+  title: 'Pricing',
+  description: 'Choose the right plan for your songwriting. Start free or upgrade to unlock more AI lyric generations and advanced features.',
   keywords: 'ai lyrics generator pricing, songwriting subscription, music lyrics plan',
   openGraph: {
-    title: 'Pricing - AI Lyrics Generator',
-    description: 'Choose the perfect plan for your songwriting needs. Start free or upgrade to unlock unlimited AI lyrics generation.',
+    title: 'Pricing',
+    description: 'Choose the right plan for your songwriting. Start free or upgrade to unlock more AI lyric generations and advanced features.',
     type: 'website',
+  },
+  alternates: {
+    canonical: '/pricing',
   },
 }
 

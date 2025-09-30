@@ -8,6 +8,9 @@ export const dynamic = 'force-static';
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'Learn how AI Lyrics Generator collects, uses, and protects your personal information.',
+  alternates: {
+    canonical: '/privacy',
+  },
 };
 
 export default function PrivacyPage() {

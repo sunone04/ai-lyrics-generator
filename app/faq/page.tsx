@@ -1,12 +1,12 @@
 import { Metadata } from 'next';
 
-// 强制静态生成 - FAQ内容基本不变
+// 强制静态生成 - FAQ 内容基本不变
 export const dynamic = 'force-static';
 
 // 元数据配置
 export const metadata: Metadata = {
-  title: 'FAQ - AI Lyrics Generator Questions & Answers | Song Lyrics Help',
-  description: 'Get answers to frequently asked questions about our AI lyrics generator, song lyrics generator, and rap lyrics generator. Learn how to create professional lyrics with AI technology.',
+  title: 'FAQ',
+  description: 'Answers to common questions about our AI lyrics generator and how to create professional lyrics with AI.',
   keywords: 'ai lyrics generator faq, song lyrics generator help, rap lyrics generator questions, lyric generator guide, ai songwriting help, lyrics generator tutorial',
   alternates: {
     canonical: '/faq',
@@ -63,7 +63,7 @@ export default function FAQPage() {
                     <details key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 group">
                       <summary className="cursor-pointer select-none px-6 py-4 font-medium text-gray-900 flex items-center justify-between">
                         <span>{faq.question}</span>
-                        <span aria-hidden className="ml-4 text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                        <span aria-hidden className="ml-4 text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                       </summary>
                       <div className="px-6 pb-4 text-gray-600 leading-relaxed">{faq.answer}</div>
                     </details>
@@ -86,3 +86,4 @@ export default function FAQPage() {
     </div>
   );
 }
+

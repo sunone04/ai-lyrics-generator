@@ -1,6 +1,6 @@
 export const SITE_CONFIG = {
   name: 'AI Lyrics Generator',
-  description: 'Professional AI lyrics generator and song lyrics generator for musicians, rappers, and songwriters. Create rap lyrics, song lyrics, and professional music lyrics in 100+ languages with our advanced AI lyric generator technology.',
+  description: 'Create professional song and rap lyrics with AI. Generate original lyrics in 100+ languages for any style. Free to start with premium features.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-lyrics-generator.net',
   keywords: [
     'ai lyrics generator',
@@ -25,6 +25,16 @@ export const SITE_CONFIG = {
     'chorus generator'
   ]
 };
+
+// Global SEO limits and helpers
+export const SEO_LIMITS = {
+  TITLE_MAX: 60,
+  DESCRIPTION_MAX: 160,
+};
+
+export const TITLE_BRAND = 'AI Lyrics Generator';
+export const TITLE_SEPARATOR = ' | ';
+export const TITLE_SUFFIX = `${TITLE_SEPARATOR}${TITLE_BRAND}`; // used by layout template
 
 export const SUBSCRIPTION_LIMITS = {
   free: {

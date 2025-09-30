@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { buildDescription, clampTitle } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "AI Lyrics Generator - Create Professional Song Lyrics & Rap Lyrics Online",
-  description: "Generate professional song lyrics and rap lyrics with our advanced AI lyrics generator. Create custom lyrics in 100+ languages for any music style, theme, and structure. Free AI lyric generator with premium features.",
+  title: "Generate AI Lyrics",
+  description: buildDescription(
+    "Generate professional song and rap lyrics with AI. Customize style, theme, and structure in 100+ languages. Free to start; premium available."
+  ),
   keywords: [
     'ai lyrics generator',
     'ai lyric generator', 
@@ -26,8 +29,10 @@ export const metadata: Metadata = {
     'custom song lyrics'
   ],
   openGraph: {
-    title: "AI Lyrics Generator - Create Professional Song Lyrics & Rap Lyrics",
-    description: "Generate professional song lyrics and rap lyrics with our advanced AI lyrics generator. Create custom lyrics in 100+ languages for any music style and theme.",
+    title: clampTitle("Generate AI Lyrics"),
+    description: buildDescription(
+      "Generate professional song and rap lyrics with AI. Customize style, theme, and structure in 100+ languages."
+    ),
     type: 'website',
     url: '/generate',
     images: [
@@ -41,8 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Lyrics Generator - Create Professional Song Lyrics & Rap Lyrics',
-    description: 'Generate professional song lyrics and rap lyrics with our advanced AI lyrics generator. Create custom lyrics in 100+ languages.',
+    title: clampTitle('Generate AI Lyrics'),
+    description: buildDescription('Generate professional song and rap lyrics with AI. Create custom lyrics in 100+ languages.'),
     images: ['/generate-og.jpg'],
   },
   alternates: {

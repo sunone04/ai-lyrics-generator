@@ -7,7 +7,7 @@ import Footer from "@/components/layout/footer";
 import { LazyToaster } from "@/components/ui/lazy-toaster";
 import { SITE_CONFIG } from "@/lib/constants";
 import ConditionalProviders from "@/components/layout/conditional-providers";
- 
+
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
@@ -23,8 +23,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Lyrics Generator - #1 Professional Song Lyrics & Rap Generator Tool',
-    template: `%s | AI Lyrics Generator - Professional Song Writing Tool`
+    default: 'AI Lyrics Generator – Create Song & Rap Lyrics',
+    template: `%s | AI Lyrics Generator`
   },
   description: SITE_CONFIG.description,
   keywords: SITE_CONFIG.keywords,
@@ -32,9 +32,6 @@ export const metadata: Metadata = {
   creator: SITE_CONFIG.name,
   publisher: SITE_CONFIG.name,
   metadataBase: new URL(SITE_CONFIG.url),
-  alternates: {
-    canonical: SITE_CONFIG.url,
-  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -52,12 +49,12 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: SITE_CONFIG.url,
-    title: 'AI Lyrics Generator - #1 Professional Song Lyrics & Rap Generator Tool',
+    title: 'AI Lyrics Generator – Create Song & Rap Lyrics',
     description: SITE_CONFIG.description,
     siteName: SITE_CONFIG.name,
     images: [
       {
-        url: '/og-image.jpg',
+        url: '/female_singer.webp',
         width: 1200,
         height: 630,
         alt: 'AI Lyrics Generator - Create Professional Song Lyrics with AI',
@@ -66,9 +63,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Lyrics Generator - #1 Professional Song Lyrics & Rap Generator Tool',
+    title: 'AI Lyrics Generator – Create Song & Rap Lyrics',
     description: SITE_CONFIG.description,
-    images: ['/og-image.jpg'],
+    images: ['/female_singer.webp'],
     creator: '@ailyricsgen',
   },
   robots: {
@@ -83,7 +80,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'your-google-verification-code',
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
   },
 };
 
@@ -151,14 +148,12 @@ export default function RootLayout({
             <Script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
             <Script id="ga-gtag-init" strategy="afterInteractive">{`
               window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
+              function gtag(){dataLayer.push(arguments);} 
               gtag('js', new Date());
               gtag('config', '${GA_MEASUREMENT_ID}');
             `}</Script>
           </>
         ) : null}
-        
-
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
         <ConditionalProviders>

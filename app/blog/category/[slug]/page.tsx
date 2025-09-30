@@ -1,176 +1,113 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+
+import { buildTitleBase, buildDescription } from '@/lib/seo';
 import { cacheService } from '@/lib/cache-service';
-import { createServerComponentClient } from '@/lib/supabase-server';
 import { formatDate } from '@/lib/utils';
-import { Post, Category } from '@/lib/types';
+import type { Post, Category } from '@/lib/types';
 
 // Next.js 15: dynamic route params may be a Promise
 type CategoryPageProps = { params: Promise<{ slug: string }> };
 
-// 生成静态参数
+// 生成静态参数（SSG）
 export async function generateStaticParams() {
-  // 在构建时使用管理员客户端，不依赖cookies
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
-  
+
   const { data: categories } = await supabase
     .from('categories')
-    .select('slug');
+    .select('slug')
+    .eq('is_active', true);
 
-  return categories?.map((category) => ({
-    slug: category.slug,
-  })) || [];
+  return categories?.map((c) => ({ slug: c.slug })) || [];
 }
 
-// 获取分类信息
 async function getCategory(slug: string): Promise<Category | null> {
-  // 首先尝试从缓存获取（需要空值保护）
-  const cachedCategories = await cacheService.getCategories();
-  const categoryFromCache = Array.isArray(cachedCategories)
-    ? cachedCategories.find((cat: any) => cat?.slug === slug)
-    : undefined;
-  
-  if (categoryFromCache) {
-    return categoryFromCache as import('@/lib/types').Category;
-  }
-  
-  // 缓存未命中，从数据库获取
+  // 尝试从缓存中读取
+  const cached = await cacheService.getCategories();
+  const byCache = Array.isArray(cached)
+    ? (cached as any[]).find((c) => c?.slug === slug)
+    : null;
+  if (byCache) return byCache as Category;
+
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
-  
-  const { data: categoryData, error: categoryError } = await supabase
+  const { data, error } = await supabase
     .from('categories')
-    .select('id, name, slug, seo_title, meta_description, sort_order, is_active, created_at')
+    .select('id, name, slug, created_at, updated_at, is_active')
     .eq('slug', slug)
     .eq('is_active', true)
     .single();
-
-  if (categoryError || !categoryData) {
-    console.error('Error fetching category:', categoryError);
-    return null;
-  }
-
-  return categoryData;
+  if (error || !data) return null;
+  return data as Category;
 }
 
-// 获取分类下的文章
 async function getCategoryPosts(categoryId: number): Promise<Post[]> {
-  // 首先尝试从缓存获取（需要空值保护）
-  const cached = await cacheService.getBlogPosts(undefined, 1, 100); // 获取足够多的文章
-  
-  if (cached && Array.isArray(cached.posts) && cached.posts.length > 0) {
-    // 过滤出当前分类的文章
-    return cached.posts.filter((post: any) => post?.category_id === categoryId) as Post[];
-  }
-  
-  // 缓存未命中，从数据库获取
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
-  
-  const { data: postsData, error: postsError } = await supabase
+  const { data, error } = await supabase
     .from('posts')
     .select(`
-      id, title, slug, excerpt, created_at, updated_at, status, published_at, view_count, category_id,
-      category:categories!inner(id, name, slug)
+      *,
+      category:categories(*)
     `)
-    .eq('status', 'published')
     .eq('category_id', categoryId)
-    .order('published_at', { ascending: false });
-
-  if (postsError) {
-    console.error('Error fetching category posts:', postsError);
-    return [];
-  }
-
-  return (postsData as unknown as import('@/lib/types').Post[]) || [];
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(30);
+  if (error || !data) return [] as any;
+  return data as any;
 }
 
-// 获取其他分类（排除当前分类）
-async function getOtherCategories(currentCategoryId: number): Promise<Category[]> {
-  // 首先尝试从缓存获取
-  const categories = await cacheService.getCategories();
-  
-  if (Array.isArray(categories) && categories.length > 0) {
-    return (categories as unknown as import('@/lib/types').Category[]).filter(cat => cat?.id !== currentCategoryId);
+async function getOtherCategories(currentId: number): Promise<Category[]> {
+  const cached = await cacheService.getCategories();
+  if (Array.isArray(cached) && cached.length) {
+    return (cached as any[]).filter((c) => c?.id !== currentId) as Category[];
   }
-  
-  // 缓存未命中，从数据库获取
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
-  
-  const { data: categoriesData, error } = await supabase
+  const { data } = await supabase
     .from('categories')
-    .select('id, name, slug, seo_title, meta_description, sort_order, is_active, created_at, updated_at')
-    .neq('id', currentCategoryId)
-    .order('name');
-
-  if (error) {
-    console.error('Error fetching other categories:', error);
-    return [];
-  }
-
-  return (categoriesData as unknown as import('@/lib/types').Category[]) || [];
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+  return (data || []) as any;
 }
 
-// 动态生成元数据
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
   const category = await getCategory(slug);
-
   if (!category) {
-    return {
-      title: 'Category Not Found',
-    };
+    return { title: 'Category Not Found' };
   }
-
   return {
-    title: `${category.name} - Songwriting Tips & Guides | AI Lyrics Generator`,
-    description: `Discover expert ${category.name.toLowerCase()} tips, techniques, and guides for songwriting and lyric creation.`,
+    title: buildTitleBase(`${category.name} Tips & Guides`),
+    description: buildDescription(`Discover expert ${category.name.toLowerCase()} tips, techniques, and guides for songwriting and lyric creation.`),
     keywords: [category.name.toLowerCase(), 'songwriting', 'lyrics', 'music', 'tips'],
+    alternates: { canonical: `/blog/category/${slug}` },
   };
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { slug } = (params as any);
+  const { slug } = (await params);
   const category = await getCategory(slug);
-
   if (!category) {
-    // 友好降级：分类不存在时，返回 200 并给出提示，避免因重定向回到一个 404 页被误判为“登录失败”
-    return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">
-              Category Not Found
-            </h1>
-            <p className="text-xl text-black max-w-2xl mx-auto">
-              The category you visited is not available yet.
-            </p>
-            <div className="mt-6">
-              <Link href="/blog" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
-                Go to Blog
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    // 分类不存在：语义化 404
+    notFound();
   }
 
   const [posts, otherCategories] = await Promise.all([
-    getCategoryPosts(category.id),
-    getOtherCategories(category.id)
+    getCategoryPosts((category as Category).id),
+    getOtherCategories((category as Category).id)
   ]);
 
-  // 生成结构化数据
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: `${category.name} - AI Lyrics Generator Blog`,
-    description: `Articles about ${category.name.toLowerCase()} in songwriting and music creation.`,
-    url: `https://ai-lyrics-generator.net/blog/category/${category.slug}`,
+    name: `${(category as Category).name} - AI Lyrics Generator Blog`,
+    description: `Articles about ${(category as Category).name.toLowerCase()} in songwriting and music creation.`,
+    url: `https://ai-lyrics-generator.net/blog/category/${(category as Category).slug}`,
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: posts.length,
@@ -183,41 +120,31 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           description: post.meta_description,
           url: `https://ai-lyrics-generator.net/blog/${post.slug}`,
           datePublished: post.created_at,
-          author: {
-            '@type': 'Organization',
-            name: 'AI Lyrics Generator'
-          }
+          author: { '@type': 'Organization', name: 'AI Lyrics Generator' }
         }
       }))
     }
-  };
+  } as const;
 
   return (
     <>
-      {/* 结构化数据 */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
           <div className="mt-8">
             <div className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">
-                {category.name}
+                {(category as Category).name}
               </h1>
               <p className="text-xl text-black max-w-2xl mx-auto">
-                Expert tips and guides for {category.name.toLowerCase()} in songwriting and music creation
+                Expert tips and guides for {(category as Category).name.toLowerCase()} in songwriting and music creation
               </p>
               <div className="mt-4">
-                <Link
-                  href="/blog"
-                  className="text-blue-600 hover:text-blue-500 font-medium"
-                >
+                <Link href="/blog" className="text-blue-600 hover:text-blue-500 font-medium">
                   ← Back to all articles
                 </Link>
               </div>
@@ -225,16 +152,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
             {posts.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No Articles Yet
-                </h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Articles Yet</h3>
                 <p className="text-gray-600 mb-6">
-                  We&apos;re working on creating amazing {category.name.toLowerCase()} content for you. Check back soon!
+                  We&apos;re working on creating amazing {(category as Category).name.toLowerCase()} content for you. Check back soon!
                 </p>
-                <Link
-                  href="/blog"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
+                <Link href="/blog" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                   Browse All Articles
                 </Link>
               </div>
@@ -245,33 +167,27 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                     <div className="p-6">
                       <div className="flex items-center space-x-2 mb-3">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {category.name}
+                          {(category as Category).name}
                         </span>
                         <span className="text-gray-300">•</span>
                         <time className="text-sm text-gray-500" dateTime={post.created_at}>
                           {formatDate(post.created_at)}
                         </time>
                       </div>
-                      
-                      <h2 className="text-xl font-bold text-black mb-3 line-clamp-2">
-                        <Link
-                          href={`/blog/${post.slug}`}
-                          className="hover:text-blue-600 transition-colors"
-                        >
+
+                      <h2 className="text-xl font-bold text-black mb-3">
+                        <Link href={`/blog/${post.slug}`} className="hover:text-blue-600 transition-colors">
                           {post.title}
                         </Link>
                       </h2>
-                      
+
                       {post.meta_description && (
                         <p className="text-black mb-4 leading-relaxed line-clamp-3">
                           {post.meta_description}
                         </p>
                       )}
-                      
-                      <Link
-                        href={`/blog/${post.slug}`}
-                        className="inline-flex items-center text-blue-600 hover:text-blue-500 font-medium"
-                      >
+
+                      <Link href={`/blog/${post.slug}`} className="inline-flex items-center text-blue-600 hover:text-blue-500 font-medium">
                         Read more
                         <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -282,45 +198,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                 ))}
               </div>
             )}
-
-            {/* 相关分类 */}
-            {otherCategories.length > 0 && (
-              <div className="mt-16">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                  Explore Other Topics
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {otherCategories.slice(0, 4).map((cat) => (
-                    <Link
-                      key={cat.slug}
-                      href={`/blog/category/${cat.slug}`}
-                      className="bg-white rounded-lg shadow-sm p-4 text-center hover:shadow-md transition-shadow"
-                    >
-                      <h3 className="font-medium text-gray-900">{cat.name}</h3>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* CTA */}
-            <div className="mt-16 bg-blue-50 rounded-lg p-8 text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Ready to Create Your Own Lyrics?
-              </h2>
-              <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                Put these {category.name.toLowerCase()} tips into practice with our AI-powered lyrics generator.
-              </p>
-              <Link
-                href="/generate"
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-              >
-                Generate Lyrics Now
-                <svg className="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
           </div>
         </div>
       </div>
@@ -328,9 +205,3 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   );
 }
 
-// 启用ISR - 永久缓存，只在管理操作时通过 /api/revalidate 刷新
-export const dynamic = 'force-static';
-export const revalidate = false;
-
-// 启用动态路由 - 允许访问未预生成的分类页面
-export const dynamicParams = false;

@@ -8,6 +8,9 @@ export const dynamic = 'force-static';
 export const metadata: Metadata = {
   title: 'Terms of Service',
   description: 'Read the terms and conditions for using AI Lyrics Generator.',
+  alternates: {
+    canonical: '/terms',
+  },
 };
 
 export default function TermsPage() {

@@ -46,8 +46,8 @@ export default function Home() {
               
               {/* SEO-Rich Subtitle (desktop/tablet) */}
               <p className="hidden sm:block text-xl md:text-2xl text-gray-600 mb-10 md:mb-12 max-w-4xl mx-auto leading-relaxed">
-                The most advanced AI lyrics generator and rap lyrics generator for musicians, rappers, and songwriters. 
-                Create professional song lyrics, rap verses, and hip-hop lyrics in 100+ languages with our cutting-edge AI lyric generator technology.
+                The most advanced AI lyrics generator and rap lyrics generator for musicians, rappers, and songwriters.
+                Create commercially usable, professional lyrics across all styles and genres.
               </p>
               {/* Shorter mobile subtitle to keep CTA in view */}
               <p className="block sm:hidden text-base text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
@@ -362,5 +362,4 @@ export default function Home() {
     </div>
   );
 }
-
 

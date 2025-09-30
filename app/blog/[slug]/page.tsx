@@ -6,6 +6,7 @@ import { createServerComponentClient } from '@/lib/supabase-server';
 import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
 import ShareButton from '@/components/ui/share-button';
+import { buildTitleBase, buildDescription, clampTitle } from '@/lib/seo';
 
 // Next.js 15: dynamic route params may be a Promise
 type BlogPostPageProps = { params: Promise<{ slug: string }> };
@@ -109,12 +110,13 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   }
 
   return {
-    title: post.seo_title || post.title,
-    description: post.meta_description,
+    title: buildTitleBase(post.seo_title || post.title || 'Blog Post'),
+    description: buildDescription(post.meta_description || ''),
     keywords: post.category?.name ? [post.category.name, 'songwriting', 'lyrics', 'music'] : undefined,
+    alternates: { canonical: `/blog/${slug}` },
     openGraph: {
-      title: post.seo_title || post.title,
-      description: post.meta_description,
+      title: clampTitle(post.seo_title || post.title || 'Blog Post'),
+      description: buildDescription(post.meta_description || ''),
       type: 'article',
       publishedTime: post.published_at || post.created_at,
       modifiedTime: post.updated_at || post.created_at,
@@ -123,8 +125,8 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     },
     twitter: {
       card: 'summary_large_image',
-      title: post.seo_title || post.title,
-      description: post.meta_description,
+      title: clampTitle(post.seo_title || post.title || 'Blog Post'),
+      description: buildDescription(post.meta_description || ''),
     },
   };
 }

@@ -15,7 +15,7 @@ const POSTS_PER_PAGE = 12;
 
 // 生成静态参数 - 为分页生成静态页面
 export async function generateStaticParams() {
-  // 在构建时使用管理员客户端，不依赖cookies
+  // 在构建时使用管理员客户端，不依赖 cookies
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
   
@@ -40,7 +40,7 @@ async function getBlogPosts(page: number) {
     return { posts: posts.posts, totalCount: posts.total };
   }
   
-  // 缓存未命中，从数据库获取（使用AdminClient，无需认证）
+  // 缓存未命中，从数据库获取（使用 AdminClient，无需认证）
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
   const offset = (page - 1) * POSTS_PER_PAGE;
@@ -92,21 +92,21 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
   }
 
   const pageTitle = page === 1 
-    ? 'Blog - AI Lyrics Generator Tips, Techniques & Guides'
-    : `Blog - Page ${page} | AI Lyrics Generator`;
+    ? 'Blog'
+    : `Blog – Page ${page}`;
 
   return {
     title: pageTitle,
-    description: 'Discover expert tips, techniques, and guides for songwriting, lyric creation, and using AI tools effectively. Learn from professional songwriters and music industry experts.',
+    description: 'Expert tips and guides for songwriting, lyric creation, and using AI tools effectively. Learn from professional songwriters and industry experts.',
     keywords: ['songwriting tips', 'lyric writing', 'music composition', 'ai lyrics', 'songwriting techniques'],
+    alternates: { canonical: page === 1 ? '/blog' : `/blog/page/${page}` },
   };
 }
 
 // 分页组件
 function Pagination({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
-  const pages = [];
+  const pages: number[] = [];
   const showPages = 5; // 显示的页码数量
-  
   let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
   const endPage = Math.min(totalPages, startPage + showPages - 1);
   
@@ -203,57 +203,18 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
 
   const totalPages = Math.ceil(totalCount / POSTS_PER_PAGE);
 
-  if (page > totalPages && totalPages > 0) {
-    notFound();
-  }
-
-  // 生成结构化数据
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'Blog',
-    name: 'AI Lyrics Generator Blog',
-    description: 'Expert tips, techniques, and guides for songwriting, lyric creation, and using AI tools effectively.',
-    url: `https://ai-lyrics-generator.net/blog/page/${page}`,
-    publisher: {
-      '@type': 'Organization',
-      name: 'AI Lyrics Generator',
-      url: 'https://ai-lyrics-generator.net'
-    },
-    blogPost: posts.map((post: Post) => ({
-      '@type': 'BlogPosting',
-      headline: post.title,
-      description: post.excerpt, // Use excerpt for description
-      url: `https://ai-lyrics-generator.net/blog/${post.slug}`,
-      datePublished: post.created_at,
-      dateModified: post.published_at, // Use published_at for modified date
-      author: {
-        '@type': 'Organization',
-        name: 'AI Lyrics Generator'
-      }
-    }))
-  };
-
   return (
     <>
-      {/* 结构化数据 */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData),
-        }}
-      />
-
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumbs />
           
           <div className="mt-8">
             <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                Songwriting Blog
-                {page > 1 && <span className="text-gray-600"> - Page {page}</span>}
+              <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">
+                Blog
               </h1>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              <p className="text-xl text-black max-w-2xl mx-auto">
                 Expert tips, techniques, and insights for creating amazing lyrics and music
               </p>
             </div>
@@ -264,7 +225,7 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                 {posts.length === 0 ? (
                   <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No Posts Found
+                      No Articles Yet
                     </h3>
                     <p className="text-gray-600">
                       {page === 1 
@@ -389,7 +350,8 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
   );
 }
 
-// 启用ISR - 每60秒重新验证一次
+// 启用 SSG/ISR 策略（此处保留原配置）
 export const dynamic = 'force-static';
 export const revalidate = false;
 export const dynamicParams = false;
+
