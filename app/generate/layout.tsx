@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { buildDescription, clampTitle } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Generate AI Lyrics",
+  title: { absolute: "AI Lyrics Generator: Create Professional Songs Online" },
   description: buildDescription(
     "Generate professional song and rap lyrics with AI. Customize style, theme, and structure in 100+ languages. Free to start; premium available."
   ),
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     'custom song lyrics'
   ],
   openGraph: {
-    title: clampTitle("Generate AI Lyrics"),
+    title: clampTitle("AI Lyrics Generator: Create Professional Songs Online"),
     description: buildDescription(
       "Generate professional song and rap lyrics with AI. Customize style, theme, and structure in 100+ languages."
     ),
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: clampTitle('Generate AI Lyrics'),
+    title: clampTitle('AI Lyrics Generator: Create Professional Songs Online'),
     description: buildDescription('Generate professional song and rap lyrics with AI. Create custom lyrics in 100+ languages.'),
     images: ['/generate-og.jpg'],
   },

@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
 import ShareButton from '@/components/ui/share-button';
 import { buildTitleBase, buildDescription, clampTitle } from '@/lib/seo';
+import { SITE_CONFIG } from '@/lib/constants';
 
 // Next.js 15: dynamic route params may be a Promise
 type BlogPostPageProps = { params: Promise<{ slug: string }> };
@@ -133,32 +134,34 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 
 // 生成结构化数据
 function generateStructuredData(post: Post) {
+  const base = (SITE_CONFIG.url || '').replace(/\/$/, '');
   return {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: post.title,
-    description: post.meta_description,
+    description: post.meta_description || undefined,
     author: {
       '@type': 'Organization',
       name: 'AI Lyrics Generator',
-      url: 'https://ai-lyrics-generator.net'
+      url: base,
     },
     publisher: {
       '@type': 'Organization',
       name: 'AI Lyrics Generator',
-      url: 'https://ai-lyrics-generator.net'
+      url: base,
     },
     datePublished: post.published_at || post.created_at,
     dateModified: post.updated_at || post.created_at,
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `https://ai-lyrics-generator.net/blog/${post.slug}`
+      '@id': `${base}/blog/${post.slug}`,
     },
-    articleSection: post.category?.name,
-    keywords: [post.category?.name, 'songwriting', 'lyrics', 'music'].filter(Boolean).join(', '),
-    url: `https://ai-lyrics-generator.net/blog/${post.slug}`,
-    image: 'https://ai-lyrics-generator.net/og-image.jpg'
-  };
+    articleSection: post.category?.name || undefined,
+    keywords: [post.category?.name, 'songwriting', 'lyrics', 'music']
+      .filter(Boolean)
+      .join(', '),
+    url: `${base}/blog/${post.slug}`,
+  } as const;
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {

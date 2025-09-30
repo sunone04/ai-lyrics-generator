@@ -102,12 +102,6 @@
       ]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/blog/sitemap.xml",
-      "destination": "/api/blog/sitemap"
-    }
-  ],
   "regions": ["iad1"],
   "crons": []
 }

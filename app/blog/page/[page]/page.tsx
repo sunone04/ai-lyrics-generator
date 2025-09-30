@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
 import { BLOG_CATEGORIES } from '@/lib/constants';
-import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { formatDate } from '@/lib/utils';
 import { Category, Post } from '@/lib/types';
 import { cacheService } from '@/lib/cache-service';
@@ -18,14 +17,14 @@ export async function generateStaticParams() {
   // 在构建时使用管理员客户端，不依赖 cookies
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
-  
+
   const { count } = await supabase
     .from('posts')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'published');
 
   const totalPages = Math.ceil((count || 0) / POSTS_PER_PAGE);
-  
+
   return Array.from({ length: totalPages }, (_, i) => ({
     page: (i + 1).toString(),
   }));
@@ -35,16 +34,16 @@ export async function generateStaticParams() {
 async function getBlogPosts(page: number) {
   // 首先尝试从缓存获取
   let posts = await cacheService.getBlogPosts(undefined, page, POSTS_PER_PAGE);
-  
+
   if (posts && 'posts' in posts && posts.posts && posts.posts.length > 0) {
-    return { posts: posts.posts, totalCount: posts.total };
+    return { posts: posts.posts as Post[], totalCount: posts.total as number };
   }
-  
+
   // 缓存未命中，从数据库获取（使用 AdminClient，无需认证）
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
   const offset = (page - 1) * POSTS_PER_PAGE;
-  
+
   const { data: postsData, error, count } = await supabase
     .from('posts')
     .select(`
@@ -60,43 +59,40 @@ async function getBlogPosts(page: number) {
     return { posts: [], totalCount: 0 };
   }
 
-  const result = { posts: postsData || [], totalCount: count || 0 };
-  
+  const result = { posts: (postsData as unknown as Post[]) || [], totalCount: count || 0 };
+
   // 更新缓存
   await cacheService.set(`blog_posts:all:${page}:${POSTS_PER_PAGE}`, result, 1800);
-  
+
   return result;
 }
 
 async function getCategories(): Promise<Category[]> {
   // 使用永久缓存方法，无需认证
   let categories = await cacheService.getCategories();
-  
+
   if (categories && Array.isArray(categories) && categories.length > 0) {
     return (categories as unknown as import('@/lib/types').Category[]);
   }
-  
+
   // 如果缓存为空，返回默认分类
-  return BLOG_CATEGORIES;
+  return BLOG_CATEGORIES as unknown as Category[];
 }
 
 // 动态生成元数据
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
   const { page: pageParam } = await params;
   const page = parseInt(pageParam);
-  
+
   if (isNaN(page) || page < 1) {
     return {
       title: 'Page Not Found',
     };
   }
 
-  const pageTitle = page === 1 
-    ? 'Blog'
-    : `Blog – Page ${page}`;
-
+  const pageTitleNormalized = page === 1 ? 'Blog' : `Blog - Page ${page}`;
   return {
-    title: pageTitle,
+    title: pageTitleNormalized,
     description: 'Expert tips and guides for songwriting, lyric creation, and using AI tools effectively. Learn from professional songwriters and industry experts.',
     keywords: ['songwriting tips', 'lyric writing', 'music composition', 'ai lyrics', 'songwriting techniques'],
     alternates: { canonical: page === 1 ? '/blog' : `/blog/page/${page}` },
@@ -109,7 +105,7 @@ function Pagination({ currentPage, totalPages }: { currentPage: number; totalPag
   const showPages = 5; // 显示的页码数量
   let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
   const endPage = Math.min(totalPages, startPage + showPages - 1);
-  
+
   if (endPage - startPage + 1 < showPages) {
     startPage = Math.max(1, endPage - showPages + 1);
   }
@@ -189,9 +185,9 @@ function Pagination({ currentPage, totalPages }: { currentPage: number; totalPag
 }
 
 export default async function BlogPageWithPagination({ params }: BlogPageProps) {
-  const { page: pageParam } = (params as any);
+  const { page: pageParam } = (await params);
   const page = parseInt(pageParam);
-  
+
   if (isNaN(page) || page < 1) {
     notFound();
   }
@@ -208,11 +204,11 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* <Breadcrumbs /> */}
-        
+
           <div className="mt-8">
             <div className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                {page === 1 ? 'Songwriting Blog' : `Blog – Page ${page}`}
+                {page === 1 ? 'Songwriting Blog' : `Blog - Page ${page}`}
               </h1>
               <p className="text-xl text-gray-600 max-w-2xl mx-auto">
                 Expert tips, techniques, and insights for creating amazing lyrics and music
@@ -249,12 +245,12 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                                   {post.category.name}
                                 </Link>
                               )}
-                              <span className="text-gray-300">•</span>
+                              <span className="text-gray-300" aria-hidden="true">&middot;</span>
                               <time className="text-sm text-gray-500" dateTime={post.created_at}>
                                 {formatDate(post.created_at)}
                               </time>
                             </div>
-                            
+
                             <h2 className="text-xl font-bold text-black mb-3">
                               <Link
                                 href={`/blog/${post.slug}`}
@@ -263,13 +259,13 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                                 {post.title}
                               </Link>
                             </h2>
-                            
-                            {post.excerpt && (
+
+                            {post.meta_description && (
                               <p className="text-black mb-4 leading-relaxed line-clamp-3">
-                                {post.excerpt}
+                                {post.meta_description}
                               </p>
                             )}
-                            
+
                             <Link
                               href={`/blog/${post.slug}`}
                               className="inline-flex items-center text-blue-600 hover:text-blue-500 font-medium"
@@ -284,8 +280,12 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                       ))}
                     </div>
 
-                    {/* 分页 */}
-                    <Pagination currentPage={page} totalPages={totalPages} />
+                    {/* 分页链接 */}
+                    {totalCount > POSTS_PER_PAGE && (
+                      <div className="mt-12 text-center">
+                        <Pagination currentPage={page} totalPages={totalPages} />
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -297,7 +297,7 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                     Categories
                   </h3>
                   <ul className="space-y-2">
-                    {categories.map((category) => (
+                    {(categories || []).map((category) => (
                       <li key={category.slug}>
                         <Link
                           href={`/blog/category/${category.slug}`}
@@ -323,28 +323,6 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                   >
                     Generate Lyrics
                   </Link>
-                  <div className="mt-3 text-sm text-gray-600 space-x-2">
-                    <Link href="/faq" className="hover:text-blue-600">FAQ</Link>
-                    <span>·</span>
-                    <Link href="/pricing" className="hover:text-blue-600">Pricing</Link>
-                  </div>
-                </div>
-
-                {/* 文章统计 */}
-                <div className="bg-white rounded-lg shadow-sm p-6 mt-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Blog Stats
-                  </h3>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex justify-between">
-                      <span>Total Articles:</span>
-                      <span className="font-medium">{totalCount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Current Page:</span>
-                      <span className="font-medium">{page} of {totalPages}</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -354,9 +332,3 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
     </>
   );
 }
-
-// 启用 SSG/ISR 策略（此处保留原配置）
-export const dynamic = 'force-static';
-export const revalidate = false;
-export const dynamicParams = false;
-

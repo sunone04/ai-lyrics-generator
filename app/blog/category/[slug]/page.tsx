@@ -35,7 +35,7 @@ async function getCategory(slug: string): Promise<Category | null> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('categories')
-    .select('id, name, slug, created_at, updated_at, is_active')
+    .select('id, name, slug, created_at, updated_at, is_active, sort_order, seo_title, meta_description')
     .eq('slug', slug)
     .eq('is_active', true)
     .single();
@@ -145,7 +145,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               </p>
               <div className="mt-4">
                 <Link href="/blog" className="text-blue-600 hover:text-blue-500 font-medium">
-                  ← Back to all articles
+                  &larr; Back to all articles
                 </Link>
               </div>
             </div>
@@ -169,7 +169,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {(category as Category).name}
                         </span>
-                        <span className="text-gray-300">•</span>
+                        <span className="text-gray-300" aria-hidden="true">&middot;</span>
                         <time className="text-sm text-gray-500" dateTime={post.created_at}>
                           {formatDate(post.created_at)}
                         </time>
@@ -204,5 +204,4 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     </>
   );
 }
-
 

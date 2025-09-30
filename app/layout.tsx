@@ -8,7 +8,6 @@ import { LazyToaster } from "@/components/ui/lazy-toaster";
 import { SITE_CONFIG } from "@/lib/constants";
 import ConditionalProviders from "@/components/layout/conditional-providers";
 
-
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 const geistSans = Geist({
@@ -23,8 +22,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Lyrics Generator – Create Song & Rap Lyrics',
-    template: `%s | AI Lyrics Generator`
+    default: "AI Lyrics Generator: Create Professional Songs Online",
+    template: "%s | AI Lyrics Generator",
   },
   description: SITE_CONFIG.description,
   keywords: SITE_CONFIG.keywords,
@@ -34,39 +33,39 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_CONFIG.url),
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon.ico', sizes: '16x16', type: 'image/x-icon' },
-      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.ico", sizes: "16x16", type: "image/x-icon" },
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
     ],
-    shortcut: '/favicon.ico',
-    apple: '/favicon.ico',
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
     other: [
-      { rel: 'icon', url: '/favicon.ico', type: 'image/x-icon' },
+      { rel: "icon", url: "/favicon.ico", type: "image/x-icon" },
     ],
   },
-  manifest: '/site.webmanifest',
+  manifest: "/site.webmanifest",
   openGraph: {
-    type: 'website',
-    locale: 'en_US',
+    type: "website",
+    locale: "en_US",
     url: SITE_CONFIG.url,
-    title: 'AI Lyrics Generator – Create Song & Rap Lyrics',
+    title: "AI Lyrics Generator: Create Professional Songs Online",
     description: SITE_CONFIG.description,
     siteName: SITE_CONFIG.name,
     images: [
       {
-        url: '/female_singer.webp',
+        url: "/female_singer.webp",
         width: 1200,
         height: 630,
-        alt: 'AI Lyrics Generator - Create Professional Song Lyrics with AI',
+        alt: "AI Lyrics Generator - Create Professional Song Lyrics with AI",
       },
     ],
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'AI Lyrics Generator – Create Song & Rap Lyrics',
+    card: "summary_large_image",
+    title: "AI Lyrics Generator: Create Professional Songs Online",
     description: SITE_CONFIG.description,
-    images: ['/female_singer.webp'],
-    creator: '@ailyricsgen',
+    images: ["/female_singer.webp"],
+    creator: "@ailyricsgen",
   },
   robots: {
     index: true,
@@ -74,9 +73,9 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
   },
   verification: {
@@ -91,7 +90,7 @@ export default function RootLayout({
 }>) {
   const supabaseOrigin = (() => {
     try {
-      const raw = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const raw = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
       if (!raw) return null;
       const u = new URL(raw);
       return `${u.protocol}//${u.host}`;
@@ -99,34 +98,40 @@ export default function RootLayout({
       return null;
     }
   })();
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "AI Lyrics Generator",
-    "description": SITE_CONFIG.description,
-    "url": SITE_CONFIG.url,
-    "applicationCategory": "MusicApplication",
-    "operatingSystem": "Web Browser",
-    "offers": {
+    name: "AI Lyrics Generator",
+    description: SITE_CONFIG.description,
+    url: SITE_CONFIG.url,
+    applicationCategory: "MusicApplication",
+    operatingSystem: "Web Browser",
+    offers: {
       "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD",
-      "description": "Free AI lyrics generator with premium features available"
+      price: "0",
+      priceCurrency: "USD",
+      description: "Free AI lyrics generator with premium features available",
     },
-    "creator": {
+    creator: {
       "@type": "Organization",
-      "name": SITE_CONFIG.name,
-      "url": SITE_CONFIG.url
+      name: SITE_CONFIG.name,
+      url: SITE_CONFIG.url,
     },
-    "keywords": SITE_CONFIG.keywords.join(", "),
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "reviewCount": "1247",
-      "bestRating": "5",
-      "worstRating": "1"
-    }
-  };
+    keywords: SITE_CONFIG.keywords.join(", "),
+  } as const;
+
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_CONFIG.name,
+    url: SITE_CONFIG.url,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${SITE_CONFIG.url}/blog?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  } as const;
 
   return (
     <html lang="en">
@@ -135,17 +140,36 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
         {supabaseOrigin ? (
           <>
-            <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+            <link
+              rel="preconnect"
+              href={supabaseOrigin}
+              crossOrigin="anonymous"
+            />
             <link rel="dns-prefetch" href={supabaseOrigin} />
           </>
         ) : null}
-        {process.env.NODE_ENV === 'production' && GA_MEASUREMENT_ID ? (
+        {process.env.NODE_ENV === "production" && GA_MEASUREMENT_ID ? (
           <>
-            <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
-            <link rel="preconnect" href="https://www.google-analytics.com" crossOrigin="anonymous" />
-            <Script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
+            <link
+              rel="preconnect"
+              href="https://www.googletagmanager.com"
+              crossOrigin="anonymous"
+            />
+            <link
+              rel="preconnect"
+              href="https://www.google-analytics.com"
+              crossOrigin="anonymous"
+            />
+            <Script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+            />
             <Script id="ga-gtag-init" strategy="afterInteractive">{`
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);} 
@@ -155,12 +179,12 @@ export default function RootLayout({
           </>
         ) : null}
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+      >
         <ConditionalProviders>
           <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
+          <main className="flex-1">{children}</main>
         </ConditionalProviders>
         <Footer />
         <LazyToaster />
@@ -168,4 +192,3 @@ export default function RootLayout({
     </html>
   );
 }
-

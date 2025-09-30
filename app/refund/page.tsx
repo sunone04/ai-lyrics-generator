@@ -43,7 +43,8 @@ export default function RefundPage() {
 
             <h2 className="text-2xl font-semibold text-black mb-4">Refund Eligibility</h2>
             
-            <h3 className="text-xl font-semibold text-black mb-3">✅ Eligible for Full Refund:</h3>
+            
+            <h3 className="text-xl font-semibold text-black mb-3">Eligible for Full Refund:</h3>
             <ul className="list-disc pl-6 mb-6 text-black space-y-2">
               <li>Requests made within 24 hours of purchase</li>
               <li>Technical issues preventing service access</li>
@@ -51,8 +52,9 @@ export default function RefundPage() {
               <li>Accidental duplicate purchases</li>
               <li>Billing errors or unauthorized charges</li>
             </ul>
+            
 
-            <h3 className="text-xl font-semibold text-black mb-3">❌ Not Eligible for Refund:</h3>
+            <h3 className="text-xl font-semibold text-black mb-3">Not Eligible for Refund:</h3>
             <ul className="list-disc pl-6 mb-6 text-black space-y-2">
               <li>Requests made after 24 hours from purchase</li>
               <li>Change of mind after using the service extensively</li>

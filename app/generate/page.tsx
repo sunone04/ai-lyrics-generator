@@ -363,7 +363,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               {/* Artist Style */}
               <div>
                 <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MicrophoneIcon className="w-5 h-5 mr-2 text-purple-600" />Reference Artist <span className="text-gray-500 font-normal text-sm">(optional)</span></label>
-                <input type="text" value={params.artistStyle} onChange={(e) => setParams({ ...params, artistStyle: e.target.value })} placeholder="e.g., Taylor Swift, Drake" maxLength={FREE_TEXT_LIMITS.artistStyle} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                <input type="text" value={params.artistStyle} onChange={(e) => setParams({ ...params, artistStyle: e.target.value })} placeholder="e.g., Drake" maxLength={FREE_TEXT_LIMITS.artistStyle} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
               </div>
             </div>
 
@@ -406,7 +406,7 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
               <div>
                 <label className="block text-base font-semibold text-gray-700 mb-2">Syllable Pattern <span className="text-gray-500 font-normal text-sm">(per line)</span></label>
-                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8–8–10–8" maxLength={FREE_TEXT_LIMITS.syllablePattern} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8-8-10-8" maxLength={FREE_TEXT_LIMITS.syllablePattern} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
               </div>
               <div>
                 <label className="block text-base font-semibold text-gray-700 mb-2">Section Length <span className="text-gray-500 font-normal text-sm">(Verse/Chorus)</span></label>
@@ -550,3 +550,7 @@ export default function GeneratePage() {
     </Suspense>
   );
 }
+
+
+
+

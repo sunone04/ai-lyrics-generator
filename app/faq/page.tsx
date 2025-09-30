@@ -37,9 +37,28 @@ export default function FAQPage() {
     return acc;
   }, {} as Record<string, typeof faqs>);
 
+  // FAQPage 结构化数据（JSON-LD）
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  } as const;
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* FAQPage JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
         {/* Simple breadcrumb without JS */}
         <nav aria-label="Breadcrumb" className="text-sm text-gray-500">
           <a href="/" className="hover:text-gray-700">Home</a>
@@ -63,7 +82,7 @@ export default function FAQPage() {
                     <details key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 group">
                       <summary className="cursor-pointer select-none px-6 py-4 font-medium text-gray-900 flex items-center justify-between">
                         <span>{faq.question}</span>
-                        <span aria-hidden className="ml-4 text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                        <span aria-hidden="true" className="ml-4 text-gray-400 group-open:rotate-180 transition-transform">&#9662;</span>
                       </summary>
                       <div className="px-6 pb-4 text-gray-600 leading-relaxed">{faq.answer}</div>
                     </details>
@@ -86,4 +105,3 @@ export default function FAQPage() {
     </div>
   );
 }
-
