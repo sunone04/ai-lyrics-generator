@@ -332,3 +332,10 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
     </>
   );
 }
+
+// Force full static output (no runtime SSR)
+export const dynamic = 'force-static';
+// Disable dynamic fallback for unknown pages; requires rebuild when total pages increase
+export const dynamicParams = false;
+// Disable ISR; revalidate via explicit /api/revalidate or rebuild
+export const revalidate = false;

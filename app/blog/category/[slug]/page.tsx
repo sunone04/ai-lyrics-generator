@@ -205,3 +205,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   );
 }
 
+// Force full static output (no runtime SSR)
+export const dynamic = 'force-static';
+// Disable dynamic fallback for unknown params; requires rebuild to add new categories
+export const dynamicParams = false;
+// Disable ISR; revalidate via explicit /api/revalidate or rebuild
+export const revalidate = false;

@@ -7,6 +7,7 @@ import Footer from "@/components/layout/footer";
 import { LazyToaster } from "@/components/ui/lazy-toaster";
 import { SITE_CONFIG } from "@/lib/constants";
 import ConditionalProviders from "@/components/layout/conditional-providers";
+import GAListener from "@/components/analytics/ga-listener";
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
@@ -154,7 +155,7 @@ export default function RootLayout({
             <link rel="dns-prefetch" href={supabaseOrigin} />
           </>
         ) : null}
-        {process.env.NODE_ENV === "production" && GA_MEASUREMENT_ID ? (
+        {GA_MEASUREMENT_ID ? (
           <>
             <link
               rel="preconnect"
@@ -174,7 +175,7 @@ export default function RootLayout({
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);} 
               gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}');
+              gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
             `}</Script>
           </>
         ) : null}
@@ -186,6 +187,9 @@ export default function RootLayout({
           <Navbar />
           <main className="flex-1">{children}</main>
         </ConditionalProviders>
+        {GA_MEASUREMENT_ID ? (
+          <GAListener measurementId={GA_MEASUREMENT_ID} />
+        ) : null}
         <Footer />
         <LazyToaster />
       </body>
