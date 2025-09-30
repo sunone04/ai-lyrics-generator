@@ -120,6 +120,9 @@ export default async function BlogPage() {
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Expert tips, techniques, and insights for creating amazing lyrics and music
             </p>
+            <p className="text-sm text-gray-600 mt-2">
+              Ready to create? <Link href="/generate" className="underline hover:text-blue-700">Try the AI Lyrics Generator</Link>
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

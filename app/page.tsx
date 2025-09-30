@@ -2,9 +2,14 @@
 import Image from 'next/image';
 import { ArrowRightIcon, SparklesIcon, LanguageIcon, PencilIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { SITE_CONFIG } from '@/lib/constants';
+import type { Metadata } from 'next';
 
 // 寮哄埗闈欐€佺敓鎴?- 棣栭〉鍐呭鍙樺寲缂撴參
 export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
 
 // Metadata moved to layout.tsx for client component
 
@@ -48,6 +53,9 @@ export default function Home() {
               <p className="hidden sm:block text-xl md:text-2xl text-gray-600 mb-10 md:mb-12 max-w-4xl mx-auto leading-relaxed">
                 The most advanced AI lyrics generator and rap lyrics generator for musicians, rappers, and songwriters.
                 Create commercially usable, professional lyrics across all styles and genres.
+                {' '}Learn tips on our <Link href="/blog" prefetch={false} className="underline hover:text-blue-700">Blog</Link>,
+                {' '}get answers in the <Link href="/faq" prefetch={false} className="underline hover:text-blue-700">FAQ</Link>,
+                {' '}or try the <Link href="/edit" prefetch={false} className="underline hover:text-blue-700">AI Lyrics Editor</Link>.
               </p>
               {/* Shorter mobile subtitle to keep CTA in view */}
               <p className="block sm:hidden text-base text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
@@ -362,4 +370,3 @@ export default function Home() {
     </div>
   );
 }
-

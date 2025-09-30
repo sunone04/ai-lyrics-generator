@@ -274,6 +274,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             Generate professional song and rap lyrics with our AI lyrics generator.
+            {' '}You can also
+            {' '}<Link href="/edit" className="underline hover:text-blue-700">edit your own lyrics</Link>
+            {' '}or
+            {' '}<Link href="/personal-style" className="underline hover:text-blue-700">teach the model your Personal Style</Link>.
           </p>
         </div>
 

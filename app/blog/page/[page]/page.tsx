@@ -207,14 +207,14 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
     <>
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Breadcrumbs />
-          
+          {/* <Breadcrumbs /> */}
+        
           <div className="mt-8">
             <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">
-                Blog
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                {page === 1 ? 'Songwriting Blog' : `Blog – Page ${page}`}
               </h1>
-              <p className="text-xl text-black max-w-2xl mx-auto">
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
                 Expert tips, techniques, and insights for creating amazing lyrics and music
               </p>
             </div>
@@ -225,7 +225,7 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                 {posts.length === 0 ? (
                   <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No Articles Yet
+                      {page === 1 ? 'Coming Soon' : 'No Posts Yet'}
                     </h3>
                     <p className="text-gray-600">
                       {page === 1 
@@ -323,6 +323,11 @@ export default async function BlogPageWithPagination({ params }: BlogPageProps) 
                   >
                     Generate Lyrics
                   </Link>
+                  <div className="mt-3 text-sm text-gray-600 space-x-2">
+                    <Link href="/faq" className="hover:text-blue-600">FAQ</Link>
+                    <span>·</span>
+                    <Link href="/pricing" className="hover:text-blue-600">Pricing</Link>
+                  </div>
                 </div>
 
                 {/* 文章统计 */}
