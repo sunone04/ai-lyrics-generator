@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/layout/navbar";
@@ -188,7 +189,9 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
         </ConditionalProviders>
         {GA_MEASUREMENT_ID ? (
-          <GAListener measurementId={GA_MEASUREMENT_ID} />
+          <Suspense fallback={null}>
+            <GAListener measurementId={GA_MEASUREMENT_ID} />
+          </Suspense>
         ) : null}
         <Footer />
         <LazyToaster />

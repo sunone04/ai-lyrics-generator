@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -10,7 +10,7 @@ import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { createClient } from '@/lib/supabase';
 
-// 独立的组件来处理 useSearchParams
+// 鐙珛鐨勭粍浠舵潵澶勭悊 useSearchParams
 function SignInContent() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo');
@@ -20,7 +20,7 @@ function SignInContent() {
   return <SignInForm returnTo={returnTo} initialError={{ error, reason }} />;
 }
 
-// 主要的登录表单组件
+// Main sign-in form component
 function SignInForm({ returnTo, initialError }: { returnTo: string | null; initialError: { error: string | null; reason: string | null } }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +36,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
   // Supabase client
   const supabase = createClient();
 
-  // 根据回调错误参数给出用户提示，并打印开发者可用信息
+  // Show message based on callback error (logs reason for developers)
   useEffect(() => {
     if (initialError?.error) {
       const map: Record<string, string> = {
@@ -119,10 +119,10 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
         } else {
           setRegistrationSuccess(true);
           setPassword('');
-          toast.success('注册成功，请检查邮箱中的确认邮件');
+          toast.success('Registration successful. Please check your email for a confirmation link.');
         }
       } else {
-        // 改为调用服务端 API，服务端写入 HttpOnly Cookie，符合 SaaS 规范
+        // 鏀逛负璋冪敤鏈嶅姟绔?API锛屾湇鍔＄鍐欏叆 HttpOnly Cookie锛岀鍚?SaaS 瑙勮寖
         const res = await fetch('/api/auth/signin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -132,8 +132,8 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
         if (!res.ok || result?.success === false) {
           setErrors({ general: result?.error || 'Sign in failed' });
         } else {
-          toast.success('登录成功');
-          // 强制整页刷新以便 AuthProvider 从服务端 Cookie 重新获取用户
+          toast.success('Signed in successfully');
+          // 寮哄埗鏁撮〉鍒锋柊浠ヤ究 AuthProvider 浠庢湇鍔＄ Cookie 閲嶆柊鑾峰彇鐢ㄦ埛
           window.location.href = returnTo ? decodeURIComponent(returnTo) : '/';
         }
       }
@@ -166,7 +166,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
         window.location.href = data.url;
       }
     } catch (error: any) {
-      // 结构化错误日志：意外异常
+      // 缁撴瀯鍖栭敊璇棩蹇楋細鎰忓寮傚父
       try {
         console.error('[Auth] Google sign-in unexpected error', {
           message: error?.message,
@@ -174,14 +174,14 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
           stack: error?.stack
         });
       } catch {}
-      setErrors({ general: 'Google 登录失败，请重试' });
+      setErrors({ general: 'Google sign-in failed. Please try again.' });
       console.error('[GoogleSignIn] unexpected error:', error);
     } finally {
       setIsGoogleLoading(false);
     }
   };
 
-  // 重新发送确认邮件
+  // Resend confirmation email
   const resendConfirmation = async () => {
     if (!email) {
       setErrors({ email: 'Please enter your email address' });
@@ -201,7 +201,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
       if (error) {
         setErrors({ general: error.message });
       } else {
-        toast.success('确认邮件已发送（可重复发送）');
+        toast.success('Confirmation email sent. You can resend if needed.');
         setRegistrationSuccess(true);
       }
     } catch (error: any) {
@@ -212,7 +212,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
     }
   };
 
-  // 切换注册/登录模式时重置状态
+  // Toggle sign-up / sign-in mode
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     clearErrors();
@@ -227,14 +227,14 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
         
         <div className="max-w-md mx-auto mt-8">
           <div className="bg-white py-8 px-6 shadow rounded-lg">
-            {/* 注册成功状态 */}
+            {/* 娉ㄥ唽鎴愬姛鐘舵€?*/}
             {registrationSuccess ? (
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
                   <CheckCircleIcon className="h-6 w-6 text-green-600" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                  📧 Check Your Email
+                  馃摟 Check Your Email
                 </h1>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <p className="text-gray-700 mb-3">
@@ -242,7 +242,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                   </p>
                   <p className="font-semibold text-blue-800 text-lg mb-3">{email}</p>
                   <div className="text-sm text-gray-600 space-y-2">
-                    <p>📍 <strong>Next steps:</strong></p>
+                    <p>馃搷 <strong>Next steps:</strong></p>
                     <ol className="list-decimal list-inside space-y-1 text-left">
                       <li>Check your email inbox (and spam folder)</li>
                       <li>Click the confirmation link in the email</li>
@@ -253,8 +253,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                   <p className="text-sm text-yellow-800">
-                    ⏰ <strong>Important:</strong> The confirmation link expires in <strong>24 hours</strong>. 
-                    If you don't see the email within 5 minutes, check your spam folder or click "Resend Email" below.
+                    <strong>Important:</strong> The confirmation link expires in <strong>24 hours</strong>. If you don't see the email within 5 minutes, check your spam folder or click "Resend Email" below.
                   </p>
                 </div>
 
@@ -264,7 +263,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                     isLoading={isLoading}
                     className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium cursor-pointer"
                   >
-                    📧 Resend Confirmation Email
+                    馃摟 Resend Confirmation Email
                   </LoadingButton>
                   
                   <button
@@ -289,7 +288,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                 </div>
 
                 <div className="mt-6 text-xs text-gray-500">
-                  <p>💡 Tip: Add our email to your contacts to ensure delivery</p>
+                  <p>馃挕 Tip: Add our email to your contacts to ensure delivery</p>
                 </div>
               </div>
             ) : (
@@ -309,7 +308,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                   </div>
                 </div>
 
-                {/* 通用错误信息 */}
+                {/* 閫氱敤閿欒淇℃伅 */}
                 {errors.general && (
                   <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
                     <div className="flex">
@@ -475,15 +474,15 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
                   <div className="text-xs text-gray-600 space-y-1">
                     {isSignUp ? (
                       <>
-                        <p>• Your account will be created immediately</p>
-                        <p>• Check your email for confirmation</p>
-                        <p>• Free tier includes 2 lyrics per day</p>
+                        <p>鈥?Your account will be created immediately</p>
+                        <p>鈥?Check your email for confirmation</p>
+                        <p>鈥?Free tier includes 2 lyrics per day</p>
                       </>
                     ) : (
                       <>
-                        <p>• Use the email you signed up with</p>
-                        <p>• Can't sign in? Try resetting your password</p>
-                        <p>• Need help? Contact our support team</p>
+                        <p>鈥?Use the email you signed up with</p>
+                        <p>鈥?Can't sign in? Try resetting your password</p>
+                        <p>鈥?Need help? Contact our support team</p>
                       </>
                     )}
                   </div>
@@ -519,7 +518,7 @@ function SignInForm({ returnTo, initialError }: { returnTo: string | null; initi
   );
 }
 
-// 主导出组件，用 Suspense 包裹 useSearchParams
+// 涓诲鍑虹粍浠讹紝鐢?Suspense 鍖呰９ useSearchParams
 export default function SignInPage() {
   return (
     <Suspense fallback={

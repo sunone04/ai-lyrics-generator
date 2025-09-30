@@ -1,7 +1,7 @@
-﻿'use client'; // <= 让 Next.js 13+ 知道这是客户端组件，可使用 hooks（useState、useEffect...）
+﻿'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
 import { useTrial } from '@/lib/hooks/use-trial';
@@ -52,18 +52,14 @@ interface PersonalStyleGroup {
 }
 
 /* ========== 子组件：真正使用 searchParams ========== */
-function GenerateContent() {
-  const searchParams = useSearchParams();
-  return <GenerateForm searchParams={searchParams} />;
-}
 
 /* ========== 表单主组件 ========== */
-function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
+function GenerateForm() {
   const { user, loading: userLoading } = useAuth();
   const { isInTrial, isActiveUser, canUseTrial } = useTrial();
   const router = useRouter();
   // Optional regen flag carried via URL when coming from a prior result
-  const incomingRegen = (typeof window !== 'undefined') ? (searchParams.get('regen') || '') : '';
+  const incomingRegen = (typeof window !== 'undefined') ? ((new URLSearchParams(window.location.search)).get('regen') || '') : '';
 
   // Max length limits for custom 'Other' inputs
   const OTHER_LIMITS = {
@@ -538,18 +534,10 @@ function GenerateForm({ searchParams }: { searchParams: URLSearchParams }) {
 /* ---------- 页面壳 ---------- */
 export default function GeneratePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    }>
-      <GenerateContent />
-    </Suspense>
+    <GenerateForm />
   );
 }
+
 
 
 

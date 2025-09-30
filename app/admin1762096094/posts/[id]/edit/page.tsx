@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -92,7 +92,7 @@ export default function EditPostPage() {
 
     setIsSaving(true);
     setError('');
-    setSuccess('');
+        setSuccess('Post updated successfully!');
 
     try {
       const response = await fetch(`/api/posts/${postId}`, {
@@ -104,7 +104,7 @@ export default function EditPostPage() {
           title: post.title,
           slug: post.slug,
           content: post.content,
-          seo_title: post.title, // 使用标题作为SEO标题
+          seo_title: post.title, // 浣跨敤鏍囬浣滀负SEO鏍囬
           meta_description: post.meta_description,
           category_id: post.category_id,
           status: 'published',
@@ -113,7 +113,7 @@ export default function EditPostPage() {
       });
 
       if (response.ok) {
-        setSuccess('文章更新成功！');
+        setSuccess('Post updated successfully!');
         timeoutRef.current = setTimeout(() => {
           setSuccess('');
         }, 3000);
@@ -169,7 +169,7 @@ export default function EditPostPage() {
                 href="/admin1762096094/posts"
                 className="text-gray-500 hover:text-gray-700"
               >
-                ← Back to Posts
+                鈫?Back to Posts
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Edit Post</h1>
             </div>

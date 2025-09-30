@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -60,7 +60,6 @@ export default function NewCategoryPage() {
     setIsLoading(true);
     setError('');
     setSuccess('');
-
     try {
       const response = await fetch('/api/categories', {
         method: 'POST',
@@ -77,7 +76,7 @@ export default function NewCategoryPage() {
       });
 
       if (response.ok) {
-        setSuccess('分类创建成功！正在跳转...');
+        setSuccess('Category created successfully! Redirecting...');
         timeoutRef.current = setTimeout(() => {
           router.push('/admin1762096094/categories');
         }, 1500);
@@ -103,7 +102,7 @@ export default function NewCategoryPage() {
                 href="/admin1762096094/categories"
                 className="text-gray-500 hover:text-gray-700"
               >
-                ← Back to Categories
+                Back to Categories
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Create New Category</h1>
             </div>

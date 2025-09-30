@@ -137,8 +137,13 @@ async function cancelSubscription(subscriptionId: string, supabase: any) {
       throw new Error(`Paddle API error: ${response.statusText}`);
     }
 
-    // 更新本地数据库（profiles表）
-    const { error } = await supabase
+    // 更新本地数据库（profiles表）使用服务端权限，避免 RLS 拒绝
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    const { error } = await admin
       .from('profiles')
       .update({
         status: 'canceled',
@@ -176,8 +181,13 @@ async function pauseSubscription(subscriptionId: string, supabase: any) {
       throw new Error(`Paddle API error: ${response.statusText}`);
     }
 
-    // 更新本地数据库（profiles表）
-    const { error } = await supabase
+    // 更新本地数据库（profiles表）使用服务端权限，避免 RLS 拒绝
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    const { error } = await admin
       .from('profiles')
       .update({
         status: 'paused',
@@ -214,8 +224,13 @@ async function resumeSubscription(subscriptionId: string, supabase: any) {
       throw new Error(`Paddle API error: ${response.statusText}`);
     }
 
-    // 更新本地数据库（profiles表）
-    const { error } = await supabase
+    // 更新本地数据库（profiles表）使用服务端权限，避免 RLS 拒绝
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    const { error } = await admin
       .from('profiles')
       .update({
         status: 'active',

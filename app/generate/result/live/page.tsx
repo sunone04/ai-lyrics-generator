@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,7 @@ interface GenerationStatus {
 }
 
 function LiveGenerationContent() {
-  const searchParams = useSearchParams();
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const router = useRouter();
   const { refreshProfile, user, profile, bumpProfileCounts } = useAuth();
   const [status, setStatus] = useState<GenerationStatus>({
@@ -48,24 +48,24 @@ function LiveGenerationContent() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Parse URL parameters (align with LyricsGenerationParams)
-  const language = searchParams.get('language') || '';
-  const musicStyle = searchParams.get('musicStyle') || '';
-  const musicTheme = searchParams.get('musicTheme') || '';
-  const lengthOption = searchParams.get('lengthOption') || '';
-  const lyricStyle = searchParams.get('lyricStyle') || '';
-  const intentOrRequest = searchParams.get('intentOrRequest') || '';
-  const artistStyle = searchParams.get('artistStyle') || '';
-  const emotionIntensity = parseInt(searchParams.get('emotionIntensity') || '0', 10) || 0;
-  const rhymeRequirement = searchParams.get('rhymeRequirement') || '';
-  const songStructure = searchParams.get('songStructure') || '';
-  const paragraphLength = searchParams.get('paragraphLength') || '';
-  const bpm = parseInt(searchParams.get('bpm') || '0', 10) || 0;
-  const useBpm = searchParams.get('useBpm') === 'true';
-  const melody = searchParams.get('melody') || '';
-  const syllablePattern = searchParams.get('syllablePattern') || '';
-  const modelType = (searchParams.get('modelType') as 'basic' | 'pro') || 'basic';
-  const regen = searchParams.get('regen') === '1' || searchParams.get('regen') === 'true';
-  const includeRationaleParam = (searchParams.get('includeRationale') || '').toLowerCase();
+  const language = urlParams.get('language') || '';
+  const musicStyle = urlParams.get('musicStyle') || '';
+  const musicTheme = urlParams.get('musicTheme') || '';
+  const lengthOption = urlParams.get('lengthOption') || '';
+  const lyricStyle = urlParams.get('lyricStyle') || '';
+  const intentOrRequest = urlParams.get('intentOrRequest') || '';
+  const artistStyle = urlParams.get('artistStyle') || '';
+  const emotionIntensity = parseInt(urlParams.get('emotionIntensity') || '0', 10) || 0;
+  const rhymeRequirement = urlParams.get('rhymeRequirement') || '';
+  const songStructure = urlParams.get('songStructure') || '';
+  const paragraphLength = urlParams.get('paragraphLength') || '';
+  const bpm = parseInt(urlParams.get('bpm') || '0', 10) || 0;
+  const useBpm = urlParams.get('useBpm') === 'true';
+  const melody = urlParams.get('melody') || '';
+  const syllablePattern = urlParams.get('syllablePattern') || '';
+  const modelType = (urlParams.get('modelType') as 'basic' | 'pro') || 'basic';
+  const regen = urlParams.get('regen') === '1' || urlParams.get('regen') === 'true';
+  const includeRationaleParam = (urlParams.get('includeRationale') || '').toLowerCase();
   const includeRationale = includeRationaleParam === ''
     ? true
     : !(includeRationaleParam === 'false' || includeRationaleParam === '0' || includeRationaleParam === 'off');
@@ -744,7 +744,6 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
 
 

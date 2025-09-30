@@ -85,7 +85,7 @@ export default function NewPostPage() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    setSuccess('');
+    setSuccess('Post created successfully! Redirecting...');
 
     try {
       const response = await fetch('/api/posts', {
@@ -97,6 +97,7 @@ export default function NewPostPage() {
           title,
           slug,
           content,
+          meta_description: metaDescription || null,
           category_id: parseInt(categoryId),
           status: 'published',
           published_at: publishedAt || null,
@@ -104,7 +105,7 @@ export default function NewPostPage() {
       });
 
       if (response.ok) {
-        setSuccess('鏂囩珷鍒涘缓鎴愬姛锛佹鍦ㄨ烦杞?..');
+        setSuccess('Post created successfully! Redirecting...');
         timeoutRef.current = setTimeout(() => {
           router.push('/admin1762096094/posts');
         }, 1500);
@@ -126,11 +127,11 @@ export default function NewPostPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <Link
+                            <Link
                 href="/admin1762096094/posts"
                 className="text-gray-500 hover:text-gray-700"
               >
-                鈫?Back to Posts
+                Back to Posts
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Create New Post</h1>
             </div>
@@ -270,12 +271,12 @@ export default function NewPostPage() {
           </div>
 
           <div className="flex justify-end space-x-4">
-            <Link
-              href="/admin1762096094/posts"
-              className="bg-gray-300 text-gray-700 px-8 py-4 rounded-lg hover:bg-gray-400 transition-colors text-lg font-medium"
-            >
-              Cancel
-            </Link>
+                          <Link
+                href="/admin1762096094/posts"
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Back to Posts
+              </Link>
             <button
               type="submit"
               disabled={isLoading}
@@ -289,3 +290,5 @@ export default function NewPostPage() {
     </div>
   );
 }
+
+
