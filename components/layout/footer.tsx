@@ -67,6 +67,11 @@ export default function Footer() {
                   Contact
                 </Link>
               </li>
+              <li>
+                <Link href="/featured" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
+                  Press & Badges
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -111,9 +116,7 @@ export default function Footer() {
                 Contact
               </Link>
             </div>
-            <div className="text-gray-400 text-sm">
-              © {currentYear} {SITE_CONFIG.name}. All rights reserved.
-            </div>
+            <div className="text-gray-400 text-sm">© {currentYear} {SITE_CONFIG.name}. All rights reserved.</div>
           </div>
         </div>
       </div>

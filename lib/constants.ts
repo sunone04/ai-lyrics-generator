@@ -42,7 +42,7 @@ export const SUBSCRIPTION_LIMITS = {
     maxLyricOptimizations: 1,
     canEditLyrics: false,
     canUseProModel: false,
-    maxFavorites: 3
+    maxFavorites: 10
   },
   active: {
     maxGenerations: 30,
