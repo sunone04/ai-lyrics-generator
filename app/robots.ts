@@ -10,7 +10,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           '/admin1762096094/',
           '/api/',
-          '/dashboard/',
           '/auth/',
           '/generate/result/',
         ],

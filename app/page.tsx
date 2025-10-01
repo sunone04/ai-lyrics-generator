@@ -32,8 +32,8 @@ export default function Home() {
             </div>
 
             <p className="hidden sm:block text-xl md:text-2xl text-gray-600 mb-10 md:mb-12 max-w-4xl mx-auto leading-relaxed">
-              The most advanced AI lyrics generator and rap lyrics generator for musicians, rappers, and songwriters. Create commercially usable, professional lyrics across all styles and genres.
-              {' '}Learn tips on our <Link href="/blog" prefetch={false} className="underline hover:text-blue-700">Blog</Link>, get answers in the <Link href="/faq" prefetch={false} className="underline hover:text-blue-700">FAQ</Link>, or try the <Link href="/edit" prefetch={false} className="underline hover:text-blue-700">AI Lyrics Editor</Link>.
+              The most advanced AI lyrics generator for musicians and songwriters. Create professional, commercially usable lyrics in any style.
+              {' '}Explore our <Link href="/blog" prefetch={false} className="underline hover:text-blue-700">Blog</Link>, <Link href="/faq" prefetch={false} className="underline hover:text-blue-700">FAQ</Link>, or try the <Link href="/edit" prefetch={false} className="underline hover:text-blue-700">AI Lyrics Editor</Link>.
             </p>
             <p className="block sm:hidden text-base text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
               Create professional lyrics in seconds. 100+ languages, all styles.
@@ -45,7 +45,11 @@ export default function Home() {
                 <ArrowRightIcon className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
               </Link>
             </div>
-            <p className="text-sm text-gray-600 mt-[-4px] md:mt-[-8px] mb-8 md:mb-12">New users get a 3-day free trial membership - no credit card required.</p>
+            <p className="text-sm mt-[-4px] md:mt-[-8px] mb-8 md:mb-12">
+              <span className="inline-block bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-full px-4 py-1.5">
+                New users get a 3-day free trial membership — no credit card required.
+              </span>
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
               <div className="text-center p-6 bg-white/60 backdrop-blur-sm rounded-xl border border-white/20">

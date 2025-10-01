@@ -1,6 +1,6 @@
 export const SITE_CONFIG = {
   name: 'AI Lyrics Generator',
-  description: 'Create professional song and rap lyrics with AI. Generate original lyrics in 100+ languages for any style. Free to start with premium features.',
+  description: 'AI Lyrics Generator for professional song and rap lyrics in 100+ languages. Free to start with premium features, personal style, and commercial use.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-lyrics-generator.net',
   keywords: [
     'ai lyrics generator',
