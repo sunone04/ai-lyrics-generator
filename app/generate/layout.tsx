@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     url: '/generate',
     images: [
       {
-        url: '/generate-og.jpg',
+        url: '/favicon1.webp',
         width: 1200,
         height: 630,
         alt: 'AI Lyrics Generator - Create Professional Song Lyrics',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: clampTitle('AI Lyrics Generator: Create Professional Songs Online'),
     description: buildDescription('Generate professional song and rap lyrics with AI. Create custom lyrics in 100+ languages.'),
-    images: ['/generate-og.jpg'],
+    images: ['/favicon1.webp'],
   },
   alternates: {
     canonical: '/generate',

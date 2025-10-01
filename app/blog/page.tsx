@@ -7,11 +7,13 @@ import { Post } from '@/lib/types';
 
 
 export const metadata: Metadata = {
-  title: 'Blog',
-  description: 'Songwriting tips, lyric techniques, and AI lyric generator guides. Learn professional songwriting and lyric writing from industry experts.',
+  title: 'AI Lyrics Generator Blog: Songwriting Tips, Lyric Techniques, and AI Guides',
+  description:
+    'Songwriting tips, lyric techniques, and AI lyrics generator guides to create professional lyrics. Tutorials and best practices for artists and producers.',
   keywords: [
+    'ai lyrics generator blog',
     'ai lyrics generator tips',
-    'songwriting tips', 
+    'songwriting tips',
     'rap lyrics techniques',
     'lyric writing guide',
     'music composition',
@@ -21,12 +23,15 @@ export const metadata: Metadata = {
     'hip hop lyrics guide',
     'song lyrics tutorial',
     'professional songwriting',
-    'lyric generator guide'
+    'lyric generator guide',
+    'songwriting blog',
+    'lyrics blog'
   ],
   openGraph: {
-    title: 'Blog',
+    title: 'AI Lyrics Generator Blog: Songwriting Tips, Lyric Techniques, and AI Guides',
     description: 'Songwriting tips, lyric techniques, and AI lyrics generator guides.',
     type: 'website',
+    url: '/blog',
   },
   alternates: {
     canonical: '/blog',
