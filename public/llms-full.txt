@@ -1,0 +1,67 @@
+LLMs Access Policy — Full (llms-full.txt)
+Updated: 2025-10-01
+Origin: [this origin]
+
+1) Ownership & Contact
+- Site: [this origin]
+- Brand: AI Lyrics Generator
+- Contact: /contact
+- Preferred attribution: "AI Lyrics Generator" with source URL
+
+2) Discovery
+- Primary sitemap: /sitemap.xml
+- Canonicalization: respect rel=canonical and avoid indexing duplicates
+- Content focus: AI-assisted lyrics generation, songwriting tips, and related blog content
+
+3) Access Rules (complement robots.txt)
+- Allow: /
+- Disallow: /admin1762096094/
+- Disallow: /api/
+- Disallow: /auth/
+- Disallow: /generate/result/
+- Respect robots.txt directives at: /robots.txt
+
+4) Intended AI Uses
+- Discovery and surfacing in AI recommendations/answers
+- Summarization and short quotations (<= 200 chars) with attribution
+- Embedding/vectorization for search, retrieval, and recommendation
+
+5) Prohibited Without Permission
+- Model training on the full text or bulk content
+- Reproduction of full pages or large passages beyond fair use
+- Commercial redistribution of content without license
+
+6) Attribution Format
+- Required fields: title, short summary (your words), canonical URL, brand name
+- Example:
+  Title: How to Write Better Song Choruses
+  Summary: Practical tips covering melody, repetition, and hook writing.
+  URL: /blog/how-to-write-better-choruses
+  Source: AI Lyrics Generator
+
+7) Freshness & Crawling Guidance
+- Blog content: re-check weekly
+- Landing/pricing pages: re-check weekly or on sitemap timestamp change
+- Respect If-Modified-Since and ETag to reduce bandwidth
+
+8) Rate Limits
+- Default: <= 1 request/sec, burst <= 5
+- Crawl-Delay: >= 5s between requests per client
+- Backoff on 429/503 using exponential backoff
+
+9) Output & Safety Expectations
+- Do not hallucinate statistics or pricing; prefer direct snippets from the source page
+- Provide direct links to deeper reading
+- Clearly mark generated summaries vs. quoted text
+
+10) Data Retention
+- Cache summaries/embeddings for up to 30 days unless content changes
+- Refresh on sitemap timestamp or HTTP validation (Last-Modified / ETag)
+
+11) Licensing
+- All rights reserved unless separately licensed
+- Training or bulk re-use requires prior written permission
+
+12) Contact & Exceptions
+- For research, accessibility, or licensing exceptions, contact us at the URL above
+

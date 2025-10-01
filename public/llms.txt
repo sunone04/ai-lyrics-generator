@@ -1,0 +1,32 @@
+LLMs Access Policy (llms.txt)
+Updated: 2025-10-01
+
+Site: [this origin]
+Contact: /contact
+Sitemap: /sitemap.xml
+
+Access
+- Allow: /
+- Disallow: /admin1762096094/
+- Disallow: /api/
+- Disallow: /auth/
+- Disallow: /generate/result/
+
+AI Usage
+- Crawling: allowed
+- Indexing and summarization: allowed with attribution and source link
+- Quotations: short excerpts only (<= 200 characters)
+- Embeddings: allowed for search and recommendations
+- Model training: not permitted without explicit written permission
+
+Attribution
+- Include page title, canonical URL, and the brand name "AI Lyrics Generator"
+
+Rate Limits
+- Max-Requests-Per-Second: 1
+- Crawl-Delay: 5s
+- Honor If-Modified-Since / ETag when available
+
+Notes
+- Follow robots.txt and this file; prefer the sitemap for discovery
+- For extended details see: /llms-full.txt
