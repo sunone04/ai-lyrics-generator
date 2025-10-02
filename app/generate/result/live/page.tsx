@@ -48,18 +48,19 @@ function LiveGenerationContent() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Parse URL parameters (align with LyricsGenerationParams)
-  const language = urlParams.get('language') || '';
-  const musicStyle = urlParams.get('musicStyle') || '';
-  const musicTheme = urlParams.get('musicTheme') || '';
-  const lengthOption = urlParams.get('lengthOption') || '';
-  const lyricStyle = urlParams.get('lyricStyle') || '';
+  // Fallback to sane defaults if users land here directly without query params
+  const language = urlParams.get('language') || 'English';
+  const musicStyle = urlParams.get('musicStyle') || 'Pop';
+  const musicTheme = urlParams.get('musicTheme') || 'Love & Romance';
+  const lengthOption = urlParams.get('lengthOption') || 'Default';
+  const lyricStyle = urlParams.get('lyricStyle') || 'Default';
   const intentOrRequest = urlParams.get('intentOrRequest') || '';
   const artistStyle = urlParams.get('artistStyle') || '';
-  const emotionIntensity = parseInt(urlParams.get('emotionIntensity') || '0', 10) || 0;
+  const emotionIntensity = parseInt(urlParams.get('emotionIntensity') || '50', 10) || 50;
   const rhymeRequirement = urlParams.get('rhymeRequirement') || '';
-  const songStructure = urlParams.get('songStructure') || '';
+  const songStructure = urlParams.get('songStructure') || 'Default';
   const paragraphLength = urlParams.get('paragraphLength') || '';
-  const bpm = parseInt(urlParams.get('bpm') || '0', 10) || 0;
+  const bpm = parseInt(urlParams.get('bpm') || '120', 10) || 120;
   const useBpm = urlParams.get('useBpm') === 'true';
   const melody = urlParams.get('melody') || '';
   const syllablePattern = urlParams.get('syllablePattern') || '';
@@ -109,8 +110,9 @@ function LiveGenerationContent() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({} as any));
+          const serverMsg = (errorData && (errorData.error || errorData.message)) as string | undefined;
+          throw new Error(serverMsg || `HTTP ${response.status}: ${response.statusText}`);
         }
 
         // Handle cached result (Active CPU optimization)
@@ -744,7 +746,6 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
 
 
