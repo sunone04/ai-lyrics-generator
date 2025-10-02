@@ -48,9 +48,10 @@ function LiveGenerationContent() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Parse URL parameters (align with LyricsGenerationParams)
-  // Read params from URL; omit if not provided (Default values are not sent)
-  const language = urlParams.get('language') || '';
-  const musicStyle = urlParams.get('musicStyle') || '';
+  // Default to sensible fallbacks when not provided in URL
+  // so generation always has required fields even if URL omits defaults.
+  const language = urlParams.get('language') || 'English';
+  const musicStyle = urlParams.get('musicStyle') || 'Pop';
   const musicTheme = urlParams.get('musicTheme') || '';
   const lengthOption = urlParams.get('lengthOption') || '';
   const lyricStyle = urlParams.get('lyricStyle') || '';
@@ -759,7 +760,6 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
 
 
