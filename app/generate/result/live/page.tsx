@@ -641,7 +641,9 @@ function LiveGenerationContent() {
           <button
             onClick={async () => {
               try {
-                const shareUrl = typeof window !== 'undefined' ? window.location.href : `${window.location.origin}/generate/result/live`;
+                const shareUrl = typeof window !== 'undefined'
+                  ? window.location.href
+                  : (process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/generate/result/live` : '/generate/result/live');
                 if ((navigator as any).share) {
                   await (navigator as any).share({ title: 'AI Generated Lyrics', text: status.liveText || '', url: shareUrl });
                 } else {
@@ -761,6 +763,5 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
 
