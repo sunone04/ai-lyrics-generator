@@ -641,11 +641,12 @@ function LiveGenerationContent() {
           <button
             onClick={async () => {
               try {
-                if (navigator.share) {
-                  await navigator.share({ title: 'AI Generated Lyrics', text: status.liveText || '', url: `${window.location.origin}/generate/result/live` });
+                const shareUrl = typeof window !== 'undefined' ? window.location.href : `${window.location.origin}/generate/result/live`;
+                if ((navigator as any).share) {
+                  await (navigator as any).share({ title: 'AI Generated Lyrics', text: status.liveText || '', url: shareUrl });
                 } else {
-                  await navigator.clipboard.writeText(status.liveText || '');
-                  toast.success('Lyrics copied to clipboard!');
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast.success('Link copied to clipboard!');
                 }
               } catch (e:any) { if (e?.name !== 'AbortError') toast.error('Failed to share'); }
             }}
@@ -760,7 +761,6 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
 
 
