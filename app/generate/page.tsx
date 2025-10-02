@@ -275,6 +275,10 @@ function GenerateForm() {
             {' '}or
             {' '}<Link href="/personal-style" className="underline hover:text-blue-700">teach the model your Personal Style</Link>.
           </p>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mt-6">Why Artists Choose Our AI Lyrics Generator</h2>
+          <p className="text-gray-600 mt-2 max-w-3xl mx-auto">
+            Our AI lyrics generator speeds up writing with professional song structures and stylistic controls, so you can focus on melody and performance.
+          </p>
         </div>
 
         {/* Form Card */}
@@ -537,7 +541,6 @@ export default function GeneratePage() {
     <GenerateForm />
   );
 }
-
 
 
 
