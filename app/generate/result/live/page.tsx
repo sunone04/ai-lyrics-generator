@@ -48,19 +48,20 @@ function LiveGenerationContent() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Parse URL parameters (align with LyricsGenerationParams)
-  // Fallback to sane defaults if users land here directly without query params
-  const language = urlParams.get('language') || 'English';
-  const musicStyle = urlParams.get('musicStyle') || 'Pop';
-  const musicTheme = urlParams.get('musicTheme') || 'Love & Romance';
-  const lengthOption = urlParams.get('lengthOption') || 'Default';
-  const lyricStyle = urlParams.get('lyricStyle') || 'Default';
+  // Read params from URL; omit if not provided (Default values are not sent)
+  const language = urlParams.get('language') || '';
+  const musicStyle = urlParams.get('musicStyle') || '';
+  const musicTheme = urlParams.get('musicTheme') || '';
+  const lengthOption = urlParams.get('lengthOption') || '';
+  const lyricStyle = urlParams.get('lyricStyle') || '';
   const intentOrRequest = urlParams.get('intentOrRequest') || '';
   const artistStyle = urlParams.get('artistStyle') || '';
   const emotionIntensity = parseInt(urlParams.get('emotionIntensity') || '50', 10) || 50;
   const rhymeRequirement = urlParams.get('rhymeRequirement') || '';
-  const songStructure = urlParams.get('songStructure') || 'Default';
+  const songStructure = urlParams.get('songStructure') || '';
   const paragraphLength = urlParams.get('paragraphLength') || '';
-  const bpm = parseInt(urlParams.get('bpm') || '120', 10) || 120;
+  const bpmParam = urlParams.get('bpm');
+  const bpm = bpmParam ? (parseInt(bpmParam, 10) || 0) : 0;
   const useBpm = urlParams.get('useBpm') === 'true';
   const melody = urlParams.get('melody') || '';
   const syllablePattern = urlParams.get('syllablePattern') || '';
@@ -81,31 +82,43 @@ function LiveGenerationContent() {
         abortControllerRef.current = controller;
 
         // Check for cached result first (Active CPU optimization)
+        // Build payload: only include keys that are present and meaningful
+        const payload: Record<string, any> = {};
+        const setIf = (key: string, value: any) => {
+          if (value === undefined || value === null) return;
+          if (typeof value === 'string') {
+            const s = value.trim();
+            if (!s) return;
+            payload[key] = s;
+            return;
+          }
+          payload[key] = value;
+        };
+
+        setIf('language', language);
+        setIf('musicStyle', musicStyle);
+        setIf('musicTheme', musicTheme);
+        setIf('lengthOption', lengthOption);
+        setIf('lyricStyle', lyricStyle);
+        setIf('intentOrRequest', intentOrRequest);
+        setIf('artistStyle', artistStyle);
+        if (emotionIntensity) setIf('emotionIntensity', emotionIntensity);
+        setIf('rhymeRequirement', rhymeRequirement);
+        setIf('songStructure', songStructure);
+        setIf('paragraphLength', paragraphLength);
+        if (useBpm && bpm) { payload.useBpm = true; payload.bpm = bpm; }
+        setIf('melody', melody);
+        setIf('syllablePattern', syllablePattern);
+        setIf('modelType', modelType);
+        if (regen) payload.regen = true;
+        payload.includeRationale = includeRationale;
+
         const response = await fetch('/api/generate-stream', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            language,
-            musicStyle,
-            musicTheme,
-            lengthOption,
-            lyricStyle,
-            intentOrRequest,
-            artistStyle,
-            emotionIntensity,
-            rhymeRequirement,
-            songStructure,
-            paragraphLength,
-            bpm,
-            useBpm,
-            melody,
-            syllablePattern,
-            modelType,
-            regen,
-            includeRationale
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal,
         });
 
@@ -746,7 +759,6 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
 
 

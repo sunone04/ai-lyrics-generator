@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
       includeRationale
     } = body || {};
 
-    // Basic required checks
-    if (!language || !musicStyle || !musicTheme || !lengthOption || !lyricStyle) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    // Basic required checks (only language and musicStyle are mandatory)
+    if (!language || !musicStyle) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: language and musicStyle are required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Free-text length caps (defense-in-depth)

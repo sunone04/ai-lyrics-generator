@@ -230,9 +230,20 @@ function GenerateForm() {
         songStructure: params.songStructure === 'Other' ? customInputs.songStructure : params.songStructure
       } as any;
 
+      // Build query string: omit empty strings and any 'Default' sentinel values
       const qs = new URLSearchParams();
       Object.entries(final).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) qs.set(k, String(v));
+        if (v === undefined || v === null) return;
+        if (typeof v === 'string') {
+          const s = v.trim();
+          if (!s || s === 'Default') return;
+          qs.set(k, s);
+          return;
+        }
+        // Only include BPM when explicitly enabled
+        if (k === 'bpm' && !final.useBpm) return;
+        if (k === 'useBpm' && v === false) return;
+        qs.set(k, String(v));
       });
       if (incomingRegen) {
         qs.set('regen', incomingRegen);
@@ -541,7 +552,6 @@ export default function GeneratePage() {
     <GenerateForm />
   );
 }
-
 
 
 

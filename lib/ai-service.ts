@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+﻿import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { LyricsGenerationParams, PersonalStyle } from './types';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
@@ -22,7 +22,7 @@ export class AIService {
   private getModel(modelType: 'basic' | 'pro', isRegeneration: boolean = false) {
     // Basic model uses Gemini 2.5 Flash, Pro model uses Gemini 2.5 Pro
     const modelName = modelType === 'pro' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
-    
+
     // For regeneration: use higher temperature to increase creativity and randomness
     // For normal generation and rewriting: use Gemini's default temperature (better balance)
     const config: any = {
@@ -33,7 +33,7 @@ export class AIService {
           threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
         },
         {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, 
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
           threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
         },
         {
@@ -67,7 +67,7 @@ export class AIService {
       };
       // Note: temperature is not set, so Gemini uses its default
     }
-    
+
     return genAI.getGenerativeModel(config);
   }
 
@@ -92,6 +92,13 @@ export class AIService {
       if (psNames) parts.push(`Personal Style Examples: ${psNames}`);
     }
     const paramSummary = parts.join('\n');
+    // Enforce output language and genre explicitly; add hip-hop specifics when applicable
+    const langDirective = `OUTPUT LANGUAGE: EXACTLY ${params.language}. Do not use any other language or code-switching (minimal loanwords only when natural).`;
+    let genreDirective = `GENRE ENFORCEMENT: Strictly write in ${params.musicStyle}.`;
+    if ((params.musicStyle || '').toLowerCase().includes('hip-hop') || (params.musicStyle || '').toLowerCase().includes('rap')) {
+      genreDirective += ` For Hip-Hop/Rap: emphasize rhythmic flow and cadence, natural multisyllabic/internal rhymes, punchlines/wordplay, and a memorable hook that suits the beat; shape verse and hook lengths naturally according to substyle and tempo.`;
+    }
+    const langGenreBlock = `\nLANGUAGE & GENRE ENFORCEMENT:\n\n- ${langDirective}\n- ${genreDirective}\n`;
 
     return `You are a world-class professional songwriter and lyricist. Create exceptional, original lyrics that avoid clichés and generic expressions.
 
@@ -110,9 +117,9 @@ Rules:
 
 Output NOTHING before ${MARKERS.LYRICS_START} and NOTHING after ${MARKERS.RATIONALE_END}.
 The markers must appear exactly as shown and must NOT appear inside the content.
-The lyrics must strictly follow all user parameters.
+    The lyrics must strictly follow all user parameters.
 
-LYRIC REQUIREMENTS:
+    ${langGenreBlock}LYRIC REQUIREMENTS:
 
 1. Write from the singer’s perspective with authentic, concrete emotions that evoke audience empathy.
 
@@ -129,6 +136,16 @@ LYRIC REQUIREMENTS:
 7. Perfectly satisfy all user‑provided parameters, including syllable counts, line length, and rhythm.
 
 8. Use structural tags as requested by the user, such as [Verse 1], [Chorus], [Bridge], etc.
+
+9. Avoid repetitive imagery and any drift toward clichés; keep images fresh and varied.
+
+10. Avoid an over-regular, overly symmetrical structure that reduces dynamic tension; lightly vary repeated choruses to reflect rhythmic and emotional progression.
+
+11. Avoid relying only on abstraction; include tangible, sensory details where appropriate.
+
+12. Avoid a single, one-dimensional theme unless explicitly requested; allow layered, nuanced development.
+
+13. Introduce appropriate conflict or depth to build stronger emotional tension.
 
 In the event of any conflict between general guidelines and specific user requirements, the user's requirements take precedence.
 
@@ -223,31 +240,31 @@ ${paramSummary}`;
     if (params.artistStyle && params.artistStyle.trim() && params.artistStyle !== 'Other') {
       specifications += `\n- Reference Artist: ${params.artistStyle}`;
     }
-    
+
     if (params.rhymeRequirement && params.rhymeRequirement.trim() && params.rhymeRequirement !== 'No specific requirement' && params.rhymeRequirement !== 'Default') {
       specifications += `\n- Rhyme Preference: ${params.rhymeRequirement}`;
     }
-    
+
     if (params.useBpm && params.bpm && params.bpm > 0) {
       specifications += `\n- BPM: ${params.bpm}`;
     }
-    
+
     if (params.emotionIntensity && params.emotionIntensity > 0) {
       specifications += `\n- Emotional Intensity (1-100): ${params.emotionIntensity}`;
     }
-    
+
     if (params.paragraphLength && params.paragraphLength.trim() && params.paragraphLength !== 'Other') {
       specifications += `\n- Section Length: ${params.paragraphLength}`;
     }
-    
+
     if (params.melody && params.melody.trim()) {
       specifications += `\n- Melody: ${params.melody}`;
     }
-    
+
     if (params.syllablePattern && params.syllablePattern.trim()) {
       specifications += `\n- Syllable Pattern (per line): ${params.syllablePattern}`;
     }
-    
+
     if (params.intentOrRequest && params.intentOrRequest.trim()) {
       specifications += `\n- Additional Creative Direction: ${params.intentOrRequest}`;
     }
@@ -265,7 +282,10 @@ ${paramSummary}`;
 
 Your task is to generate excellent lyrics that perfectly match the user's provided parameters. All user input parameters are the highest standard.
 
-LYRIC REQUIREMENTS:
+    ${`\nLANGUAGE & GENRE ENFORCEMENT:\n\n- OUTPUT LANGUAGE: EXACTLY ${params.language}. Do not use any other language or code-switching (minimal loanwords only when natural).\n- GENRE ENFORCEMENT: Strictly write in ${params.musicStyle}.${(/hip-?hop|rap/i.test((params.musicStyle || ''))) ? ' For Hip-Hop/Rap: emphasize rhythmic flow and cadence, natural multisyllabic/internal rhymes, punchlines/wordplay, and a memorable hook that suits the beat; shape verse and hook lengths naturally according to substyle and tempo.' : ''}\n`}
+
+
+    LYRIC REQUIREMENTS:
 
 1. Write from the singer’s perspective with authentic, concrete emotions that evoke audience empathy.
 
@@ -282,6 +302,11 @@ LYRIC REQUIREMENTS:
 7. Perfectly satisfy all user‑provided parameters, including syllable counts, line length, and rhythm.
 
 8. Use structural tags as requested by the user, such as [Verse 1], [Chorus], [Bridge], etc.
+9. Avoid repetitive imagery and any drift toward clichés; keep images fresh and varied.
+10. Avoid an over-regular, overly symmetrical structure that reduces dynamic tension; lightly vary repeated choruses to reflect rhythmic and emotional progression.
+11. Avoid relying only on abstraction; include tangible, sensory details where appropriate.
+12. Avoid a single, one-dimensional theme unless explicitly requested; allow layered, nuanced development.
+13. Introduce appropriate conflict or depth to build stronger emotional tension.
 
 In the event of any conflict between general guidelines and specific user requirements, the user's requirements take precedence.
 
@@ -316,6 +341,11 @@ LYRIC REQUIREMENTS:
 6. Follow the user's requirements as the standard. In the event of any conflict between general guidelines and specific user requirements, the user's requirements take precedence.
 
 7. Provide only the rewritten portion with structural tags; do not include explanations. Do not modify any text outside the selected portion.
+8. Avoid repetitive imagery and any drift toward clichés; keep images fresh and varied.
+9. Avoid an over-regular, overly symmetrical structure that reduces dynamic tension; if the selection contains a repeated chorus, lightly vary it to reflect rhythmic and emotional progression.
+10. Avoid relying only on abstraction; include tangible, sensory details where appropriate.
+11. Avoid a single, one-dimensional theme unless explicitly requested; allow layered, nuanced development.
+12. Introduce appropriate conflict or depth to build stronger emotional tension.
 
 AVOID:
 
@@ -338,21 +368,21 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     return this.retryWithBackoff(async () => {
       const model = this.getModel(params.modelType);
       const prompt = this.buildGenerationPrompt(params, personalStyle);
-      
+
       const result = await this.withTimeout(model.generateContent(prompt), NETWORK_SOFT_TIMEOUT_MS, 'AI request');
       const response = await result.response;
-      
+
       // Check for safety blocks
       if (response.candidates?.[0]?.finishReason === 'SAFETY') {
         throw new Error('Content was blocked by safety filters. Please try adjusting your theme or style.');
       }
-      
+
       let lyrics = response.text();
-      
+
       if (!lyrics || lyrics.trim().length === 0) {
         throw new Error('No lyrics generated');
       }
-      
+
       // Validate lyrics quality
       if (lyrics.length < 50) {
         throw new Error('Generated lyrics are too short. Please try again.');
@@ -361,20 +391,20 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
       if (lyrics.length > (parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'))) {
         lyrics = lyrics.slice(0, parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'));
       }
-      
+
       return lyrics.trim();
     }, 'generate lyrics');
   }
 
   async generateLyricsStream(
-    params: LyricsGenerationParams, 
+    params: LyricsGenerationParams,
     personalStyle: PersonalStyle | PersonalStyle[] | null,
     onChunk: (chunk: string) => void
   ): Promise<void> {
     return this.retryWithBackoff(async () => {
       const model = this.getModel(params.modelType);
       const prompt = this.buildGenerationPrompt(params, personalStyle || undefined);
-      
+
       const result = await this.withTimeout(
         (model as any).generateContentStream(prompt),
         NETWORK_SOFT_TIMEOUT_MS,
@@ -383,17 +413,17 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
 
       const iterator: AsyncIterator<any> = (result.stream as any)[Symbol.asyncIterator]();
       let total = 0;
-      
+
       while (true) {
         const { value, done } = await iterator.next();
         if (done) break;
-        
+
         try {
           const delta: string = typeof value.text === 'function' ? value.text() : '';
           if (delta && delta.length > 0) {
             const remaining = (parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000')) - total;
             if (remaining <= 0) break;
-            
+
             const chunk = remaining < delta.length ? delta.slice(0, remaining) : delta;
             total += chunk.length;
             onChunk(chunk);
@@ -411,18 +441,18 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     maxRetries: number = 2
   ): Promise<T> {
     let lastError: Error;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         // Don't retry on certain errors
         if (this.isNonRetryableError(lastError)) {
           throw lastError;
         }
-        
+
         // Wait before retrying (exponential backoff)
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
@@ -430,7 +460,7 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
         }
       }
     }
-    
+
     // All retries failed
     throw new Error(`Failed to ${operationName} after ${maxRetries} attempts: ${lastError!.message}`);
   }
@@ -449,29 +479,29 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
   // Deprecated rationale-only generator removed to reduce confusion.
 
   async rewriteLyrics(
-    originalLyrics: string, 
-    selectedPortion: string, 
+    originalLyrics: string,
+    selectedPortion: string,
     rewriteRequest: string,
     modelType: 'basic' | 'pro' = 'basic'
   ): Promise<string> {
     return this.retryWithBackoff(async () => {
       const model = this.getModel(modelType);
       const prompt = this.buildRewritePrompt(originalLyrics, selectedPortion, rewriteRequest);
-      
+
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      
+
       // Check for safety blocks
       if (response.candidates?.[0]?.finishReason === 'SAFETY') {
         throw new Error('Rewrite request was blocked by safety filters. Please try a different approach.');
       }
-      
+
       const rewrittenPortion = response.text();
-      
+
       if (!rewrittenPortion || rewrittenPortion.trim().length === 0) {
         throw new Error('No rewritten lyrics generated');
       }
-      
+
       return rewrittenPortion.trim();
     }, 'rewrite lyrics');
   }
@@ -480,24 +510,24 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
     return this.retryWithBackoff(async () => {
       const model = this.getModel(params.modelType, true); // Pass true for regeneration
       const prompt = this.buildGenerationPrompt(params);
-      
+
       // Use the exact same prompt as generation, but with higher temperature for more creativity
       // No need for extra regeneration requirements - the higher temperature will naturally create different content
-      
+
       const result = await this.withTimeout(model.generateContent(prompt), NETWORK_SOFT_TIMEOUT_MS, 'AI request');
       const response = await result.response;
-      
+
       // Check for safety blocks
       if (response.candidates?.[0]?.finishReason === 'SAFETY') {
         throw new Error('Content was blocked by safety filters. Please try adjusting your theme or style.');
       }
-      
+
       let lyrics = response.text();
-      
+
       if (!lyrics || lyrics.trim().length === 0) {
         throw new Error('No lyrics generated');
       }
-      
+
       // Validate lyrics quality
       if (lyrics.length < 50) {
         throw new Error('Generated lyrics are too short. Please try again.');
@@ -505,10 +535,15 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
       if (lyrics.length > (parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'))) {
         lyrics = lyrics.slice(0, parseInt(process.env.AI_MAX_OUTPUT_CHARS || '12000'));
       }
-      
+
       return lyrics.trim();
     }, 'regenerate lyrics');
   }
 }
 
 export const aiService = new AIService();
+
+
+
+
+
