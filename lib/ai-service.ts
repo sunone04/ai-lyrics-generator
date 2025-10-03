@@ -77,6 +77,7 @@ export class AIService {
     parts.push(`Language: ${params.language}`);
     parts.push(`Genre: ${params.musicStyle}`);
     if (params.musicTheme && params.musicTheme !== 'Default') parts.push(`Theme: ${params.musicTheme}`);
+    if (params.lengthOption && params.lengthOption !== 'Default') parts.push(`Length: ${params.lengthOption}`);
     if (params.lyricStyle && params.lyricStyle !== 'Default') parts.push(`Lyric Style: ${params.lyricStyle}`);
     if (params.songStructure && params.songStructure !== 'Default') parts.push(`Structure: ${params.songStructure}`);
     if (params.rhymeRequirement && params.rhymeRequirement !== 'Default') parts.push(`Rhyme Preference: ${params.rhymeRequirement}`);
@@ -86,10 +87,18 @@ export class AIService {
     if (params.paragraphLength) parts.push(`Section Length: ${params.paragraphLength}`);
     if (params.artistStyle) parts.push(`Reference Artist: ${params.artistStyle}`);
     if (params.intentOrRequest) parts.push(`Direction: ${params.intentOrRequest}`);
+    // Prepare personal style details for prompt
+    let personalStyleBlock = '';
     if (personalStyle) {
-      const psArray = Array.isArray(personalStyle) ? personalStyle : [personalStyle];
-      const psNames = psArray.map((p: any) => p?.title || '').filter(Boolean).join(', ');
-      if (psNames) parts.push(`Personal Style Examples: ${psNames}`);
+      const samples = Array.isArray(personalStyle) ? personalStyle : [personalStyle];
+      if (samples.length > 0) {
+        const names = samples.map((p: any) => p?.title || '').filter(Boolean).join(', ');
+        if (names) parts.push(`Personal Style Examples: ${names}`);
+        personalStyleBlock = samples
+          .map((s: any) => `TITLE: ${s.title}\nLANGUAGE: ${s.language}\nGENRE: ${s.music_style || 'Not specified'}\nCONTENT:\n${s.lyrics}`)
+          .join('\n\n---\n\n');
+        // Minimal framing only; no additional guidance
+      }
     }
     const paramSummary = parts.join('\n');
     // Enforce output language and genre explicitly; add hip-hop specifics when applicable
@@ -154,7 +163,8 @@ AVOID:
 Artificial expressions, confusion of theme and perspective, limited vocabulary, outdated or inconsistent imagery, conflicts between melody and lyrics, chaotic or illogical structure, poor and rigid language
 
 User Parameters:
-${paramSummary}`;
+${paramSummary}
+${personalStyleBlock ? `\nThese are your previous works as a lyricist.\n${personalStyleBlock}` : ''}`;
   }
 
   private withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -269,13 +279,13 @@ ${paramSummary}`;
       specifications += `\n- Additional Creative Direction: ${params.intentOrRequest}`;
     }
 
-    // Add personal style examples (few-shot) if provided
+    // Add personal style samples with minimal framing
     if (personalStyle) {
       const samples = Array.isArray(personalStyle) ? personalStyle : [personalStyle];
       const block = samples
         .map((s, i) => `TITLE: ${s.title}\nLANGUAGE: ${s.language}\nGENRE: ${s.music_style || 'Not specified'}\nCONTENT:\n${s.lyrics}`)
         .join('\n\n---\n\n');
-      specifications += `\n\nPERSONAL STYLE SAMPLES (use as stylistic reference, do not copy phrases):\n${block}\n`;
+      specifications += `\nThese are your previous works as a lyricist.\n${block}\n`;
     }
 
     const prompt = `You are a world-class professional songwriter and lyricist. Create exceptional, original lyrics that avoid clichés and generic expressions.

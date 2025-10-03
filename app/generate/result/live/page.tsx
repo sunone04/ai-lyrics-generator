@@ -72,6 +72,8 @@ function LiveGenerationContent() {
   const includeRationale = includeRationaleParam === ''
     ? true
     : !(includeRationaleParam === 'false' || includeRationaleParam === '0' || includeRationaleParam === 'off');
+  const personalStyleIdParam = urlParams.get('personalStyleId');
+  const personalStyleId = personalStyleIdParam ? (parseInt(personalStyleIdParam, 10) || undefined) : undefined;
 
   useEffect(() => {
     const startGeneration = async () => {
@@ -111,6 +113,7 @@ function LiveGenerationContent() {
         setIf('melody', melody);
         setIf('syllablePattern', syllablePattern);
         setIf('modelType', modelType);
+        if (personalStyleId) payload.personalStyleId = personalStyleId;
         if (regen) payload.regen = true;
         payload.includeRationale = includeRationale;
 
@@ -763,5 +766,4 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-
 
