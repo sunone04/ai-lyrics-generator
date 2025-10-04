@@ -194,10 +194,10 @@ export async function POST(request: NextRequest) {
         }, totalSoftTimeout);
 
         try {
-          // Simplify: do not use combined lyrics+rationale streaming at all.
+          // Always use combined lyrics + rationale streaming so client receives both in one pass.
           {
             // 使用支持中止信号的生成器，客户端断开后立即停止读取与处理
-            if (false) {
+            if (true) {
               // Combined streaming: expect markers to split lyrics and rationale
               const guardLen = 64;
               let buffer = '';
