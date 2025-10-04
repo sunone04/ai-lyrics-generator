@@ -383,6 +383,37 @@ export async function POST(request: NextRequest) {
                   }
                 }
               }
+
+              // Flush any remaining lyrics content in buffer when stream ends (no more chunks)
+              if (seenLyricsStart && !seenLyricsEnd) {
+                const remaining = buffer.slice(lyricsSentIndex);
+                if (remaining) {
+                  if (!firstChunkSent) firstChunkSent = true;
+                  fullLyrics += remaining;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: remaining })}\n\n`));
+                }
+                seenLyricsEnd = true;
+              }
+
+              // If rationale section started but never closed, flush what we have
+              if (seenRationaleStart && !rationaleStreamed) {
+                const rationaleOut = (rationaleBuf + buffer).trim();
+                if (rationaleOut) {
+                  rationaleText = rationaleOut;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'rationale', content: rationaleOut })}\n\n`));
+                  try {
+                    const updatePayload: any = {
+                      creative_rationale: rationaleOut,
+                      rationale_lang: 'en',
+                      rationale_generated_at: new Date().toISOString(),
+                    };
+                    if (insertedId) {
+                      await supabase.from('generations').update(updatePayload).eq('id', insertedId);
+                    }
+                  } catch {}
+                }
+                rationaleStreamed = true;
+              }
             } else {
               for await (const chunk of aiService.streamGenerateLyrics(
                 { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
@@ -429,6 +460,13 @@ export async function POST(request: NextRequest) {
 
             // Increment usage count (best-effort)
             try { await supabase.rpc('increment_user_generation_count', { user_uuid: userId }); } catch {}
+          } else if (!insertedId && (!fullLyrics || fullLyrics.trim().length === 0)) {
+            // No lyrics were produced; report an error to the client instead of "complete"
+            try {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'No lyrics generated. Please try again.' })}\n\n`));
+            } catch {}
+            controller.close();
+            return;
           }
 
           // Cache result only if dedup is enabled
