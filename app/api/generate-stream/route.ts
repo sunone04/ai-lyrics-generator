@@ -207,6 +207,7 @@ export async function POST(request: NextRequest) {
               let rationaleStreamed = false;
               let lyricsSentIndex = 0;
               let rationaleBuf = '';
+              const minLyricsChars = parseInt(process.env.MIN_LYRICS_CHARS || '300', 10);
 
               for await (const rawChunk of aiService.streamGenerateLyrics(
                 { language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType: (modelType || 'basic') },
@@ -232,10 +233,21 @@ export async function POST(request: NextRequest) {
                   }
                 }
 
-                // Stream lyrics until LYRICS_END
+                // Stream lyrics until LYRICS_END or RATIONALE_START (whichever arrives first)
                 if (seenLyricsStart && !seenLyricsEnd) {
                   const eIdx = buffer.indexOf(MARKERS.LYRICS_END);
-                  if (eIdx === -1) {
+                  const rStartIdxWhileLyrics = buffer.indexOf(MARKERS.RATIONALE_START);
+                  // choose earliest positive index among eIdx and rStartIdxWhileLyrics
+                  const hasEnd = eIdx !== -1;
+                  const hasRStart = rStartIdxWhileLyrics !== -1;
+                  let stopIdx = -1;
+                  let stopType: 'end' | 'rationaleStart' | null = null;
+                  if (hasEnd && hasRStart) {
+                    if (eIdx <= rStartIdxWhileLyrics) { stopIdx = eIdx; stopType = 'end'; } else { stopIdx = rStartIdxWhileLyrics; stopType = 'rationaleStart'; }
+                  } else if (hasEnd) { stopIdx = eIdx; stopType = 'end'; }
+                  else if (hasRStart) { stopIdx = rStartIdxWhileLyrics; stopType = 'rationaleStart'; }
+
+                  if (stopIdx === -1) {
                     const safeEnd = Math.max(0, buffer.length - guardLen);
                     if (safeEnd > lyricsSentIndex) {
                       const toSend = buffer.slice(lyricsSentIndex, safeEnd);
@@ -249,16 +261,33 @@ export async function POST(request: NextRequest) {
                     continue;
                   } else {
                     // Flush remaining lyrics content up to end marker
-                    const toSend = buffer.slice(lyricsSentIndex, eIdx);
+                    const toSend = buffer.slice(lyricsSentIndex, stopIdx);
+                    const newLen = fullLyrics.length + (toSend ? toSend.length : 0);
                     if (toSend) {
                       if (!firstChunkSent) firstChunkSent = true;
                       fullLyrics += toSend;
                       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: toSend })}\n\n`));
                     }
-                    // Move buffer past end marker
-                    buffer = buffer.slice(eIdx + MARKERS.LYRICS_END.length);
-                    lyricsSentIndex = 0;
-                    seenLyricsEnd = true;
+                    // Heuristic: ignore premature end markers if lyrics are too short
+                    if (stopType === 'end' && newLen < minLyricsChars) {
+                      // Drop this early end marker and continue streaming lyrics
+                      buffer = buffer.slice(stopIdx + MARKERS.LYRICS_END.length);
+                      lyricsSentIndex = 0;
+                      // Do NOT set seenLyricsEnd
+                      continue;
+                    }
+                    if (stopType === 'end') {
+                      // Accept end marker
+                      buffer = buffer.slice(stopIdx + MARKERS.LYRICS_END.length);
+                      lyricsSentIndex = 0;
+                      seenLyricsEnd = true;
+                    } else {
+                      // Hit rationale start before lyrics end: treat it as the end of lyrics
+                      buffer = buffer.slice(stopIdx + MARKERS.RATIONALE_START.length);
+                      lyricsSentIndex = 0;
+                      seenLyricsEnd = true;
+                      seenRationaleStart = true;
+                    }
 
                     // Persist the generation record as soon as lyrics complete
                     if (fullLyrics && fullLyrics.trim().length > 0) {

@@ -490,18 +490,22 @@ function LiveGenerationContent() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            {musicTheme && (
+              <div>
+                <span className="font-medium">Theme:</span>
+                <p className="text-gray-600 truncate">{musicTheme}</p>
+              </div>
+            )}
             <div>
-              <span className="font-medium">Theme:</span>
-              <p className="text-gray-600 truncate">{musicTheme}</p>
-            </div>
-            <div>
-              <span className="font-medium">Genre:</span>
+              <span className="font-medium">Music Style:</span>
               <p className="text-gray-600">{musicStyle}</p>
             </div>
-            <div>
-              <span className="font-medium">Style:</span>
-              <p className="text-gray-600">{lyricStyle}</p>
-            </div>
+            {lyricStyle && (
+              <div>
+                <span className="font-medium">Lyric Style:</span>
+                <p className="text-gray-600">{lyricStyle}</p>
+              </div>
+            )}
             <div>
               <span className="font-medium">Language:</span>
               <p className="text-gray-600">{language}</p>
