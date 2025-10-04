@@ -17,7 +17,6 @@ interface GenerationStatus {
   error?: string;
   generationId?: string;
   totalTime?: number;
-  cached?: boolean;
 }
 
 function LiveGenerationContent() {
@@ -46,10 +45,7 @@ function LiveGenerationContent() {
   // Share / utility state
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  // Debug: show actual payload being sent to API
-  const [payloadPreview, setPayloadPreview] = useState<Record<string, any> | null>(null);
-  // Debug: capture raw URL query parameters
-  const [queryPreview, setQueryPreview] = useState<Record<string, string> | null>(null);
+  // Debug panels removed per request
 
   // Parse URL parameters (align with LyricsGenerationParams)
   const get = (key: string) => (searchParams.get(key) || '').trim();
@@ -72,23 +68,12 @@ function LiveGenerationContent() {
   const syllablePattern = get('syllablePattern') || undefined;
   const modelType = (get('modelType') as 'basic' | 'pro') || undefined;
   const regen = get('regen') === '1' || get('regen') === 'true';
-  const includeRationaleParam = (get('includeRationale') || '').toLowerCase();
-  const includeRationale = includeRationaleParam === ''
-    ? true
-    : !(includeRationaleParam === 'false' || includeRationaleParam === '0' || includeRationaleParam === 'off');
+  // Rationale is disabled; ignore includeRationale from URL
+  const includeRationale = false;
   const personalStyleIdParam = get('personalStyleId');
   const personalStyleId = personalStyleIdParam ? (parseInt(personalStyleIdParam, 10) || undefined) : undefined;
 
   useEffect(() => {
-    // Capture raw URL query parameters for visibility
-    try {
-      const obj: Record<string, string> = {};
-      (searchParams as any).forEach((val: string, key: string) => {
-        if (typeof val === 'string' && val.length) obj[key] = val;
-      });
-      setQueryPreview(obj);
-    } catch {}
-
     const startGeneration = async () => {
       try {
         setStatus(prev => ({ ...prev, status: 'connecting' }));
@@ -104,7 +89,6 @@ function LiveGenerationContent() {
           return;
         }
 
-        // Check for cached result first (Active CPU optimization)
         // Build payload: only include keys that are present and meaningful
         const payload: Record<string, any> = {};
         const setIf = (key: string, value: any) => {
@@ -135,10 +119,7 @@ function LiveGenerationContent() {
         setIf('modelType', modelType);
         if (personalStyleId) payload.personalStyleId = personalStyleId;
         if (regen) payload.regen = true;
-        payload.includeRationale = includeRationale;
-
-        // Capture payload for debugging/visibility
-        try { setPayloadPreview({ ...payload }); } catch {}
+        // Do not send rationale flag; simplified flow
 
         const response = await fetch('/api/generate-stream', {
           method: 'POST',
@@ -153,29 +134,6 @@ function LiveGenerationContent() {
           const errorData = await response.json().catch(() => ({} as any));
           const serverMsg = (errorData && (errorData.error || errorData.message)) as string | undefined;
           throw new Error(serverMsg || `HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        // Handle cached result (Active CPU optimization)
-        if (response.headers.get('content-type')?.includes('application/json')) {
-          const cachedData = await response.json();
-          if (cachedData.cached) {
-            setStatus({
-              status: 'completed',
-              liveText: cachedData.result,
-              cached: true,
-              // Generation will be fetched after completion
-              totalTime: Date.now() - startTimeRef.current
-            });
-            try { bumpProfileCounts({ generation: 1 }); } catch {}
-                // Try to resolve the newest generation id
-            try {
-              const res = await fetch('/api/me/generations?page=1&pageSize=1', { cache: 'no-store' });
-              const j = await res.json();
-              const gen = j?.generations?.[0];
-              if (gen?.id) setStatus(prev => ({ ...prev, generationId: String(gen.id) }));
-            } catch {}
-            return;
-          }
         }
 
         // Handle streaming response
@@ -360,7 +318,7 @@ function LiveGenerationContent() {
       case 'generating':
         return 'AI is generating your lyrics...';
       case 'completed':
-        return status.cached ? 'Retrieved from cache' : 'Generation completed!';
+        return 'Generation completed!';
       case 'error':
         return 'Generation failed';
       case 'timeout':
@@ -523,11 +481,7 @@ function LiveGenerationContent() {
               {getElapsedTime()}
             </Badge>
           )}
-          {status.cached && (
-            <Badge variant="outline" className="text-green-600">
-              Cached Result
-            </Badge>
-          )}
+          {/* Cached indicator removed */}
         </div>
       </div>
       <Card className="mb-6">
@@ -573,34 +527,7 @@ function LiveGenerationContent() {
           </div>
         </CardContent>
       </Card>
-      {queryPreview && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">URL 查询参数（原始）</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <pre className="text-xs bg-gray-50 p-3 rounded-md border whitespace-pre-wrap break-all">
-                {JSON.stringify(queryPreview, null, 2)}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {payloadPreview && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">参数明细（实际提交到接口）</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <pre className="text-xs bg-gray-50 p-3 rounded-md border whitespace-pre-wrap break-all">
-                {JSON.stringify(payloadPreview, null, 2)}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Removed URL query and payload detail panels per request */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Generated Lyrics</CardTitle>

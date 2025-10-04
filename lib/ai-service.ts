@@ -16,11 +16,11 @@ const MAX_OUTPUT_CHARS: number = parseInt(process.env.AI_MAX_OUTPUT_CHARS || '60
 // 外部网络软超时（毫秒），默认 45000ms；用于首个响应或整体请求
 const NETWORK_SOFT_TIMEOUT_MS: number = parseInt(process.env.AI_NETWORK_SOFT_TIMEOUT_MS || '45000');
 // 最大输出 token 数（控制模型何时停止）
-const MAX_OUTPUT_TOKENS: number = parseInt(process.env.AI_MAX_OUTPUT_TOKENS || '10000');
+const MAX_OUTPUT_TOKENS: number = parseInt(process.env.AI_MAX_OUTPUT_TOKENS || '8192');
 
 export class AIService {
   private getModel(modelType: 'basic' | 'pro', isRegeneration: boolean = false) {
-    // Basic model uses Gemini 2.5 Flash, Pro model uses Gemini 2.5 Pro
+    // Per requirement: strictly use Gemini 2.5 models
     const modelName = modelType === 'pro' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
 
     // For regeneration: use higher temperature to increase creativity and randomness
@@ -552,6 +552,3 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
 }
 
 export const aiService = new AIService();
-
-
-

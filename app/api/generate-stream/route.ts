@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server';
 import { createServerComponentClient } from '@/lib/supabase-server'
 import { aiService, MARKERS } from '@/lib/ai-service';
 
-// In-memory per-instance concurrency guard and simple dedup cache
+// In-memory per-instance concurrency guard
+// Note: Per user request, disable result de-duplication so each click generates a fresh result.
 const userLocks = new Map<string, number>();
-const dedupCache = new Map<string, { result: string; expiresAt: number }>();
 
 function paramsHash(obj: unknown) {
   // Stable stringify for small objects
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
+    const userId = user.id;
 
     const body = await request.json();
     const {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Usage check before any AI call
     const { data: canGenerate, error: limitCheckError } = await supabase
-      .rpc('check_user_usage_limit_with_trial', { user_uuid: user.id, operation_type: 'generation' });
+      .rpc('check_user_usage_limit_with_trial', { user_uuid: userId, operation_type: 'generation' });
 
     if (limitCheckError || !canGenerate) {
       const message = limitCheckError ? 'Failed to check usage limit' : 'Daily generation limit reached.';
@@ -90,8 +91,8 @@ export async function POST(request: NextRequest) {
 
     // Pro model requires active subscription or trial
     if ((modelType || 'basic') === 'pro') {
-      const { data: profile, error: profileError } = await supabase.from('profiles').select('status').eq('id', user.id).single();
-      const { data: isInTrial, error: trialError } = await supabase.rpc('is_user_in_trial_period', { user_uuid: user.id });
+      const { data: profile, error: profileError } = await supabase.from('profiles').select('status').eq('id', userId).single();
+      const { data: isInTrial, error: trialError } = await supabase.rpc('is_user_in_trial_period', { user_uuid: userId });
       if (profileError || trialError || (profile?.status !== 'active' && !isInTrial)) {
         return new Response(JSON.stringify({ error: 'Pro model requires an active subscription or trial.' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
       }
@@ -104,13 +105,13 @@ export async function POST(request: NextRequest) {
         .from('personal_style_lyrics')
         .select('title, lyrics')
         .eq('style_group_id', personalStyleGroupId)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (styles && styles.length > 0) {
         personalStyleSample = styles.map((style: any) => ({
           id: 0,
-          user_id: user.id,
+          user_id: userId,
           title: style.title,
           lyrics: style.lyrics,
           // Optional fields omitted as DB may not have them
@@ -124,20 +125,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Simple dedup within warm instance
+    // Disable de-dup by default. If ever needed again, guard with DEDUP_ENABLED=true.
+    const dedupEnabled = String(process.env.DEDUP_ENABLED || '').toLowerCase() === 'true';
     const dedupTtlMinutes = parseInt(process.env.DEDUP_TTL_MINUTES || '120', 10);
-    const hashKey = paramsHash({ userId: user.id, language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType, personalStyleGroupId, regen: !!regen });
-    const cached = dedupCache.get(hashKey);
-    if (cached && cached.expiresAt > Date.now() && !includeRationale) {
-      return new Response(JSON.stringify({ cached: true, result: cached.result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const hashKey = paramsHash({ userId, language, musicStyle, musicTheme, lengthOption, lyricStyle, intentOrRequest, artistStyle, emotionIntensity, rhymeRequirement, songStructure, paragraphLength, bpm, useBpm, melody, syllablePattern, modelType, personalStyleGroupId, regen: !!regen, includeRationale: !!includeRationale });
+    if (dedupEnabled) {
+      // Only attempt cache when explicitly enabled
+      // and only when rationale is not requested.
+      const globalCache = (globalThis as any).__GEN_CACHE__ as Map<string, { result: string; expiresAt: number }> | undefined;
+      const cached = globalCache?.get?.(hashKey);
+      if (cached && cached.expiresAt > Date.now() && !includeRationale) {
+        return new Response(JSON.stringify({ cached: true, result: cached.result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
     }
 
     // Per-user concurrency limit
     const maxConcurrent = parseInt(process.env.MAX_CONCURRENT_PER_USER || '1', 10);
-    const current = userLocks.get(user.id) || 0;
+    const current = userLocks.get(userId) || 0;
     if (current >= maxConcurrent) {
       return new Response(JSON.stringify({ error: 'Too many concurrent generations. Please wait for the previous one to finish.' }), { status: 429, headers: { 'Content-Type': 'application/json' } });
     }
-    userLocks.set(user.id, current + 1);
+    userLocks.set(userId, current + 1);
 
     const encoder = new TextEncoder();
     const firstChunkTimeout = parseInt(process.env.FIRST_CHUNK_TIMEOUT_MS || '45000', 10);
@@ -186,11 +194,10 @@ export async function POST(request: NextRequest) {
         }, totalSoftTimeout);
 
         try {
-          // Always use combined streaming when rationale is requested
-          // so that lyrics and rationale are generated together in one call.
+          // Simplify: do not use combined lyrics+rationale streaming at all.
           {
             // 使用支持中止信号的生成器，客户端断开后立即停止读取与处理
-            if (includeRationale) {
+            if (false) {
               // Combined streaming: expect markers to split lyrics and rationale
               const guardLen = 64;
               let buffer = '';
@@ -257,7 +264,7 @@ export async function POST(request: NextRequest) {
                     if (fullLyrics && fullLyrics.trim().length > 0) {
                       try {
                         const { data: inserted, error: insertError } = await supabase.from('generations').insert({
-                          user_id: user.id,
+                          user_id: userId,
                           language,
                           music_style: musicStyle,
                           music_theme: musicTheme,
@@ -278,10 +285,10 @@ export async function POST(request: NextRequest) {
                           personal_style_group_id: personalStyleGroupId || null,
                           is_favorited: false
                         }).select('id').single();
-                        if (!insertError && inserted?.id) {
-                          insertedId = inserted.id as number;
+                        if (!insertError && inserted && (inserted as any).id) {
+                          insertedId = Number((inserted as any).id);
                         }
-                        try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
+                        try { await supabase.rpc('increment_user_generation_count', { user_uuid: userId }); } catch {}
                       } catch {}
                     }
                   }
@@ -329,12 +336,16 @@ export async function POST(request: NextRequest) {
                           const { data: recent } = await supabase
                             .from('generations')
                             .select('id, generated_lyrics, created_at')
-                            .eq('user_id', user.id)
+                            .eq('user_id', userId)
                             .order('created_at', { ascending: false })
                             .limit(5);
                           const found = (recent || []).find((r: any) => r.generated_lyrics === fullLyrics);
-                          if (found?.id) {
-                            await supabase.from('generations').update(updatePayload).eq('id', found.id);
+                          const foundId = found && (found as any).id ? Number((found as any).id) : undefined;
+                          if (typeof foundId === 'number') {
+                            await supabase
+                              .from('generations')
+                              .update(updatePayload)
+                              .eq('id', foundId);
                           }
                         }
                       } catch {}
@@ -361,7 +372,7 @@ export async function POST(request: NextRequest) {
           // Save generation record (if not already persisted during combined streaming)
           if (!insertedId && fullLyrics && fullLyrics.trim().length > 0) {
             const { data: inserted, error: insertError } = await supabase.from('generations').insert({
-              user_id: user.id,
+              user_id: userId,
               language,
               music_style: musicStyle,
               music_theme: musicTheme,
@@ -383,16 +394,20 @@ export async function POST(request: NextRequest) {
               is_favorited: false
             }).select('id').single();
 
-            if (!insertError && inserted?.id) {
-              insertedId = inserted.id as number;
+            if (!insertError && inserted && (inserted as any).id) {
+              insertedId = Number((inserted as any).id);
             }
 
             // Increment usage count (best-effort)
-            try { await supabase.rpc('increment_user_generation_count', { user_uuid: user.id }); } catch {}
+            try { await supabase.rpc('increment_user_generation_count', { user_uuid: userId }); } catch {}
           }
 
-          // Cache result for dedup
-          dedupCache.set(hashKey, { result: fullLyrics, expiresAt: Date.now() + dedupTtlMinutes * 60 * 1000 });
+          // Cache result only if dedup is enabled
+          if (dedupEnabled && fullLyrics) {
+            const globalAny = (globalThis as any);
+            if (!globalAny.__GEN_CACHE__) globalAny.__GEN_CACHE__ = new Map<string, { result: string; expiresAt: number }>();
+            (globalAny.__GEN_CACHE__ as Map<string, { result: string; expiresAt: number }>).set(hashKey, { result: fullLyrics, expiresAt: Date.now() + dedupTtlMinutes * 60 * 1000 });
+          }
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', id: insertedId })}\n\n`));
           controller.close();
@@ -407,8 +422,8 @@ export async function POST(request: NextRequest) {
           clearTimeout(firstChunkTimer);
           clearTimeout(totalTimer);
           // release lock
-          const cur = userLocks.get(user.id) || 1;
-          userLocks.set(user.id, Math.max(0, cur - 1));
+          const cur = userLocks.get(userId) || 1;
+          userLocks.set(userId, Math.max(0, cur - 1));
           if (reqSignal) {
             try { reqSignal.removeEventListener('abort', onClientAbort); } catch {}
           }
