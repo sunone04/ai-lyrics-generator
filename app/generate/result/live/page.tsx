@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,7 @@ interface GenerationStatus {
 }
 
 function LiveGenerationContent() {
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { refreshProfile, user, profile, bumpProfileCounts } = useAuth();
   const [status, setStatus] = useState<GenerationStatus>({
@@ -46,36 +46,49 @@ function LiveGenerationContent() {
   // Share / utility state
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  // Debug: show actual payload being sent to API
+  const [payloadPreview, setPayloadPreview] = useState<Record<string, any> | null>(null);
+  // Debug: capture raw URL query parameters
+  const [queryPreview, setQueryPreview] = useState<Record<string, string> | null>(null);
 
   // Parse URL parameters (align with LyricsGenerationParams)
-  // Removed hardcoded fallbacks; rely strictly on provided URL params
-  const language = urlParams.get('language') || undefined;
-  const musicStyle = urlParams.get('musicStyle') || undefined;
-  const musicTheme = urlParams.get('musicTheme') || undefined;
-  const lengthOption = urlParams.get('lengthOption') || undefined;
-  const lyricStyle = urlParams.get('lyricStyle') || undefined;
-  const intentOrRequest = urlParams.get('intentOrRequest') || undefined;
-  const artistStyle = urlParams.get('artistStyle') || undefined;
-  const emotionIntensityParam = urlParams.get('emotionIntensity');
+  const get = (key: string) => (searchParams.get(key) || '').trim();
+  const language = get('language') || 'English';
+  const musicStyle = get('musicStyle') || 'Pop';
+  const musicTheme = get('musicTheme') || undefined;
+  const lengthOption = get('lengthOption') || undefined;
+  const lyricStyle = get('lyricStyle') || undefined;
+  const intentOrRequest = get('intentOrRequest') || undefined;
+  const artistStyle = get('artistStyle') || undefined;
+  const emotionIntensityParam = get('emotionIntensity');
   const emotionIntensity = emotionIntensityParam ? (parseInt(emotionIntensityParam, 10) || undefined) : undefined;
-  const rhymeRequirement = urlParams.get('rhymeRequirement') || undefined;
-  const songStructure = urlParams.get('songStructure') || undefined;
-  const paragraphLength = urlParams.get('paragraphLength') || undefined;
-  const bpmParam = urlParams.get('bpm');
+  const rhymeRequirement = get('rhymeRequirement') || undefined;
+  const songStructure = get('songStructure') || undefined;
+  const paragraphLength = get('paragraphLength') || undefined;
+  const bpmParam = get('bpm');
   const bpm = bpmParam ? (parseInt(bpmParam, 10) || 0) : 0;
-  const useBpm = urlParams.get('useBpm') === 'true';
-  const melody = urlParams.get('melody') || undefined;
-  const syllablePattern = urlParams.get('syllablePattern') || undefined;
-  const modelType = (urlParams.get('modelType') as 'basic' | 'pro') || undefined;
-  const regen = urlParams.get('regen') === '1' || urlParams.get('regen') === 'true';
-  const includeRationaleParam = (urlParams.get('includeRationale') || '').toLowerCase();
+  const useBpm = get('useBpm') === 'true';
+  const melody = get('melody') || undefined;
+  const syllablePattern = get('syllablePattern') || undefined;
+  const modelType = (get('modelType') as 'basic' | 'pro') || undefined;
+  const regen = get('regen') === '1' || get('regen') === 'true';
+  const includeRationaleParam = (get('includeRationale') || '').toLowerCase();
   const includeRationale = includeRationaleParam === ''
     ? true
     : !(includeRationaleParam === 'false' || includeRationaleParam === '0' || includeRationaleParam === 'off');
-  const personalStyleIdParam = urlParams.get('personalStyleId');
+  const personalStyleIdParam = get('personalStyleId');
   const personalStyleId = personalStyleIdParam ? (parseInt(personalStyleIdParam, 10) || undefined) : undefined;
 
   useEffect(() => {
+    // Capture raw URL query parameters for visibility
+    try {
+      const obj: Record<string, string> = {};
+      (searchParams as any).forEach((val: string, key: string) => {
+        if (typeof val === 'string' && val.length) obj[key] = val;
+      });
+      setQueryPreview(obj);
+    } catch {}
+
     const startGeneration = async () => {
       try {
         setStatus(prev => ({ ...prev, status: 'connecting' }));
@@ -123,6 +136,9 @@ function LiveGenerationContent() {
         if (personalStyleId) payload.personalStyleId = personalStyleId;
         if (regen) payload.regen = true;
         payload.includeRationale = includeRationale;
+
+        // Capture payload for debugging/visibility
+        try { setPayloadPreview({ ...payload }); } catch {}
 
         const response = await fetch('/api/generate-stream', {
           method: 'POST',
@@ -557,6 +573,34 @@ function LiveGenerationContent() {
           </div>
         </CardContent>
       </Card>
+      {queryPreview && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">URL 查询参数（原始）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <pre className="text-xs bg-gray-50 p-3 rounded-md border whitespace-pre-wrap break-all">
+                {JSON.stringify(queryPreview, null, 2)}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {payloadPreview && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">参数明细（实际提交到接口）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <pre className="text-xs bg-gray-50 p-3 rounded-md border whitespace-pre-wrap break-all">
+                {JSON.stringify(payloadPreview, null, 2)}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Generated Lyrics</CardTitle>

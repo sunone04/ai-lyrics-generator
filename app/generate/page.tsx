@@ -230,13 +230,15 @@ function GenerateForm() {
         songStructure: params.songStructure === 'Other' ? customInputs.songStructure : params.songStructure
       } as any;
 
-      // Build query string: omit empty strings and any 'Default' sentinel values
+      // Build query string: always include required keys; omit empty strings and 'Default' for others
       const qs = new URLSearchParams();
+      const alwaysInclude = new Set(['language', 'musicStyle']);
       Object.entries(final).forEach(([k, v]) => {
         if (v === undefined || v === null) return;
         if (typeof v === 'string') {
           const s = v.trim();
-          if (!s || s === 'Default') return;
+          if (!s) return;
+          if (!alwaysInclude.has(k) && s === 'Default') return;
           qs.set(k, s);
           return;
         }
@@ -552,5 +554,4 @@ export default function GeneratePage() {
     <GenerateForm />
   );
 }
-
 
