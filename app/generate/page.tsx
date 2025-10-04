@@ -104,7 +104,7 @@ function GenerateForm() {
     intentOrRequest: '',
     artistStyle: '',
     emotionIntensity: 50,
-    rhymeRequirement: 'Perfect rhymes',
+    rhymeRequirement: 'Perfect Rhymes',
     songStructure: 'Default',
     paragraphLength: '',
     bpm: 120,
@@ -552,6 +552,5 @@ export default function GeneratePage() {
     <GenerateForm />
   );
 }
-
 
 

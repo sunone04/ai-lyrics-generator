@@ -48,25 +48,25 @@ function LiveGenerationContent() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   // Parse URL parameters (align with LyricsGenerationParams)
-  // Default to sensible fallbacks when not provided in URL
-  // so generation always has required fields even if URL omits defaults.
-  const language = urlParams.get('language') || 'English';
-  const musicStyle = urlParams.get('musicStyle') || 'Pop';
-  const musicTheme = urlParams.get('musicTheme') || '';
-  const lengthOption = urlParams.get('lengthOption') || '';
-  const lyricStyle = urlParams.get('lyricStyle') || '';
-  const intentOrRequest = urlParams.get('intentOrRequest') || '';
-  const artistStyle = urlParams.get('artistStyle') || '';
-  const emotionIntensity = parseInt(urlParams.get('emotionIntensity') || '50', 10) || 50;
-  const rhymeRequirement = urlParams.get('rhymeRequirement') || '';
-  const songStructure = urlParams.get('songStructure') || '';
-  const paragraphLength = urlParams.get('paragraphLength') || '';
+  // Removed hardcoded fallbacks; rely strictly on provided URL params
+  const language = urlParams.get('language') || undefined;
+  const musicStyle = urlParams.get('musicStyle') || undefined;
+  const musicTheme = urlParams.get('musicTheme') || undefined;
+  const lengthOption = urlParams.get('lengthOption') || undefined;
+  const lyricStyle = urlParams.get('lyricStyle') || undefined;
+  const intentOrRequest = urlParams.get('intentOrRequest') || undefined;
+  const artistStyle = urlParams.get('artistStyle') || undefined;
+  const emotionIntensityParam = urlParams.get('emotionIntensity');
+  const emotionIntensity = emotionIntensityParam ? (parseInt(emotionIntensityParam, 10) || undefined) : undefined;
+  const rhymeRequirement = urlParams.get('rhymeRequirement') || undefined;
+  const songStructure = urlParams.get('songStructure') || undefined;
+  const paragraphLength = urlParams.get('paragraphLength') || undefined;
   const bpmParam = urlParams.get('bpm');
   const bpm = bpmParam ? (parseInt(bpmParam, 10) || 0) : 0;
   const useBpm = urlParams.get('useBpm') === 'true';
-  const melody = urlParams.get('melody') || '';
-  const syllablePattern = urlParams.get('syllablePattern') || '';
-  const modelType = (urlParams.get('modelType') as 'basic' | 'pro') || 'basic';
+  const melody = urlParams.get('melody') || undefined;
+  const syllablePattern = urlParams.get('syllablePattern') || undefined;
+  const modelType = (urlParams.get('modelType') as 'basic' | 'pro') || undefined;
   const regen = urlParams.get('regen') === '1' || urlParams.get('regen') === 'true';
   const includeRationaleParam = (urlParams.get('includeRationale') || '').toLowerCase();
   const includeRationale = includeRationaleParam === ''
@@ -83,6 +83,13 @@ function LiveGenerationContent() {
         // 创建可中止的请求控制器
         const controller = new AbortController();
         abortControllerRef.current = controller;
+
+        // Guard: required params must exist, otherwise redirect back to form
+        if (!language || !musicStyle) {
+          toast.error('Missing required parameters. Please set Language and Music Style.');
+          router.replace('/generate');
+          return;
+        }
 
         // Check for cached result first (Active CPU optimization)
         // Build payload: only include keys that are present and meaningful
@@ -766,4 +773,3 @@ export default function LiveGenerationPage() {
     </Suspense>
   );
 }
-

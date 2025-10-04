@@ -95,7 +95,7 @@ export class AIService {
         const names = samples.map((p: any) => p?.title || '').filter(Boolean).join(', ');
         if (names) parts.push(`Personal Style Examples: ${names}`);
         personalStyleBlock = samples
-          .map((s: any) => `TITLE: ${s.title}\nLANGUAGE: ${s.language}\nGENRE: ${s.music_style || 'Not specified'}\nCONTENT:\n${s.lyrics}`)
+          .map((s: any) => `TITLE: ${s.title}\nCONTENT:\n${s.lyrics}`)
           .join('\n\n---\n\n');
         // Minimal framing only; no additional guidance
       }
@@ -164,7 +164,7 @@ Artificial expressions, confusion of theme and perspective, limited vocabulary, 
 
 User Parameters:
 ${paramSummary}
-${personalStyleBlock ? `\nThese are your previous works as a lyricist.\n${personalStyleBlock}` : ''}`;
+${personalStyleBlock ? `\nHere are some of your previously written lyrics. Note: These past works may not match the current requested song genre or style; use them only as a reference for voice and phrasing.\n${personalStyleBlock}` : ''}`;
   }
 
   private withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -283,9 +283,9 @@ ${personalStyleBlock ? `\nThese are your previous works as a lyricist.\n${person
     if (personalStyle) {
       const samples = Array.isArray(personalStyle) ? personalStyle : [personalStyle];
       const block = samples
-        .map((s, i) => `TITLE: ${s.title}\nLANGUAGE: ${s.language}\nGENRE: ${s.music_style || 'Not specified'}\nCONTENT:\n${s.lyrics}`)
+        .map((s, i) => `TITLE: ${s.title}\nCONTENT:\n${s.lyrics}`)
         .join('\n\n---\n\n');
-      specifications += `\nThese are your previous works as a lyricist.\n${block}\n`;
+      specifications += `\nHere are some of your previously written lyrics. Note: These past works may not match the current requested song genre or style; use them only as a reference for voice and phrasing.\n${block}\n`;
     }
 
     const prompt = `You are a world-class professional songwriter and lyricist. Create exceptional, original lyrics that avoid clichés and generic expressions.
@@ -552,8 +552,6 @@ OUTPUT: Provide ONLY the rewritten portion with structural tags. No explanations
 }
 
 export const aiService = new AIService();
-
-
 
 
 
