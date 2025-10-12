@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { HeartIcon } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+import { useData } from '@/lib/contexts/data-context';
 import { useAuth } from '@/lib/contexts/auth-context';
 import toast from 'react-hot-toast';
 import { downloadTextFile } from '@/lib/utils';
@@ -23,6 +26,7 @@ function LiveGenerationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { refreshProfile, user, profile, bumpProfileCounts } = useAuth();
+  const { setFavorite } = useData();
   const [status, setStatus] = useState<GenerationStatus>({
     status: 'connecting',
     liveText: ''
@@ -72,6 +76,10 @@ function LiveGenerationContent() {
   const includeRationale = false;
   const personalStyleIdParam = get('personalStyleId');
   const personalStyleId = personalStyleIdParam ? (parseInt(personalStyleIdParam, 10) || undefined) : undefined;
+
+  // Favorite toggle state
+  const [isFavorited, setIsFavorited] = useState<boolean>(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState<boolean>(false);
 
   useEffect(() => {
     const startGeneration = async () => {
@@ -277,6 +285,38 @@ function LiveGenerationContent() {
       }
     };
   }, []);
+
+  // After completion, fetch generation to sync favorite state
+  useEffect(() => {
+    const fetchFavoriteState = async () => {
+      try {
+        if (status.status !== 'completed' || !status.generationId) return;
+        const res = await fetch(`/api/generations/${status.generationId}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const j = await res.json();
+        if (j?.generation && typeof j.generation.is_favorited === 'boolean') {
+          setIsFavorited(Boolean(j.generation.is_favorited));
+        }
+      } catch {}
+    };
+    fetchFavoriteState();
+  }, [status.status, status.generationId]);
+
+  const handleToggleFavorite = async () => {
+    try {
+      if (!user) { router.push('/auth/signin'); return; }
+      if (!status.generationId) return;
+      setIsTogglingFavorite(true);
+      const next = !isFavorited;
+      await setFavorite(parseInt(String(status.generationId), 10), next);
+      setIsFavorited(next);
+      toast.success(next ? 'Added to favorites' : 'Removed from favorites');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update favorite');
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
 
   useEffect(() => {
     const handlePageHide = () => {
@@ -622,6 +662,20 @@ function LiveGenerationContent() {
           >
             <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
             Download
+          </button>
+          <button
+            onClick={handleToggleFavorite}
+            disabled={!user || status.status !== 'completed' || !status.generationId || isTogglingFavorite}
+            className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 transition-colors disabled:opacity-60"
+          >
+            {isTogglingFavorite ? (
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            ) : isFavorited ? (
+              <HeartIconSolid className="h-5 w-5 mr-2" />
+            ) : (
+              <HeartIcon className="h-5 w-5 mr-2" />
+            )}
+            {isFavorited ? 'Favorited' : 'Favorite'}
           </button>
           <button
             onClick={async () => {

@@ -16,17 +16,18 @@ function SignInContent() {
   const returnTo = searchParams.get('returnTo');
   const error = searchParams.get('error');
   const reason = searchParams.get('reason');
+  const signup = searchParams.get('signup');
   
-  return <SignInForm returnTo={returnTo} initialError={{ error, reason }} />;
+  return <SignInForm returnTo={returnTo} initialError={{ error, reason }} initialMode={signup ? 'signup' : 'signin'} />;
 }
 
 // Main sign-in form component
-function SignInForm({ returnTo, initialError }: { returnTo: string | null; initialError: { error: string | null; reason: string | null } }) {
+function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string | null; initialError: { error: string | null; reason: string | null }, initialMode?: 'signup' | 'signin' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(initialMode === 'signup');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{email?: string; password?: string; general?: string}>({});
@@ -537,4 +538,3 @@ export default function SignInPage() {
     </Suspense>
   );
 }
-

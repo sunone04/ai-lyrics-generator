@@ -288,11 +288,35 @@ function GenerateForm() {
             {' '}or
             {' '}<Link href="/personal-style" className="underline hover:text-blue-700">teach the model your Personal Style</Link>.
           </p>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mt-6">Why Artists Choose Our AI Lyrics Generator</h2>
-          <p className="text-gray-600 mt-2 max-w-3xl mx-auto">
-            Our AI lyrics generator speeds up writing with professional song structures and stylistic controls, so you can focus on melody and performance.
-          </p>
+          {/* Removed extra marketing subheading to keep header concise */}
         </div>
+
+        {/* New-user Trial CTA: very prominent for unauthenticated users */}
+        {!user && (
+          <div className="mb-10">
+            <div className="relative overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white shadow-xl">
+              <div className="md:flex md:items-center md:justify-between gap-6">
+                <div className="md:max-w-2xl">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-white/15 ring-1 ring-white/30">
+                    FREE 3-DAY TRIAL
+                  </span>
+                  <h3 className="text-2xl md:text-3xl font-bold">Start your free 3-day trial</h3>
+                </div>
+                <div className="mt-4 md:mt-0 flex flex-wrap gap-3 justify-center md:justify-end">
+                  <Link
+                    href="/auth/signin?signup=1&returnTo=/generate"
+                    prefetch={false}
+                    className="px-5 py-2.5 bg-white text-blue-700 font-semibold rounded-lg shadow hover:bg-blue-50 transition-colors flex items-center gap-2"
+                  >
+                    {/* Reuse an existing icon for visual emphasis */}
+                    <span className="inline-block">Start Free Trial</span>
+                  </Link>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-blue-100">Instant activation after signup. No credit card required. Cancel anytime.</p>
+            </div>
+          </div>
+        )}
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
@@ -539,7 +563,12 @@ function GenerateForm() {
           </div>
           {!user && (
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center"><InformationCircleIcon className="w-5 h-5 text-blue-600 mr-2" /><p className="text-base text-blue-800">Ready to create amazing lyrics? <Link href="/auth/signin?returnTo=/generate" className="underline font-semibold">Sign in</Link> to access our professional AI lyrics generator!</p></div>
+              <div className="flex items-center">
+                <InformationCircleIcon className="w-5 h-5 text-blue-600 mr-2" />
+                <p className="text-base text-blue-800">
+                  New to our app? <Link href="/auth/signin?signup=1&returnTo=/generate" prefetch={false} className="underline font-semibold">Create a free account</Link> to start your 3-day trial.
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -554,4 +583,3 @@ export default function GeneratePage() {
     <GenerateForm />
   );
 }
-
