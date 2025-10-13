@@ -46,6 +46,44 @@ export default function EditLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
-}
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Can I rewrite specific lines only?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Select any line or section and use AI to rewrite just that part without changing the rest.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I upload .txt lyrics files?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Upload or paste your lyrics, then edit and polish with AI and export the results.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Do I need to sign up to use the editor?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. A 3-day free trial is available for new users (no credit card required).',
+        },
+      },
+    ],
+  } as const;
 
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      {children}
+    </>
+  );
+}

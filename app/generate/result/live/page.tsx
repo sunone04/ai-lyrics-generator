@@ -85,7 +85,7 @@ function LiveGenerationContent() {
     const startGeneration = async () => {
       try {
         setStatus(prev => ({ ...prev, status: 'connecting' }));
-        
+
         // 创建可中止的请求控制器
         const controller = new AbortController();
         abortControllerRef.current = controller;
@@ -153,8 +153,8 @@ function LiveGenerationContent() {
 
         // 璁剧疆瓒呮椂
         timeoutRef.current = setTimeout(() => {
-          setStatus(prev => ({ 
-            ...prev, 
+          setStatus(prev => ({
+            ...prev,
             status: 'timeout',
             error: 'Generation timed out. Please try again.'
           }));
@@ -171,16 +171,16 @@ function LiveGenerationContent() {
             clearTimeout(timeoutRef.current);
           }
           timeoutRef.current = setTimeout(() => {
-            setStatus(prev => ({ 
-              ...prev, 
+            setStatus(prev => ({
+              ...prev,
               status: 'timeout',
               error: 'Generation timed out. Please try again.'
             }));
-            try { abortControllerRef.current?.abort(); } catch {}
+            try { abortControllerRef.current?.abort(); } catch { }
           }, 120000);
         };
         // Replace initial 60s timer with a 2-inute inactivity timer
-        try { if (timeoutRef.current) clearTimeout(timeoutRef.current); } catch {}
+        try { if (timeoutRef.current) clearTimeout(timeoutRef.current); } catch { }
         resetTimeout();
 
         try {
@@ -206,7 +206,7 @@ function LiveGenerationContent() {
                   generationId: (data.id ? String(data.id) : prev.generationId),
                   totalTime: Date.now() - startTimeRef.current
                 }));
-                try { bumpProfileCounts({ generation: 1 }); } catch {}
+                try { bumpProfileCounts({ generation: 1 }); } catch { }
                 // Fetch the latest generation id for persistence/navigation
                 try {
                   if (!data.id) {
@@ -215,7 +215,7 @@ function LiveGenerationContent() {
                     const gen = j?.generations?.[0];
                     if (gen?.id) setStatus(prev => ({ ...prev, generationId: String(gen.id) }));
                   }
-                } catch {}
+                } catch { }
               } else if (data.type === 'error') {
                 clearTimeout(timeoutRef.current!);
                 setStatus(prev => ({ ...prev, status: 'error', error: data.message || 'Generation failed' }));
@@ -258,14 +258,14 @@ function LiveGenerationContent() {
       } catch (error: any) {
         console.error('Generation error:', error);
         clearTimeout(timeoutRef.current!);
-        
+
         let errorMessage = 'Failed to generate lyrics';
         if (error.name === 'AbortError') {
           errorMessage = 'Generation was cancelled';
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
         setStatus(prev => ({
           ...prev,
           status: 'error',
@@ -297,7 +297,7 @@ function LiveGenerationContent() {
         if (j?.generation && typeof j.generation.is_favorited === 'boolean') {
           setIsFavorited(Boolean(j.generation.is_favorited));
         }
-      } catch {}
+      } catch { }
     };
     fetchFavoriteState();
   }, [status.status, status.generationId]);
@@ -320,7 +320,7 @@ function LiveGenerationContent() {
 
   useEffect(() => {
     const handlePageHide = () => {
-      try { abortControllerRef.current?.abort(); } catch {}
+      try { abortControllerRef.current?.abort(); } catch { }
     };
     const handleVisibility = () => {
       // disabled: keep streaming when tab is hidden
@@ -354,17 +354,17 @@ function LiveGenerationContent() {
   const getStatusText = () => {
     switch (status.status) {
       case 'connecting':
-        return 'AI is thinking...';
+        return 'Preparing to generate your lyrics…';
       case 'generating':
-        return 'AI is generating your lyrics...';
+        return 'AI is crafting high-quality lyrics for you. This may take a moment, thanks for your patience…';
       case 'completed':
-        return 'Generation completed!';
+        return 'Generation complete!';
       case 'error':
-        return 'Generation failed';
+        return 'Generation failed. Please try again.';
       case 'timeout':
-        return 'Generation timeout';
+        return 'Generation timed out. Please try again later.';
       default:
-        return 'Processing...';
+        return 'Processing…';
     }
   };
 
@@ -436,7 +436,7 @@ function LiveGenerationContent() {
     setShowRewriteButton(false);
     setSelectionPosition(null);
     setSelectedText('');
-    try { window.getSelection()?.removeAllRanges(); } catch {}
+    try { window.getSelection()?.removeAllRanges(); } catch { }
   };
 
   useEffect(() => {
@@ -493,10 +493,10 @@ function LiveGenerationContent() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ generated_lyrics: updatedLyrics }),
           });
-        } catch {}
+        } catch { }
       }
 
-      try { bumpProfileCounts({ rewrite: 1 }); } catch {}
+      try { bumpProfileCounts({ rewrite: 1 }); } catch { }
       setShowRewriteModal(false);
       setRewriteRequest('');
       handleClearSelection();
@@ -564,7 +564,7 @@ function LiveGenerationContent() {
             )}
             {syllablePattern && (
               <div>
-              <span className="font-medium">Syllable Pattern (per line):</span>
+                <span className="font-medium">Syllable Pattern (per line):</span>
                 <p className="text-gray-600 truncate">{syllablePattern}</p>
               </div>
             )}
@@ -583,13 +583,13 @@ function LiveGenerationContent() {
               <h3 className="text-lg font-semibold text-red-600 mb-2">Generation Failed</h3>
               <p className="text-gray-600 mb-4">{status.error}</p>
               <div className="flex gap-2 justify-center">
-                <Button 
+                <Button
                   onClick={() => router.push('/generate')}
                   variant="outline"
                 >
                   Try Again
                 </Button>
-                <Button 
+                <Button
                   onClick={() => router.push('/dashboard')}
                 >
                   Go to Dashboard
@@ -689,7 +689,7 @@ function LiveGenerationContent() {
                   await navigator.clipboard.writeText(shareUrl);
                   toast.success('Link copied to clipboard!');
                 }
-              } catch (e:any) { if (e?.name !== 'AbortError') toast.error('Failed to share'); }
+              } catch (e: any) { if (e?.name !== 'AbortError') toast.error('Failed to share'); }
             }}
             className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
           >

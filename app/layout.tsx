@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "AI Lyrics Generator: Create Professional Songs Online",
+    default: "AI Lyrics Generator – Create Pro Lyrics with 3-Day Free Trial",
     template: "%s | AI Lyrics Generator",
   },
   description: SITE_CONFIG.description,
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: SITE_CONFIG.url,
-    title: "AI Lyrics Generator: Create Professional Songs Online",
+    title: "AI Lyrics Generator – Create Pro Lyrics with 3-Day Free Trial",
     description: SITE_CONFIG.description,
     siteName: SITE_CONFIG.name,
     images: [
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Lyrics Generator: Create Professional Songs Online",
+    title: "AI Lyrics Generator – Create Pro Lyrics with 3-Day Free Trial",
     description: SITE_CONFIG.description,
     images: ["/female_singer.webp"],
     creator: "@ailyricsgen",

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { buildDescription, clampTitle } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: { absolute: "AI Lyrics Generator: Create Professional Songs Online" },
+  title: 'AI Lyrics Generator – Your Generated Lyrics',
   description: buildDescription(
-    "Generate professional song and rap lyrics with AI. Customize style, theme, and structure in 100+ languages. Free to start; premium available."
+    'Fine‑tune style, mood, structure, BPM & rhyme. Generate pro‑quality lyrics in seconds; edit & rewrite lines. 3‑day free trial （No credit card required）。'
   ),
   keywords: [
     'ai lyrics generator',
@@ -29,9 +29,9 @@ export const metadata: Metadata = {
     'custom song lyrics'
   ],
   openGraph: {
-    title: clampTitle("AI Lyrics Generator: Create Professional Songs Online"),
+    title: clampTitle('AI Lyrics Generator – Your Generated Lyrics'),
     description: buildDescription(
-      "Generate professional song and rap lyrics with AI. Customize style, theme, and structure in 100+ languages."
+      'Fine‑tune style, mood, structure, BPM & rhyme. Generate pro‑quality lyrics in seconds; edit & rewrite lines. 3‑day free trial （No credit card required）。'
     ),
     type: 'website',
     url: '/generate',
@@ -46,8 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: clampTitle('AI Lyrics Generator: Create Professional Songs Online'),
-    description: buildDescription('Generate professional song and rap lyrics with AI. Create custom lyrics in 100+ languages.'),
+    title: clampTitle('AI Lyrics Generator – Your Generated Lyrics'),
+    description: buildDescription('Fine‑tune style, mood, structure, BPM & rhyme. Generate pro‑quality lyrics in seconds; edit & rewrite lines. 3‑day free trial （No credit card required）。'),
     images: ['/favicon1.webp'],
   },
   alternates: {
@@ -75,7 +75,7 @@ export default function GenerateLayout({
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "AI Lyrics Generator",
-    "description": "Advanced AI lyrics generator for creating professional song lyrics and rap lyrics in multiple languages and styles",
+    "description": "Advanced AI lyrics generator for creating professional song and rap lyrics with editing and rewrite features",
     "url": "/generate",
     "applicationCategory": "MusicApplication",
     "operatingSystem": "Web Browser",
@@ -83,7 +83,6 @@ export default function GenerateLayout({
       "AI lyrics generation",
       "Rap lyrics generator", 
       "Song lyrics creator",
-      "Multi-language support",
       "Custom music styles",
       "Professional quality lyrics",
       "Real-time generation",
@@ -127,6 +126,50 @@ export default function GenerateLayout({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      {/* Page-specific FAQ for richer SERP results */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: [
+              {
+                '@type': 'Question',
+                name: 'How fast are the results?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Most lyrics generate in seconds. Regenerate or refine instantly by adjusting inputs.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Can I control rhyme and structure?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Yes. Choose rhyme options and pick a structure such as Verse–Chorus or Verse–Pre‑Chorus–Chorus.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Can I rewrite just part of the lyrics?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Yes. Select any line or section and run an AI rewrite to refine only that part.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Do I need to sign up?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Yes. A 3-day free trial is available for new users (sign-up required).',
+                },
+              },
+            ],
+          }),
+        }}
       />
       {children}
     </>

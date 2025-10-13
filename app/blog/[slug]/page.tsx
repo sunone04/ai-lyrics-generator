@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
 import ShareButton from '@/components/ui/share-button';
 import { buildTitleBase, buildDescription, clampTitle } from '@/lib/seo';
+import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { SITE_CONFIG } from '@/lib/constants';
 
 // Next.js 15: dynamic route params may be a Promise
@@ -188,7 +189,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* <ClientBreadcrumbs /> */}
+          <Breadcrumbs />
           
           <article className="mt-8 bg-white rounded-lg shadow-sm overflow-hidden">
             {/* 文章头部 */}

@@ -34,6 +34,44 @@ export const metadata: Metadata = {
 };
 
 export default function PersonalStyleLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'What is the Personal Style Library?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'It lets you save short lyric samples so the AI learns to write in your voice and structure when generating new lyrics.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Are my samples private?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Your personal style samples are private to your account under strict access control.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Do I need a Pro plan to use it?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Personal Style is a premium feature available on Pro plans and during the free trial.',
+        },
+      },
+    ],
+  } as const;
 
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      {children}
+    </>
+  );
+}

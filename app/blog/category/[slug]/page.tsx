@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Breadcrumbs from '@/components/ui/breadcrumbs';
 
 import { buildTitleBase, buildDescription } from '@/lib/seo';
 import { cacheService } from '@/lib/cache-service';
@@ -135,6 +136,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Breadcrumbs />
           <div className="mt-8">
             <div className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">

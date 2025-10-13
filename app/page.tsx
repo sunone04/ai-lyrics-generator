@@ -10,8 +10,51 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Do I need to sign up?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. A 3-day free trial is available for new users (sign-up required).',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I use the generated lyrics commercially?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Commercial use is included in Pro plans. Free accounts are for personal projects.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I edit or rewrite specific lines?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Select any line or section and use AI to rewrite just that part.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Do you support rap lyrics and flow?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. You can control rhyme options and song structure to fit rap flows and hooks.',
+        },
+      },
+    ],
+  } as const;
   return (
     <div className="min-h-screen">
+      {/* Home page FAQ JSON-LD for richer SERP results */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <section className="relative bg-gradient-to-b from-white via-slate-50 to-white pt-10 pb-6 lg:pt-16 lg:pb-10">
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -158,7 +201,6 @@ export default function Home() {
     </div>
   );
 }
-
 
 
 

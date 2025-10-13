@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import PricingCard from '@/components/pricing/pricing-card'
+import Breadcrumbs from '@/components/ui/breadcrumbs'
 import { CheckIcon } from '@heroicons/react/24/outline'
 
 // 强制静态生成 - 定价信息变化缓慢
@@ -156,8 +157,11 @@ export default function PricingPage() {
       />
 
       {/* Header */}
-      <div className="pt-32 pb-12 relative z-10">
+      <div className="pt-28 pb-12 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="mb-6">
+            <Breadcrumbs />
+          </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-[1.1]">
             Simple, Transparent
             <span className="block gradient-title descender-fix mt-2">

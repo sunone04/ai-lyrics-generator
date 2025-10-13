@@ -14,8 +14,8 @@ export default function Footer() {
               <span className="text-2xl font-bold text-blue-400">AI Lyrics Generator</span>
             </Link>
             <p className="text-gray-300 mb-4 max-w-md">
-              Professional AI lyrics generator and song lyrics generator for musicians, rappers, and songwriters. 
-              Create high-quality rap lyrics, song lyrics, and hip-hop verses in 100+ languages with our advanced AI lyric generator.
+              Professional AI lyrics generator and song lyrics generator for musicians, rappers, and songwriters.
+              Create high-quality rap lyrics, song lyrics, and hip-hop verses with our advanced AI lyric generator.
             </p>
             <p className="text-sm text-gray-400">
               Based on privacy protection, your lyrics are stored for up to 3 days. 
@@ -39,7 +39,12 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/edit" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
-                  Polish Lyrics
+                  AI Lyrics Editor
+                </Link>
+              </li>
+              <li>
+                <Link href="/personal-style" prefetch={false} className="text-gray-300 hover:text-blue-400 transition-colors">
+                  Personal Style Library
                 </Link>
               </li>
               <li>
