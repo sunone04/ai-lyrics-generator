@@ -95,6 +95,7 @@ export default function NewPostPage() {
         },
         body: JSON.stringify({
           title,
+          seo_title: seoTitle,
           slug,
           content,
           meta_description: metaDescription || null,
@@ -156,24 +157,42 @@ export default function NewPostPage() {
           <div className="bg-white shadow rounded-lg p-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Post Information</h2>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="title" className="block text-lg font-medium text-gray-700 mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  className="mt-1 block w-full border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg px-6 py-4 transition-colors"
-                  placeholder="Enter post title"
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  This will be used as both the post title and SEO title
-                </p>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="title" className="block text-lg font-medium text-gray-700 mb-2">
+                Title *
+              </label>
+              <input
+                type="text"
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                className="mt-1 block w-full border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg px-6 py-4 transition-colors"
+                placeholder="Enter post title"
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                Main on-page H1. Craft for readers; SEO title can differ below.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="seoTitle" className="block text-lg font-medium text-gray-700 mb-2">
+                SEO Title (Optional)
+              </label>
+              <input
+                type="text"
+                id="seoTitle"
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                className="mt-1 block w-full border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg px-6 py-4 transition-colors"
+                placeholder="Title shown in Google (50-60 chars)"
+                maxLength={80}
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                Optional SERP title. If blank, we'll use the main title.
+              </p>
+            </div>
 
               <div>
                 <label htmlFor="slug" className="block text-lg font-medium text-gray-700 mb-2">
@@ -290,5 +309,8 @@ export default function NewPostPage() {
     </div>
   );
 }
+
+
+
 
 

@@ -104,11 +104,11 @@ export default function EditPostPage() {
           title: post.title,
           slug: post.slug,
           content: post.content,
-          seo_title: post.title, // 浣跨敤鏍囬浣滀负SEO鏍囬
           meta_description: post.meta_description,
           category_id: post.category_id,
           status: 'published',
           published_at: (post.published_at && post.published_at.length > 0) ? post.published_at : null,
+          seo_title: post.seo_title || post.title,
         }),
       });
 
@@ -169,7 +169,7 @@ export default function EditPostPage() {
                 href="/admin1762096094/posts"
                 className="text-gray-500 hover:text-gray-700"
               >
-                鈫?Back to Posts
+                Back to Posts
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Edit Post</h1>
             </div>
@@ -208,9 +208,25 @@ export default function EditPostPage() {
                   className="mt-1 block w-full border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg px-6 py-4 transition-colors"
                   placeholder="Enter post title"
                 />
-                <p className="mt-2 text-sm text-gray-500">
-                  This will be used as both the post title and SEO title
+              <p className="mt-2 text-sm text-gray-500">
+                  Main on-page H1. SEO title can differ below.
                 </p>
+              </div>
+
+              <div>
+                <label htmlFor="seoTitle" className="block text-lg font-medium text-gray-700 mb-2">
+                  SEO Title (Optional)
+                </label>
+                <input
+                  type="text"
+                  id="seoTitle"
+                  value={post.seo_title || ''}
+                  onChange={(e) => handleInputChange('seo_title', e.target.value)}
+                  className="mt-1 block w-full border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg px-6 py-4 transition-colors"
+                  placeholder="Title shown in Google (50–60 chars)"
+                  maxLength={80}
+                />
+                <p className="mt-2 text-sm text-gray-500">If empty, we’ll use the main title.</p>
               </div>
 
               <div>
@@ -326,3 +342,7 @@ export default function EditPostPage() {
     </div>
   );
 }
+
+
+
+

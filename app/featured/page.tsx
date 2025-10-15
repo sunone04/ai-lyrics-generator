@@ -66,6 +66,15 @@ export default function FeaturedPage() {
               <p className="mt-3 text-xs text-gray-500">Link opens in a new tab.</p>
             </div>
           </div>
+
+          {/* Reciprocal links */}
+          <section className="mt-10">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">Reciprocal Links</h2>
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              {/* As requested, a plain anchor link */}
+              <a href="https://viesearch.com/">Viesearch - The Human-curated Search Engine</a>
+            </div>
+          </section>
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { buildDescription, clampTitle } from "@/lib/seo";
+import { buildDescription, clampTitle, buildTitleBase } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: 'AI Lyrics Generator – Your Generated Lyrics',
+  title: buildTitleBase('Generate Song & Rap Lyrics Fast'),
   description: buildDescription(
-    'Fine‑tune style, mood, structure, BPM & rhyme. Generate pro‑quality lyrics in seconds; edit & rewrite lines. 3‑day free trial （No credit card required）。'
+    'Fine-tune style, mood, structure, BPM & rhyme. Generate pro-quality lyrics in seconds; edit & rewrite lines. 3-day free trial (No credit card required).'
   ),
   keywords: [
     'ai lyrics generator',
@@ -29,9 +29,9 @@ export const metadata: Metadata = {
     'custom song lyrics'
   ],
   openGraph: {
-    title: clampTitle('AI Lyrics Generator – Your Generated Lyrics'),
+    title: clampTitle('Generate Song & Rap Lyrics Fast'),
     description: buildDescription(
-      'Fine‑tune style, mood, structure, BPM & rhyme. Generate pro‑quality lyrics in seconds; edit & rewrite lines. 3‑day free trial （No credit card required）。'
+      'Fine-tune style, mood, structure, BPM & rhyme. Generate pro-quality lyrics in seconds; edit & rewrite lines. 3-day free trial (No credit card required).'
     ),
     type: 'website',
     url: '/generate',
@@ -46,8 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: clampTitle('AI Lyrics Generator – Your Generated Lyrics'),
-    description: buildDescription('Fine‑tune style, mood, structure, BPM & rhyme. Generate pro‑quality lyrics in seconds; edit & rewrite lines. 3‑day free trial （No credit card required）。'),
+    title: clampTitle('Generate Song & Rap Lyrics Fast'),
+    description: buildDescription('Fine-tune style, mood, structure, BPM & rhyme. Generate pro-quality lyrics in seconds; edit & rewrite lines. 3-day free trial (No credit card required).'),
     images: ['/favicon1.webp'],
   },
   alternates: {

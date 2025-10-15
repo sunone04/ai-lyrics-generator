@@ -176,6 +176,37 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const relatedPosts = await getRelatedPosts(post);
   const allCategories = await getAllCategories();
   const structuredData = generateStructuredData(post);
+  const base = (SITE_CONFIG.url || '').replace(/\/$/, '');
+  const breadcrumbItems: any[] = [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: base },
+    { '@type': 'ListItem', position: 2, name: 'Blog', item: `${base}/blog` },
+  ];
+  if (post.category?.slug && post.category?.name) {
+    breadcrumbItems.push({
+      '@type': 'ListItem',
+      position: 3,
+      name: post.category.name,
+      item: `${base}/blog/category/${post.category.slug}`,
+    });
+    breadcrumbItems.push({
+      '@type': 'ListItem',
+      position: 4,
+      name: post.title,
+      item: `${base}/blog/${post.slug}`,
+    });
+  } else {
+    breadcrumbItems.push({
+      '@type': 'ListItem',
+      position: 3,
+      name: post.title,
+      item: `${base}/blog/${post.slug}`,
+    });
+  }
+  const breadcrumbList = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbItems,
+  } as const;
 
   return (
     <>
@@ -184,6 +215,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(structuredData),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbList),
         }}
       />
       

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { buildDescription, clampTitle } from '@/lib/seo';
+import { buildDescription, clampTitle, buildTitleBase } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'Personal Style Library: Teach AI Your Writing Style',
+  title: buildTitleBase('Personal Style Library: Teach AI Your Writing Style'),
   description: buildDescription(
     'Save short lyric samples in groups to teach our AI your unique writing style. Use your personal style when generating professional song or rap lyrics.'
   ),

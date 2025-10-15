@@ -5,12 +5,14 @@ import { cacheService } from '@/lib/cache-service';
 import { BLOG_CATEGORIES } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
+import { buildTitleBase, buildDescription, clampTitle } from '@/lib/seo';
 
 
 export const metadata: Metadata = {
-  title: 'AI Lyrics Generator Blog: Songwriting Tips, Lyric Techniques, and AI Guides',
-  description:
-    'Songwriting tips, lyric techniques, and AI lyrics generator guides to create professional lyrics. Tutorials and best practices for artists and producers.',
+  title: buildTitleBase('Songwriting Tips & AI Guides'),
+  description: buildDescription(
+    'Songwriting tips, lyric techniques, and AI lyrics generator guides to create professional lyrics. Tutorials and best practices for artists and producers.'
+  ),
   keywords: [
     'ai lyrics generator blog',
     'ai lyrics generator tips',
@@ -29,8 +31,8 @@ export const metadata: Metadata = {
     'lyrics blog'
   ],
   openGraph: {
-    title: 'AI Lyrics Generator Blog: Songwriting Tips, Lyric Techniques, and AI Guides',
-    description: 'Songwriting tips, lyric techniques, and AI lyrics generator guides.',
+    title: clampTitle('Songwriting Tips & AI Guides'),
+    description: buildDescription('Songwriting tips, lyric techniques, and AI lyrics generator guides.'),
     type: 'website',
     url: '/blog',
   },

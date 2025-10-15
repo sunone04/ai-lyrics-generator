@@ -6,6 +6,11 @@ import type { Metadata } from 'next';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
+  title: {
+    absolute: 'Free AI Lyrics Generator – Create professional lyrics in seconds',
+  },
+  description:
+    'Generate professional lyrics in seconds. Full control over style, mood, structure & rhyme. 3-day free trial. No credit card required.',
   alternates: { canonical: '/' },
 };
 
@@ -201,7 +206,6 @@ export default function Home() {
     </div>
   );
 }
-
 
 
 

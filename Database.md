@@ -2252,3 +2252,144 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_psg_user_created ON public.personal_
     "is_grantable": "NO"
   }
 ]
+---
+
+## 统一收藏与用量计算（数据层实现建议）
+
+目标：配额以“代码所写”为唯一真相源（SSOT）。数据库仅负责“原子计数与并发控制”。后端在调用时将当日上限（例如生成/改写的 daily_limit）作为参数传入数据库函数。
+
+### 1) 用量计数表（按天聚合）
+```
+CREATE TABLE IF NOT EXISTS public.usage_counters (
+  user_id uuid NOT NULL,
+  action text NOT NULL CHECK (action IN ('generate','rewrite')),
+  usage_date date NOT NULL DEFAULT (now() AT TIME ZONE 'utc')::date,
+  used int NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, action, usage_date)
+);
+```
+
+建议：RLS 仅允许本人读写；后端使用 `service_role` 可覆盖。
+
+### 2) 是否可消耗（由代码传入当日上限）
+```
+CREATE OR REPLACE FUNCTION public.can_consume_usage(
+  user_uuid uuid,
+  action text,
+  daily_limit int
+) RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT COALESCE(
+    (SELECT used FROM public.usage_counters
+      WHERE user_id = user_uuid
+        AND action = action
+        AND usage_date = (now() AT TIME ZONE 'utc')::date
+    ), 0
+  ) < daily_limit;
+$$;
+```
+
+### 3) 原子消耗（并发安全，仍由代码传 daily_limit）
+```
+CREATE OR REPLACE FUNCTION public.consume_usage(
+  user_uuid uuid,
+  action text,
+  daily_limit int
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  today date := (now() AT TIME ZONE 'utc')::date;
+  current_used int;
+BEGIN
+  -- 先插入占位（若不存在）
+  INSERT INTO public.usage_counters(user_id, action, usage_date, used)
+  VALUES (user_uuid, action, today, 0)
+  ON CONFLICT (user_id, action, usage_date) DO NOTHING;
+
+  -- 锁行并检查+递增（避免超限）
+  SELECT used INTO current_used
+  FROM public.usage_counters
+  WHERE user_id = user_uuid AND action = action AND usage_date = today
+  FOR UPDATE;
+
+  IF current_used >= daily_limit THEN
+    RETURN false; -- 已达上限
+  END IF;
+
+  UPDATE public.usage_counters
+  SET used = used + 1, updated_at = now()
+  WHERE user_id = user_uuid AND action = action AND usage_date = today;
+
+  RETURN true;
+END;
+$$;
+```
+
+调用建议：后端在业务逻辑中先 `SELECT public.can_consume_usage(...)` 快速判断，再调用 `SELECT public.consume_usage(...)` 执行原子扣减；二者的 `daily_limit` 都由代码传入（来自后端配置/env）。
+
+### 4) 收藏数与上限（免费 10 / 付费或试用 300）
+已提供函数 `public.check_favorite_limit_with_trial(user_uuid uuid)`，请继续以此为准。为避免实时 COUNT 的开销，可用触发器维护 `profiles.favorite_count`：
+```
+-- 插入/更新/删除收藏时维护计数
+CREATE OR REPLACE FUNCTION public.on_generation_insert_update_fav()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.is_favorited THEN
+      UPDATE public.profiles SET favorite_count = COALESCE(favorite_count,0) + 1
+      WHERE id = NEW.user_id;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF COALESCE(OLD.is_favorited,false) <> COALESCE(NEW.is_favorited,false) THEN
+      UPDATE public.profiles SET favorite_count = COALESCE(favorite_count,0) + CASE WHEN NEW.is_favorited THEN 1 ELSE -1 END
+      WHERE id = NEW.user_id;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF OLD.is_favorited THEN
+      UPDATE public.profiles SET favorite_count = GREATEST(COALESCE(favorite_count,0) - 1, 0)
+      WHERE id = OLD.user_id;
+    END IF;
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_generations_fav_counter_ins ON public.generations;
+DROP TRIGGER IF EXISTS trg_generations_fav_counter_upd ON public.generations;
+DROP TRIGGER IF EXISTS trg_generations_fav_counter_del ON public.generations;
+
+CREATE TRIGGER trg_generations_fav_counter_ins
+AFTER INSERT ON public.generations
+FOR EACH ROW EXECUTE FUNCTION public.on_generation_insert_update_fav();
+
+CREATE TRIGGER trg_generations_fav_counter_upd
+AFTER UPDATE OF is_favorited ON public.generations
+FOR EACH ROW EXECUTE FUNCTION public.on_generation_insert_update_fav();
+
+CREATE TRIGGER trg_generations_fav_counter_del
+AFTER DELETE ON public.generations
+FOR EACH ROW EXECUTE FUNCTION public.on_generation_insert_update_fav();
+```
+
+调用规范：后端在“收藏/取消收藏”前先调用 `public.check_favorite_limit_with_trial(user_uuid)` 做闸门判断（仅当收藏→true 时检查）。
+
+### 5) 权限
+```
+GRANT SELECT, INSERT, UPDATE ON public.usage_counters TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.can_consume_usage(uuid, text, int) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.consume_usage(uuid, text, int) TO authenticated, service_role;
+```
+
+这样，配额数值只存在于后端代码与配置中；数据库提供并发安全的计数与校验，避免“文档/数据库/代码三处不一致”。

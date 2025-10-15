@@ -7,6 +7,7 @@ import { buildTitleBase, buildDescription } from '@/lib/seo';
 import { cacheService } from '@/lib/cache-service';
 import { formatDate } from '@/lib/utils';
 import type { Post, Category } from '@/lib/types';
+import { SITE_CONFIG } from '@/lib/constants';
 
 // Next.js 15: dynamic route params may be a Promise
 type CategoryPageProps = { params: Promise<{ slug: string }> };
@@ -126,12 +127,26 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       }))
     }
   } as const;
+  const base = (SITE_CONFIG.url || '').replace(/\/$/, '');
+  const breadcrumbList = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: base },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${base}/blog` },
+      { '@type': 'ListItem', position: 3, name: (category as Category).name, item: `${base}/blog/category/${(category as Category).slug}` },
+    ],
+  } as const;
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbList) }}
       />
 
       <div className="min-h-screen bg-gray-50 py-12">
