@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { buildDescription, clampTitle, buildTitleBase } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: buildTitleBase('Generate Song & Rap Lyrics Fast'),
+  title: {
+    absolute: 'Create Professional Lyrics in Seconds - Free AI for Rap, Song & Pop',
+  },
   description: buildDescription(
     'Fine-tune style, mood, structure, BPM & rhyme. Generate pro-quality lyrics in seconds; edit & rewrite lines. 3-day free trial (No credit card required).'
   ),
@@ -29,7 +31,7 @@ export const metadata: Metadata = {
     'custom song lyrics'
   ],
   openGraph: {
-    title: clampTitle('Generate Song & Rap Lyrics Fast'),
+    title: clampTitle('Create Professional Lyrics in Seconds - Free AI for Rap, Song & Pop'),
     description: buildDescription(
       'Fine-tune style, mood, structure, BPM & rhyme. Generate pro-quality lyrics in seconds; edit & rewrite lines. 3-day free trial (No credit card required).'
     ),
@@ -46,7 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: clampTitle('Generate Song & Rap Lyrics Fast'),
+    title: clampTitle('Create Professional Lyrics in Seconds - Free AI for Rap, Song & Pop'),
     description: buildDescription('Fine-tune style, mood, structure, BPM & rhyme. Generate pro-quality lyrics in seconds; edit & rewrite lines. 3-day free trial (No credit card required).'),
     images: ['/favicon1.webp'],
   },
@@ -148,7 +150,7 @@ export default function GenerateLayout({
                 name: 'Can I control rhyme and structure?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'Yes. Choose rhyme options and pick a structure such as Verse–Chorus or Verse–Pre‑Chorus–Chorus.',
+                  text: 'Yes. Choose rhyme options and pick a structure such as Verse-Chorus or Verse-Pre-Chorus-Chorus.',
                 },
               },
               {

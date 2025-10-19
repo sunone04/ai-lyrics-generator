@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { buildDescription, clampTitle } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'AI Lyrics Editor: Polish & Rewrite Lyrics',
+  title: { absolute: 'Edit & Polish Your Lyrics with AI - Improve Any Part Instantly' },
   description: buildDescription(
-    'Upload or paste lyrics, select text to rewrite with AI, and download polished song or rap lyrics. Premium editing tools for precise line-by-line improvements.'
+    "Upload your lyrics, select any part you’d like to improve, and polish it with AI - free and full control."
   ),
   keywords: [
     'ai lyrics editor',
@@ -18,9 +18,9 @@ export const metadata: Metadata = {
     'lyric improvement tool'
   ],
   openGraph: {
-    title: clampTitle('AI Lyrics Editor: Polish & Rewrite Lyrics'),
+    title: clampTitle('Edit & Polish Your Lyrics with AI - Improve Any Part Instantly'),
     description: buildDescription(
-      'Edit and rewrite your lyrics with AI. Upload .txt files, select passages to improve, and export professional-quality results.'
+      "Upload your lyrics, select any part you’d like to improve, and polish it with AI - free and full control."
     ),
     type: 'website',
     url: '/edit',
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: clampTitle('AI Lyrics Editor: Polish & Rewrite Lyrics'),
-    description: buildDescription('Line-by-line AI rewriting and polishing for song and rap lyrics.'),
+    title: clampTitle('Edit & Polish Your Lyrics with AI - Improve Any Part Instantly'),
+    description: buildDescription("Upload your lyrics, select any part you’d like to improve, and polish it with AI - free and full control."),
     images: ['/female_singer.webp'],
   },
   alternates: {

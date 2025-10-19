@@ -6,7 +6,7 @@ import { SITE_CONFIG } from '@/lib/constants';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service',
+  title: { absolute: 'Terms of Service - AI Lyrics Generator' },
   description: 'Read the terms and conditions for using AI Lyrics Generator.',
   alternates: {
     canonical: '/terms',
@@ -189,3 +189,4 @@ export default function TermsPage() {
     </div>
   );
 }
+

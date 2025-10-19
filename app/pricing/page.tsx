@@ -7,11 +7,11 @@ import { CheckIcon } from '@heroicons/react/24/outline'
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'Pricing',
+  title: { absolute: 'AI Lyrics Generator Pricing & Plans – 3-Day Free Trial' },
   description: 'Choose the right plan for your songwriting. Start free or upgrade to unlock more AI lyric generations and advanced features.',
   keywords: 'ai lyrics generator pricing, songwriting subscription, music lyrics plan',
   openGraph: {
-    title: 'Pricing',
+    title: 'AI Lyrics Generator Pricing & Plans – 3-Day Free Trial',
     description: 'Choose the right plan for your songwriting. Start free or upgrade to unlock more AI lyric generations and advanced features.',
     type: 'website',
   },

@@ -60,7 +60,7 @@ export default function LyricShowcase() {
       },
       {
         id: "rap",
-        title: "Hip‑Hop/Rap • Perseverance",
+        title: "Hip-Hop/Rap • Perseverance",
         meta: "English • Verse–Hook • Direct",
         lyrics:
           `[Verse]\nClock ticks, I'm in the lab like overtime\nBrick by brick, I built the chorus line\nDoubt in the rearview, fade like a skyline\nHunger in the hook, watch me redefine\n\n[Hook]\nCame from the sideline, now I'm in the limelight\nTurning every setback to a highlight\nWrite it in the booth, proof in the daylight\nI'm the echo of belief when the time's right`,

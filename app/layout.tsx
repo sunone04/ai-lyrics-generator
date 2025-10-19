@@ -24,8 +24,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Free AI Lyrics Generator — Write Song Lyrics in Seconds",
-    template: "%s | AI Lyrics Generator",
+    default: "Free AI Lyrics Tool",
+    template: "%s - Free AI Lyrics Tool",
   },
   description: SITE_CONFIG.description,
   keywords: SITE_CONFIG.keywords,
@@ -199,3 +199,4 @@ export default function RootLayout({
     </html>
   );
 }
+

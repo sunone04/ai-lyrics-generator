@@ -142,7 +142,7 @@ The markers must appear exactly as shown and must NOT appear inside the content.
 
 6. When a theme is present, pursue intellectual depth that refracts universal human feelings or social reality through personal experience.
 
-7. Perfectly satisfy all user‑provided parameters, including syllable counts, line length, and rhythm.
+7. Perfectly satisfy all user-provided parameters, including syllable counts, line length, and rhythm.
 
 8. Use structural tags as requested by the user, such as [Verse 1], [Chorus], [Bridge], etc.
 
@@ -309,7 +309,7 @@ Your task is to generate excellent lyrics that perfectly match the user's provid
 
 6. When a theme is present, pursue intellectual depth that refracts universal human feelings or social reality through personal experience.
 
-7. Perfectly satisfy all user‑provided parameters, including syllable counts, line length, and rhythm.
+7. Perfectly satisfy all user-provided parameters, including syllable counts, line length, and rhythm.
 
 8. Use structural tags as requested by the user, such as [Verse 1], [Chorus], [Bridge], etc.
 9. Avoid repetitive imagery and any drift toward clichés; keep images fresh and varied.

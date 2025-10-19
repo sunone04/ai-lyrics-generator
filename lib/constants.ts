@@ -1,6 +1,6 @@
 export const SITE_CONFIG = {
   name: 'AI Lyrics Generator',
-  description: 'Generate pro-quality lyrics with AI—full control over style, mood, structure & more. 3-day free trial. No credit card required.',
+  description: 'Generate pro-quality lyrics with AI - full control over style, mood, structure & more. 3-day free trial. No credit card required.',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-lyrics-generator.net',
   keywords: [
     'ai lyrics generator',
@@ -32,8 +32,8 @@ export const SEO_LIMITS = {
   DESCRIPTION_MAX: 160,
 };
 
-export const TITLE_BRAND = 'AI Lyrics Generator';
-export const TITLE_SEPARATOR = ' | ';
+export const TITLE_BRAND = 'Free AI Lyrics Tool';
+export const TITLE_SEPARATOR = ' - ';
 export const TITLE_SUFFIX = `${TITLE_SEPARATOR}${TITLE_BRAND}`; // used by layout template
 
 export const SUBSCRIPTION_LIMITS = {
@@ -137,12 +137,12 @@ export const FORM_OPTIONS = {
   ],
   songStructures: [
     'Default',
-    'Verse–Chorus',
-    'Verse–Pre-Chorus–Chorus',
-    'Verse–Chorus–Bridge (ABABCB)',
-    'Verse–Hook (Rap)',
+    'Verse-Chorus',
+    'Verse-Pre-Chorus-Chorus',
+    'Verse-Chorus-Bridge (ABABCB)',
+    'Verse-Hook (Rap)',
     'AABA',
-    'EDM (Intro–Build–Drop–Break)',
+    'EDM (Intro-Build-Drop-Break)',
     'Free form',
     'Other'
   ]

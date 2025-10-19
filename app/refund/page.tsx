@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'Refund Policy',
+  title: { absolute: 'Refund Policy - AI Lyrics Generator' },
   description: 'Our refund policy and terms for AI Lyrics Generator services.',
   alternates: {
     canonical: '/refund',
@@ -161,3 +161,4 @@ export default function RefundPage() {
     </div>
   );
 }
+

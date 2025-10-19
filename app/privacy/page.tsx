@@ -6,7 +6,7 @@ import { SITE_CONFIG } from '@/lib/constants';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy',
+  title: { absolute: 'Privacy Policy - AI Lyrics Generator' },
   description: 'Learn how AI Lyrics Generator collects, uses, and protects your personal information.',
   alternates: {
     canonical: '/privacy',
@@ -140,3 +140,4 @@ export default function PrivacyPage() {
     </div>
   );
 }
+
