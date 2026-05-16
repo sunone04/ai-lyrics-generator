@@ -1,585 +1,512 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect, } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useData } from '@/lib/contexts/data-context';
 import { useTrial } from '@/lib/hooks/use-trial';
-import { createClient } from '@/lib/supabase';
-import { LoadingButton } from '@/components/ui/loading';
-import Breadcrumbs from '@/components/ui/breadcrumbs';
 import {
+  PaperAirplaneIcon,
+  ArrowPathIcon,
   MusicalNoteIcon,
-  LanguageIcon,
-  SparklesIcon,
-  ClockIcon,
   HeartIcon,
-  MicrophoneIcon,
-  PaintBrushIcon,
-  InformationCircleIcon
+  DocumentArrowDownIcon,
+  ClipboardDocumentIcon,
+  PencilSquareIcon,
+  CpuChipIcon,
+  AdjustmentsHorizontalIcon,
+  StopCircleIcon,
 } from '@heroicons/react/24/outline';
-import { FORM_OPTIONS } from '@/lib/constants';
+import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
-/* ---------- 类型定义 ---------- */
-interface LyricsGenerationParams {
-  language: string;
-  musicStyle: string;
-  musicTheme: string;
-  lengthOption: string;
-  lyricStyle: string;
-  intentOrRequest: string;
-  artistStyle: string;
-  emotionIntensity: number;
-  rhymeRequirement: string;
-  songStructure: string;
-  paragraphLength: string;
-  bpm: number;
-  useBpm: boolean;
-  melody: string;
-  syllablePattern: string;
-  modelType: 'basic' | 'pro';
-  personalStyleId?: number;
-  includeRationale?: boolean;
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  isLyrics?: boolean;
 }
 
-interface PersonalStyleGroup {
-  id: number;
-  name: string;
-  user_id: string;
-  created_at: string;
+interface GenerationResult {
+  lyrics: string;
+  generationId: string | null;
+  isFavorited: boolean;
 }
 
-/* ========== 子组件：真正使用 searchParams ========== */
+const SUGGESTION_PROMPTS = [
+  { label: 'Rap verse about overcoming obstacles', prompt: 'Write a rap verse about overcoming obstacles and staying true to yourself. Make it punchy with internal rhymes.' },
+  { label: 'Pop love song chorus', prompt: 'Write a catchy pop love song chorus about finding the right person at the wrong time.' },
+  { label: 'Rock ballad about freedom', prompt: 'Write a rock ballad verse about breaking free from expectations and finding your own path.' },
+  { label: 'R&B late-night vibes', prompt: 'Write an R&B song about late-night thoughts and memories. Smooth and soulful.' },
+  { label: 'Folk song about journey', prompt: 'Write a folk song about a long journey home. Include vivid imagery of nature and roads.' },
+  { label: 'Hip-hop hook with energy', prompt: 'Write a high-energy hip-hop hook about success and celebration. Make it memorable.' },
+];
 
-/* ========== 表单主组件 ========== */
-function GenerateForm() {
-  const { user, loading: userLoading } = useAuth();
-  const { isInTrial, isActiveUser, canUseTrial } = useTrial();
+function GenerateAgentPage() {
+  const { user, loading: userLoading, bumpProfileCounts } = useAuth();
+  const { isActiveUser } = useTrial();
+  const { personalStyles, fetchPersonalStyles } = useData();
   const router = useRouter();
-  // Optional regen flag carried via URL when coming from a prior result
-  const incomingRegen = (typeof window !== 'undefined') ? ((new URLSearchParams(window.location.search)).get('regen') || '') : '';
 
-  // Max length limits for custom 'Other' inputs
-  const OTHER_LIMITS = {
-    language: 40,
-    musicStyle: 40,
-    musicTheme: 80,
-    lengthOption: 60,
-    lyricStyle: 50,
-    rhymeRequirement: 80,
-    songStructure: 60,
-  } as const;
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedPersonalStyleId, setSelectedPersonalStyleId] = useState<number | undefined>();
+  const [useProModel, setUseProModel] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
-  // Max length limits for additional free-text fields
-  const FREE_TEXT_LIMITS = {
-    intentOrRequest: 500,
-    artistStyle: 100,
-    melody: 120,
-    syllablePattern: 50,
-    paragraphLength: 80,
-  } as const;
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { personalStyles, loadingPersonalStyles, fetchPersonalStyles } = useData();
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPersonalStyle, setShowPersonalStyle] = useState(false);
-
-  const [customInputs, setCustomInputs] = useState({
-    language: '',
-    musicStyle: '',
-    musicTheme: '',
-    lengthOption: '',
-    lyricStyle: '',
-    rhymeRequirement: '',
-    songStructure: ''
-  });
-
-  const [params, setParams] = useState<LyricsGenerationParams>({
-    language: 'English',
-    musicStyle: 'Pop',
-    musicTheme: 'Love & Romance',
-    lengthOption: 'Default',
-    lyricStyle: 'Default',
-    intentOrRequest: '',
-    artistStyle: '',
-    emotionIntensity: 50,
-    rhymeRequirement: 'Perfect Rhymes',
-    songStructure: 'Default',
-    paragraphLength: '',
-    bpm: 120,
-    useBpm: false,
-    melody: '',
-    syllablePattern: '',
-    modelType: 'basic',
-    includeRationale: true,
-  });
-
-  // 前端硬限制：当自由文本超过上限时，立即截断到上限（与 maxLength 体验一致）
   useEffect(() => {
-    const ft = FREE_TEXT_LIMITS as Record<string, number>;
-    const updated: Partial<LyricsGenerationParams> = {};
-    let changed = false;
-    const clamp = (key: keyof typeof FREE_TEXT_LIMITS) => {
-      const v = (params as any)[key];
-      const max = ft[key];
-      if (typeof v === 'string' && v.length > max) {
-        (updated as any)[key] = v.slice(0, max);
-        changed = true;
-      }
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    if (user && isActiveUser && showSettings) fetchPersonalStyles(false);
+  }, [user, isActiveUser, showSettings, fetchPersonalStyles]);
+
+  const addMessage = (role: 'user' | 'assistant', content: string, isLyrics = false) => {
+    const msg: ChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      role,
+      content,
+      timestamp: new Date(),
+      isLyrics,
     };
-    clamp('intentOrRequest');
-    clamp('artistStyle');
-    clamp('melody');
-    clamp('syllablePattern');
-    clamp('paragraphLength');
-    if (changed) setParams({ ...params, ...updated });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    params.intentOrRequest,
-    params.artistStyle,
-    params.melody,
-    params.syllablePattern,
-    params.paragraphLength,
-  ]);
+    setMessages(prev => [...prev, msg]);
+    return msg;
+  };
 
-  // 前端硬限制：Other 自定义输入的上限即时截断
-  useEffect(() => {
-    const limits = OTHER_LIMITS as Record<string, number>;
-    const next = { ...customInputs };
-    let changed = false;
-    (Object.keys(next) as Array<keyof typeof next>).forEach((key) => {
-      const v = next[key];
-      const max = limits[key as any];
-      if (typeof v === 'string' && max && v.length > max) {
-        next[key] = v.slice(0, max);
-        changed = true;
-      }
-    });
-    if (changed) setCustomInputs(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    customInputs.language,
-    customInputs.musicStyle,
-    customInputs.musicTheme,
-    customInputs.lengthOption,
-    customInputs.lyricStyle,
-    customInputs.rhymeRequirement,
-    customInputs.songStructure,
-  ]);
+  const handleSend = async (customPrompt?: string) => {
+    const prompt = customPrompt || inputValue.trim();
+    if (!prompt || isGenerating) return;
 
-  /* 仅高级用户拉取个人风格库（SWR） */
-  useEffect(() => {
-    if (user && isActiveUser && showPersonalStyle) fetchPersonalStyles(false);
-  }, [user, isActiveUser, showPersonalStyle, fetchPersonalStyles]);
-
-  /* ---------- 提交 ---------- */
-  const handleSubmit = async () => {
     if (!user) {
       toast.error('Please sign in to generate lyrics');
       router.push('/auth/signin?returnTo=/generate');
       return;
     }
-    // Premium gating for Personal Style
-    if (params.personalStyleId && !isActiveUser) {
-      toast.error('Personal Style is a Premium feature. If eligible, your free trial will activate automatically after sign-in; otherwise, please upgrade.');
-      router.push('/pricing');
+
+    if (useProModel && !isActiveUser) {
+      toast.error('Pro model requires a premium subscription');
       return;
     }
-    // 校验自定义 Other 输入
-    const errors: string[] = [];
-    (Object.keys(customInputs) as Array<keyof typeof customInputs>).forEach((key) => {
-      if ((params as any)[key] === 'Other') {
-        const value = customInputs[key].trim();
-        if (!value) {
-          errors.push(`Please specify your ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
-          return;
-        }
-        const max = (OTHER_LIMITS as any)[key] as number;
-        if (max && value.length > max) {
-          errors.push(`Please keep ${key.replace(/([A-Z])/g, ' $1').toLowerCase()} within ${max} characters`);
-        }
-      }
-    });
 
-    // Validate other free text fields
-    const ft = FREE_TEXT_LIMITS as Record<string, number>;
-    const checkField = (field: keyof typeof FREE_TEXT_LIMITS, label: string) => {
-      const v = (params as any)[field];
-      if (typeof v === 'string' && v.trim() && v.trim().length > ft[field]) {
-        errors.push(`${label} must be ${ft[field]} characters or less`);
-      }
-    };
-    checkField('intentOrRequest', 'Creative direction');
-    checkField('artistStyle', 'Artist style');
-    checkField('melody', 'Melody');
-    checkField('syllablePattern', 'Syllable pattern (per line)');
-    checkField('paragraphLength', 'Section length');
-    if (errors.length) { toast.error(errors[0]); return; }
+    addMessage('user', prompt);
+    setInputValue('');
+    setIsGenerating(true);
+    setGenerationResult(null);
 
-    setIsLoading(true);
     try {
-      const final = {
-        ...params,
-        language: params.language === 'Other' ? customInputs.language : params.language,
-        musicStyle: params.musicStyle === 'Other' ? customInputs.musicStyle : params.musicStyle,
-        musicTheme: params.musicTheme === 'Other' ? customInputs.musicTheme : params.musicTheme,
-        lengthOption: params.lengthOption === 'Other' ? customInputs.lengthOption : params.lengthOption,
-        lyricStyle: params.lyricStyle === 'Other' ? customInputs.lyricStyle : params.lyricStyle,
-        rhymeRequirement: params.rhymeRequirement === 'Other' ? customInputs.rhymeRequirement : params.rhymeRequirement,
-        songStructure: params.songStructure === 'Other' ? customInputs.songStructure : params.songStructure
-      } as any;
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
-      // Build query string: always include required keys; omit empty strings and 'Default' for others
-      const qs = new URLSearchParams();
-      const alwaysInclude = new Set(['language', 'musicStyle']);
-      Object.entries(final).forEach(([k, v]) => {
-        if (v === undefined || v === null) return;
-        if (typeof v === 'string') {
-          const s = v.trim();
-          if (!s) return;
-          if (!alwaysInclude.has(k) && s === 'Default') return;
-          qs.set(k, s);
-          return;
-        }
-        // Only include BPM when explicitly enabled
-        if (k === 'bpm' && !final.useBpm) return;
-        if (k === 'useBpm' && v === false) return;
-        qs.set(k, String(v));
+      const allMessages = [...messages, { role: 'user' as const, content: prompt }].map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const payload: Record<string, any> = {
+        messages: allMessages,
+        modelType: useProModel ? 'pro' : 'basic',
+      };
+      if (selectedPersonalStyleId) payload.personalStyleId = selectedPersonalStyleId;
+
+      const response = await fetch('/api/agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
       });
-      if (incomingRegen) {
-        qs.set('regen', incomingRegen);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({} as any));
+        throw new Error(errorData?.error || `HTTP ${response.status}`);
       }
-      router.push(`/generate/result/live?${qs.toString()}`);
-    } catch (e: any) {
-      toast.error(e.message || 'Generation failed');
+
+      if (!response.body) throw new Error('No response body');
+
+      const assistantMsg = addMessage('assistant', '');
+      let fullLyrics = '';
+      let generationId: string | null = null;
+
+      timeoutRef.current = setTimeout(() => {
+        toast.error('Generation timed out');
+        setIsGenerating(false);
+        try { controller.abort(); } catch {}
+      }, 120000);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const resetTimeout = () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+          toast.error('Generation timed out');
+          setIsGenerating(false);
+          try { controller.abort(); } catch {}
+        }, 120000);
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ') && !line.startsWith(':')) continue;
+            if (line.startsWith(':')) continue;
+
+            const dataStr = line.slice(6).trim();
+            if (!dataStr) continue;
+
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.type === 'chunk') {
+                fullLyrics += data.content || '';
+                setMessages(prev => prev.map(m =>
+                  m.id === assistantMsg.id ? { ...m, content: fullLyrics, isLyrics: true } : m
+                ));
+                resetTimeout();
+              } else if (data.type === 'complete') {
+                generationId = data.id ? String(data.id) : null;
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+              } else if (data.type === 'error') {
+                throw new Error(data.message || 'Generation failed');
+              }
+            } catch (parseError) {
+              if (parseError instanceof Error && parseError.message !== 'Generation failed') {
+                continue;
+              }
+              throw parseError;
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      if (fullLyrics) {
+        setGenerationResult({ lyrics: fullLyrics, generationId, isFavorited: false });
+        try { bumpProfileCounts({ generation: 1 }); } catch {}
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        toast.error(error.message || 'Generation failed');
+      }
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     }
   };
 
-  /* ---------- loading 态 ---------- */
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsGenerating(false);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleRegenerate = () => {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMsg) {
+      setMessages(prev => prev.slice(0, -1));
+      setGenerationResult(null);
+      setTimeout(() => handleSend(lastUserMsg.content), 100);
+    }
+  };
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard');
+    } catch {
+      toast.error('Copy failed');
+    }
+  };
+
+  const handleDownload = (text: string) => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lyrics-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Downloaded');
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!user || !generationResult?.generationId) return;
+    setIsTogglingFavorite(true);
+    try {
+      const next = !generationResult.isFavorited;
+      const res = await fetch(`/api/generations/${generationResult.generationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_favorited: next }),
+      });
+      if (!res.ok) throw new Error('Failed to update favorite');
+      setGenerationResult(prev => prev ? { ...prev, isFavorited: next } : null);
+      toast.success(next ? 'Added to favorites' : 'Removed from favorites');
+    } catch {
+      toast.error('Failed to update favorite');
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
+
   if (userLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  /* ---------- 渲染 ---------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
-      <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <Breadcrumbs />
-        {/* Header */}
-        <div className="text-center mb-12 pt-8 relative z-10">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-[1.1]">
-            <span className="block">AI Lyrics Generator</span>
-            <span className="block gradient-title descender-fix">Create Perfect Song & Rap Lyrics</span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Generate professional song and rap lyrics with our AI lyrics generator.
-            {' '}You can also
-            {' '}<Link href="/edit" className="underline hover:text-blue-700">edit your own lyrics</Link>
-            {' '}or
-            {' '}<Link href="/personal-style" className="underline hover:text-blue-700">teach the model your Personal Style</Link>.
-          </p>
-          {/* Removed extra marketing subheading to keep header concise */}
+    <div className="min-h-screen flex flex-col pt-14">
+      {!user && (
+        <div className="border-b border-white/5 bg-violet-600/5">
+          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-semibold text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded uppercase tracking-wider">
+                Free Trial
+              </span>
+              <p className="text-sm text-zinc-300 mt-1">Sign up for a 3-day free trial. No credit card required.</p>
+            </div>
+            <Link
+              href="/auth/signin?signup=1&returnTo=/generate"
+              prefetch={false}
+              className="text-xs font-medium text-white bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-md transition-colors shrink-0"
+            >
+              Start Free Trial
+            </Link>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto px-6">
+        {/* Settings bar */}
+        <div className="flex items-center justify-between py-3 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <CpuChipIcon className="w-3.5 h-3.5 text-violet-400" />
+              <span className="text-xs font-medium text-zinc-400">Agent</span>
+            </div>
+            <div className="h-3 w-px bg-white/10" />
+            <select
+              value={useProModel ? 'pro' : 'basic'}
+              onChange={(e) => {
+                const isPro = e.target.value === 'pro';
+                if (isPro && !isActiveUser) {
+                  toast.error('Pro model requires premium subscription');
+                  return;
+                }
+                setUseProModel(isPro);
+              }}
+              className="text-[11px] text-zinc-500 bg-transparent border border-white/10 rounded px-2 py-1 hover:border-white/20 transition-colors cursor-pointer"
+            >
+              <option value="basic">Flash</option>
+              <option value="pro">Pro</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            {user && isActiveUser && (
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className={`text-[11px] px-2.5 py-1 rounded border transition-colors cursor-pointer ${showSettings ? 'bg-violet-500/10 border-violet-500/20 text-violet-400' : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-400'}`}
+              >
+                <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <Link
+              href="/edit"
+              prefetch={false}
+              className="text-[11px] px-2.5 py-1 rounded border border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-400 transition-colors flex items-center gap-1"
+            >
+              <PencilSquareIcon className="w-3.5 h-3.5" />
+              Editor
+            </Link>
+          </div>
         </div>
 
-        {/* New-user Trial CTA: very prominent for unauthenticated users */}
-        {!user && (
-          <div className="mb-10">
-            <div className="relative overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white shadow-xl">
-              <div className="md:flex md:items-center md:justify-between gap-6">
-                <div className="md:max-w-2xl">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-white/15 ring-1 ring-white/30">
-                    FREE 3-DAY TRIAL
-                  </span>
-                  <h3 className="text-2xl md:text-3xl font-bold">Start your free 3-day trial</h3>
-                </div>
-                <div className="mt-4 md:mt-0 flex flex-wrap gap-3 justify-center md:justify-end">
-                  <Link
-                    href="/auth/signin?signup=1&returnTo=/generate"
-                    prefetch={false}
-                    className="px-5 py-2.5 bg-white text-blue-700 font-semibold rounded-lg shadow hover:bg-blue-50 transition-colors flex items-center gap-2"
-                  >
-                    {/* Reuse an existing icon for visual emphasis */}
-                    <span className="inline-block">Start Free Trial</span>
-                  </Link>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-blue-100">Instant activation after signup. No credit card required. Cancel anytime.</p>
-            </div>
+        {/* Personal Style */}
+        {showSettings && user && isActiveUser && (
+          <div className="border-b border-white/5 px-4 py-3 bg-white/[0.02]">
+            <label className="text-[11px] font-medium text-zinc-500 mb-1.5 block">Personal Style</label>
+            <select
+              value={selectedPersonalStyleId || ''}
+              onChange={(e) => setSelectedPersonalStyleId(e.target.value ? parseInt(e.target.value) : undefined)}
+              className="w-full text-xs text-zinc-400 border border-white/10 rounded-md px-3 py-2 bg-transparent"
+            >
+              <option value="">None</option>
+              {personalStyles.map((ps: any) => (
+                <option key={ps.id} value={ps.id}>{ps.name}</option>
+              ))}
+            </select>
           </div>
         )}
 
-        {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-          {/* -------- Basic Information -------- */}
-          <div className="mb-10">
-            <div className="flex items-center mb-6">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">1</div>
-              <h2 className="text-lg font-semibold text-gray-900">Basic Information</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-11">
-              {/* Language */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><LanguageIcon className="w-5 h-5 mr-2 text-blue-600" />Language *</label>
-                <select value={params.language} onChange={(e) => setParams({ ...params, language: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {FORM_OPTIONS.languages.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
-                {params.language === 'Other' && <input type="text" value={customInputs.language} onChange={(e) => setCustomInputs({ ...customInputs, language: e.target.value })} placeholder="Specify language" maxLength={OTHER_LIMITS.language} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
-              </div>
-              {/* Music Style */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MusicalNoteIcon className="w-5 h-5 mr-2 text-blue-600" />Music Style *</label>
-                <select value={params.musicStyle} onChange={(e) => setParams({ ...params, musicStyle: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {FORM_OPTIONS.musicStyles.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                {params.musicStyle === 'Other' && <input type="text" value={customInputs.musicStyle} onChange={(e) => setCustomInputs({ ...customInputs, musicStyle: e.target.value })} placeholder="Specify style" maxLength={OTHER_LIMITS.musicStyle} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
-              </div>
-              {/* Theme */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><HeartIcon className="w-5 h-5 mr-2 text-blue-600" />Theme *</label>
-                <select value={params.musicTheme} onChange={(e) => setParams({ ...params, musicTheme: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {FORM_OPTIONS.musicThemes.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-                {params.musicTheme === 'Other' && <input type="text" value={customInputs.musicTheme} onChange={(e) => setCustomInputs({ ...customInputs, musicTheme: e.target.value })} placeholder="Specify theme" maxLength={OTHER_LIMITS.musicTheme} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
-              </div>
-              {/* Length */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><ClockIcon className="w-5 h-5 mr-2 text-blue-600" />Length *</label>
-                <select value={params.lengthOption} onChange={(e) => setParams({ ...params, lengthOption: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {FORM_OPTIONS.lengthOptions.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
-                {params.lengthOption === 'Other' && <input type="text" value={customInputs.lengthOption} onChange={(e) => setCustomInputs({ ...customInputs, lengthOption: e.target.value })} placeholder="Specify length" maxLength={OTHER_LIMITS.lengthOption} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />}
-              </div>
-            </div>
-            <div className="pl-11 mt-2 text-sm text-gray-500">
-              <p>Tip: Selecting 'Other' enables custom input fields.</p>
-              <p>Tip: Choosing 'Default' lets the AI pick what best fits your song.</p>
-            </div>
-          </div>
-
-          {/* -------- Style & Creative Direction -------- */}
-          <div className="mb-10">
-            <div className="flex items-center mb-6">
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">2</div>
-              <h2 className="text-lg font-semibold text-gray-900">Style & Creative Direction</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-11">
-              {/* Lyric Style */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><PaintBrushIcon className="w-5 h-5 mr-2 text-purple-600" />Lyric Style *</label>
-                <select value={params.lyricStyle} onChange={(e) => setParams({ ...params, lyricStyle: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                  {FORM_OPTIONS.lyricStyles.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                {params.lyricStyle === 'Other' && <input type="text" value={customInputs.lyricStyle} onChange={(e) => setCustomInputs({ ...customInputs, lyricStyle: e.target.value })} placeholder="Specify lyric style" maxLength={OTHER_LIMITS.lyricStyle} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
-              </div>
-              {/* Song Structure */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MusicalNoteIcon className="w-5 h-5 mr-2 text-purple-600" />Song Structure *</label>
-                <select value={params.songStructure} onChange={(e) => setParams({ ...params, songStructure: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                  {FORM_OPTIONS.songStructures.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                {params.songStructure === 'Other' && <input type="text" value={customInputs.songStructure} onChange={(e) => setCustomInputs({ ...customInputs, songStructure: e.target.value })} placeholder="Specify structure" maxLength={OTHER_LIMITS.songStructure} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
-              </div>
-              {/* Rhyme */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><SparklesIcon className="w-5 h-5 mr-2 text-purple-600" />Rhyme Preference</label>
-                <select value={params.rhymeRequirement} onChange={(e) => setParams({ ...params, rhymeRequirement: e.target.value })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                  {FORM_OPTIONS.rhymeRequirements.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-                {params.rhymeRequirement === 'Other' && <input type="text" value={customInputs.rhymeRequirement} onChange={(e) => setCustomInputs({ ...customInputs, rhymeRequirement: e.target.value })} placeholder="Specify rhyme" maxLength={OTHER_LIMITS.rhymeRequirement} className="w-full mt-2 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />}
-              </div>
-              {/* Artist Style */}
-              <div>
-                <label className="flex items-center text-base font-semibold text-gray-700 mb-2"><MicrophoneIcon className="w-5 h-5 mr-2 text-purple-600" />Reference Artist <span className="text-gray-500 font-normal text-sm">(optional)</span></label>
-                <input type="text" value={params.artistStyle} onChange={(e) => setParams({ ...params, artistStyle: e.target.value })} placeholder="e.g., Drake" maxLength={FREE_TEXT_LIMITS.artistStyle} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-              </div>
-            </div>
-
-            {/* Creative Direction */}
-            <div className="pl-11 mt-6">
-              <label className="block text-base font-semibold text-gray-700 mb-1">Motivation & Background</label>
-              <textarea value={params.intentOrRequest} onChange={(e) => setParams({ ...params, intentOrRequest: e.target.value })} placeholder="Why you're writing this song: share the background and your thoughts/feelings (what inspired it and what you want to express)." rows={4} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
-            </div>
-{/* Emotion Intensity */}{/* Emotion Intensity */}
-            <div className="pl-11 mt-6">
-              <label className="block text-base font-semibold text-gray-700 mb-2">Emotional Intensity: <span className="text-purple-600 font-bold">{params.emotionIntensity}%</span></label>
-              <input type="range" min={1} max={100} value={params.emotionIntensity} onChange={(e) => setParams({ ...params, emotionIntensity: Number(e.target.value) })} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
-              <div className="flex justify-between text-sm text-gray-600 mt-1">
-                <span>Subtle</span>
-                <span>Moderate</span>
-                <span>Intense</span>
-              </div>
-            </div>
-          </div>
-
-          {/* -------- Advanced Options -------- */}
-          <div className="mb-8">
-            <div className="flex items-center mb-6">
-              <div className="bg-gradient-to-r from-pink-500 to-pink-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mr-3">3</div>
-              <h2 className="text-lg font-semibold text-gray-900">Advanced Options <span className="text-gray-500 font-normal">(Optional)</span></h2>
-            </div>
-
-            {/* BPM */}
-            <div className="flex items-center space-x-3 pl-11 mb-6">
-              <input id="useBpm" type="checkbox" checked={params.useBpm} onChange={(e) => setParams({ ...params, useBpm: e.target.checked })} className="w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500 cursor-pointer" />
-              <label htmlFor="useBpm" className="text-base font-semibold text-gray-700 cursor-pointer">Specify BPM</label>
-              {params.useBpm && <input type="number" min={60} max={200} value={params.bpm} onChange={(e) => setParams({ ...params, bpm: Number(e.target.value) })} className="w-24 px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />}
-            </div>
-
-            {/* Advanced Inputs */}
-            <div className="grid grid-cols-1 gap-6 pl-11">
-              <div>
-                <label className="block text-base font-semibold text-gray-700 mb-2">Melody Description</label>
-                <input type="text" value={params.melody} onChange={(e) => setParams({ ...params, melody: e.target.value })} placeholder="Describe melody..." className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
-              </div>
-              <div>
-                <label className="block text-base font-semibold text-gray-700 mb-2">Syllable Pattern <span className="text-gray-500 font-normal text-sm">(per line)</span></label>
-                <input type="text" value={params.syllablePattern} onChange={(e) => setParams({ ...params, syllablePattern: e.target.value })} placeholder="e.g., 8-8-10-8" maxLength={FREE_TEXT_LIMITS.syllablePattern} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
-              </div>
-              <div>
-                <label className="block text-base font-semibold text-gray-700 mb-2">Section Length <span className="text-gray-500 font-normal text-sm">(Verse/Chorus)</span></label>
-                <input type="text" value={params.paragraphLength} onChange={(e) => setParams({ ...params, paragraphLength: e.target.value })} placeholder="e.g., 4 lines per verse" maxLength={FREE_TEXT_LIMITS.paragraphLength} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
-              </div>
-            </div>
-
-            {/* Creative Rationale (default on) */}
-            <div className="pl-11 mt-6 flex items-start gap-3">
-              <input
-                id="includeRationale"
-                type="checkbox"
-                checked={params.includeRationale ?? true}
-                onChange={(e) => setParams({ ...params, includeRationale: e.target.checked })}
-                className="mt-1 w-5 h-5 text-pink-600 border border-gray-300 rounded focus:ring-pink-500 cursor-pointer"
-              />
-              <div>
-                <label htmlFor="includeRationale" className="text-base font-semibold text-gray-700 cursor-pointer">
-                  Explain creative rationale (Why these lyrics)
-                </label>
-                <p className="text-sm text-gray-600 mt-1">
-                  When enabled, AI also provides a short, professional songwriter explanation of the theme, structure, rhyme and stylistic choices - so you understand why the lyrics were crafted this way.
-                </p>
-              </div>
-            </div>
-
-            {user && isActiveUser && (
-              <div className="pl-11 mt-6">
-                {!showPersonalStyle ? (
+        {/* Chat area */}
+        <div className="flex-1 overflow-y-auto py-6 space-y-4">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <h2 className="text-2xl font-bold text-white mb-2">What kind of lyrics do you want?</h2>
+              <p className="text-sm text-zinc-500 mb-10 max-w-md">
+                Describe your song — genre, mood, theme, language, or just a feeling.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg w-full">
+                {SUGGESTION_PROMPTS.map((s, i) => (
                   <button
-                    type="button"
-                    onClick={() => { setShowPersonalStyle(true); fetchPersonalStyles(true); }}
-                    className="inline-flex items-center px-6 py-3 text-base font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                    key={i}
+                    onClick={() => handleSend(s.prompt)}
+                    disabled={isGenerating}
+                    className="px-4 py-3 bg-white/[0.03] border border-white/5 rounded-lg text-left hover:border-violet-500/30 hover:bg-violet-500/5 transition-all duration-200 disabled:opacity-50 cursor-pointer"
                   >
-                    Choose from Personal Style
+                    <span className="text-xs text-zinc-400 font-medium">{s.label}</span>
                   </button>
-                ) : (
-                  <>
-                    {loadingPersonalStyles && (
-                      <div className="text-sm text-gray-600">Loading personal styles...</div>
-                    )}
-                    {!loadingPersonalStyles && personalStyles.length === 0 && (
-                      <div className="text-sm text-gray-700">
-                        No personal styles yet. <Link href="/personal-style" className="text-purple-700 underline">Create one</Link>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Personal Style */}
-            {showPersonalStyle && user && isActiveUser && !loadingPersonalStyles && personalStyles.length > 0 && (
-              <div className="pl-11 mt-6">
-                <label className="block text-base font-semibold text-gray-700 mb-2">Personal Style (Optional)</label>
-                <select value={params.personalStyleId || ''} onChange={(e) => setParams({ ...params, personalStyleId: e.target.value ? Number(e.target.value) : undefined })} className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500">
-                  <option value="">None selected</option>
-                  {personalStyles.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-            )}
-
-            {/* 非高级用户提示 */}
-            {(!user || !isActiveUser) && (
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg ml-11 mt-6">
-                <h3 className="text-base font-bold text-purple-900 mb-1">Personal Style Library</h3>
-                <p className="text-sm text-purple-700 mb-2">Train AI to write in your unique style by uploading your existing lyrics.</p>
-                {!user ? (
-                  <button onClick={() => router.push('/auth/signin?returnTo=/generate')} className="text-sm text-purple-600 hover:text-purple-800 font-semibold underline">Sign in to access</button>
-                ) : (
-                  <Link href="/pricing" className="text-sm text-purple-600 hover:text-purple-800 font-semibold underline">Upgrade to Premium</Link>
-                )}
-              </div>
-            )}
-
-            {/* Model Selection */}
-            <div className="pl-11 mt-8 pt-6 border-t border-gray-200">
-              <label className="block text-base font-semibold text-gray-700 mb-3">AI Model Quality</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div onClick={() => setParams({ ...params, modelType: 'basic' })} className={`p-4 border rounded-xl cursor-pointer transition-all ${params.modelType === 'basic' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
-                  <div className="flex items-center justify-between mb-1"><h3 className="text-base font-bold text-gray-900">Standard Quality</h3><span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">Free</span></div>
-                  <p className="text-sm text-gray-600">Great quality for everyday lyrics creation</p>
-                </div>
-                <div onClick={async () => {
-                  if (!user) { toast.error('Please sign in'); router.push('/auth/signin?returnTo=/generate'); return; }
-                  if (!isInTrial && !isActiveUser) {
-                    if (canUseTrial) {
-                      // Auto activation runs in background after login; guide user to retry shortly
-                      toast('Preparing your free trial... Please try again in a moment.', { icon: '⏳' } as any);
-                    } else {
-                      toast.error('Pro model requires subscription');
-                    }
-                    return;
-                  }
-                  setParams({ ...params, modelType: 'pro' });
-                }} className={`p-4 border rounded-xl cursor-pointer transition-all ${params.modelType === 'pro' ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-gray-400'} ${!user || (!isInTrial && !isActiveUser) ? 'opacity-75' : ''}`}>
-                  <div className="flex items-center justify-between mb-1"><h3 className="text-base font-bold text-gray-900">Premium Quality</h3><span className="text-sm bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold">Premium</span></div>
-                  <p className="text-sm text-gray-600">Advanced creativity & superior results</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* -------- Generate Button -------- */}
-          <div className="flex justify-center pt-6 border-t border-gray-200">
-            <LoadingButton isLoading={isLoading} onClick={handleSubmit} className="px-10 py-3 text-base font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer">
-              {!user ? 'Sign In to Generate Lyrics' : 'Generate AI Lyrics Now'}
-            </LoadingButton>
-          </div>
-
-          {/* SEO & Sign-in Tip */}
-          <div className="mt-10 p-4 bg-gray-50 rounded-lg border">
-            <h2 className="text-base font-bold text-gray-900 mb-2">Professional AI Lyrics Generator</h2>
-            <p className="text-sm text-gray-700 leading-relaxed">
-              Our AI lyrics generator uses advanced artificial intelligence to create professional song lyrics and rap lyrics. Whether you need a <strong>rap lyrics generator</strong>, <strong>song lyrics generator</strong>, or custom <strong>lyric generator</strong> for any music style, our AI lyric generator delivers high-quality results instantly.
-            </p>
-          </div>
-          {!user && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center">
-                <InformationCircleIcon className="w-5 h-5 text-blue-600 mr-2" />
-                <p className="text-base text-blue-800">
-                  New to our app? <Link href="/auth/signin?signup=1&returnTo=/generate" prefetch={false} className="underline font-semibold">Create a free account</Link> to start your 3-day trial.
-                </p>
+                ))}
               </div>
             </div>
           )}
+
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {msg.role === 'user' ? (
+                <div className="max-w-[75%] bg-violet-600 text-white px-4 py-2.5 rounded-2xl rounded-br-sm">
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                </div>
+              ) : msg.isLyrics ? (
+                <div className="max-w-[85%] w-full rounded-2xl rounded-bl-sm border border-white/5 bg-white/[0.02] overflow-hidden">
+                  <div className="px-4 py-2 border-b border-white/5 flex items-center gap-2">
+                    <MusicalNoteIcon className="w-3.5 h-3.5 text-violet-400" />
+                    <span className="text-[11px] font-medium text-zinc-500">Lyrics</span>
+                  </div>
+                  <div className="p-5">
+                    <pre className="whitespace-pre-wrap font-mono text-sm text-zinc-300 leading-relaxed">{msg.content}</pre>
+                    {isGenerating && (
+                      <span className="inline-block w-1.5 h-4 align-middle ml-1 bg-violet-400/70 animate-pulse" />
+                    )}
+                  </div>
+                  {!isGenerating && msg.content && (
+                    <div className="px-4 py-2 border-t border-white/5 flex items-center gap-1">
+                      <button onClick={() => handleCopy(msg.content)} className="p-1.5 text-zinc-600 hover:text-violet-400 transition-colors rounded-md hover:bg-white/5 cursor-pointer" title="Copy">
+                        <ClipboardDocumentIcon className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDownload(msg.content)} className="p-1.5 text-zinc-600 hover:text-emerald-400 transition-colors rounded-md hover:bg-white/5 cursor-pointer" title="Download">
+                        <DocumentArrowDownIcon className="w-4 h-4" />
+                      </button>
+                      {generationResult?.generationId && (
+                        <button
+                          onClick={handleToggleFavorite}
+                          disabled={isTogglingFavorite}
+                          className="p-1.5 text-zinc-600 hover:text-rose-400 transition-colors rounded-md hover:bg-white/5 cursor-pointer"
+                          title={generationResult.isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          {generationResult.isFavorited ? (
+                            <HeartIconSolid className="w-4 h-4 text-rose-400" />
+                          ) : (
+                            <HeartIcon className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                      <button onClick={handleRegenerate} className="p-1.5 text-zinc-600 hover:text-cyan-400 transition-colors rounded-md hover:bg-white/5 cursor-pointer" title="Regenerate">
+                        <ArrowPathIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="max-w-[75%] bg-white/[0.04] text-zinc-300 px-4 py-2.5 rounded-2xl rounded-bl-sm border border-white/5">
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isGenerating && !messages.some(m => m.isLyrics && m.role === 'assistant') && (
+            <div className="flex justify-start">
+              <div className="bg-white/[0.04] px-4 py-3 rounded-2xl rounded-bl-sm border border-white/5">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse" />
+                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse [animation-delay:0.2s]" />
+                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse [animation-delay:0.4s]" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Input area */}
+        <div className="border-t border-white/5 py-4">
+          <div className="flex items-end gap-2">
+            <div className="flex-1 relative">
+              <textarea
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Describe the lyrics you want..."
+                rows={1}
+                className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 resize-none transition-colors"
+                style={{ minHeight: '44px', maxHeight: '120px' }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = '44px';
+                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+                }}
+              />
+            </div>
+            {isGenerating ? (
+              <button
+                onClick={handleStop}
+                className="shrink-0 w-11 h-11 flex items-center justify-center bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 rounded-xl transition-colors cursor-pointer"
+              >
+                <StopCircleIcon className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => handleSend()}
+                disabled={!inputValue.trim()}
+                className="shrink-0 w-11 h-11 flex items-center justify-center bg-violet-600 hover:bg-violet-500 disabled:bg-white/5 disabled:text-zinc-600 text-white rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+              >
+                <PaperAirplaneIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <p className="text-[10px] text-zinc-700 mt-2 text-center">
+            AI-generated content may vary. Review before use.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- 页面壳 ---------- */
-export default function GeneratePage() {
-  return (
-    <GenerateForm />
-  );
-}
+export default GenerateAgentPage;

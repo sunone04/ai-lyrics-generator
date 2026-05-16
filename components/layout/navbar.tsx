@@ -4,23 +4,21 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NAVIGATION_ITEMS, BLOG_CATEGORIES } from '@/lib/constants';
-import { 
-  Bars3Icon, 
-  XMarkIcon, 
+import {
+  Bars3Icon,
+  XMarkIcon,
   ChevronDownIcon,
   SparklesIcon,
   PencilIcon,
-  LanguageIcon,
+  ChatBubbleLeftRightIcon,
   StarIcon,
-  UserIcon
 } from '@heroicons/react/24/outline';
 import { useOptionalAuth, hasAuthHintCookie } from '@/lib/contexts/auth-context';
 import { useTrial } from '@/lib/hooks/use-trial';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isBlogDropdownOpen, setIsBlogDropdownOpen] = useState(false);
-  const [isGenerateDropdownOpen, setIsGenerateDropdownOpen] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [authHint, setAuthHint] = useState(false);
   const router = useRouter();
@@ -28,329 +26,215 @@ export default function Navbar() {
   const user = auth?.user || null;
   const profile = auth?.profile || null;
   const loading = !!auth?.loading;
-  // Prefer trial state from useTrial (immediate UI update post-activation),
-  // fallback to profile-derived value if hook not yet loaded.
   const { isInTrial: trialHookInTrial } = useTrial();
   const profileDerivedTrial = !!(profile?.trial_end_date && new Date(profile.trial_end_date) > new Date() && profile?.status !== 'active');
   const isInTrial = !!(trialHookInTrial || profileDerivedTrial);
+  const isPro = profile?.status === 'active';
 
-  // Avoid hydration mismatch; detect cookie only on client
   useEffect(() => {
     setMounted(true);
     try { setAuthHint(hasAuthHintCookie()); } catch { setAuthHint(false); }
   }, []);
 
-  const handleSignIn = () => {
-    router.push('/auth/signin');
-  };
-
-  // Sign out action is handled on the Account page
-
-  // 从profile中获取订阅状态
-  const isPro = profile?.status === 'active';
-
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" prefetch={false} className="flex items-center">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">AI</span>
-                </div>
-                <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  AI Lyrics Generator
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-8">
-              {NAVIGATION_ITEMS.map((item) => {
-                if (item.name === 'Generate') {
-                  return (
-                    <div key={item.name} className="relative">
-                      <div
-                        onMouseEnter={() => setIsGenerateDropdownOpen(true)}
-                        onMouseLeave={() => setIsGenerateDropdownOpen(false)}
-                      >
-                        <Link
-                          href="/generate"
-                          prefetch={false}
-                          className="text-gray-700 hover:text-blue-600 px-4 py-3 text-base font-medium flex items-center"
-                        >
-                          {item.name}
-                          <ChevronDownIcon className="ml-1 h-4 w-4" />
-                        </Link>
-                        {isGenerateDropdownOpen && (
-                          <div className="absolute left-0 mt-0 w-52 bg-white rounded-xl shadow-xl ring-1 ring-gray-200 z-50">
-                            <div className="py-3">
-                              <Link
-                                href="/generate"
-                                prefetch={false}
-                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-blue-700 transition-all duration-200 rounded-lg mx-2"
-                              >
-                                <SparklesIcon className="w-4 h-4 mr-3 text-blue-500" />
-                                Generate Lyrics
-                              </Link>
-                              <Link
-                                href="/edit"
-                                prefetch={false}
-                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700 transition-all duration-200 rounded-lg mx-2"
-                              >
-                                <PencilIcon className="w-4 h-4 mr-3 text-purple-500" />
-                                Polish Lyrics
-                              </Link>
-                              <Link
-                                href="/dashboard"
-                                prefetch={false}
-                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700 transition-all duration-200 rounded-lg mx-2"
-                              >
-                                <LanguageIcon className="w-4 h-4 mr-3 text-indigo-500" />
-                                Dashboard
-                              </Link>
-                              <Link
-                                href="/personal-style"
-                                prefetch={false}
-                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 hover:text-green-700 transition-all duration-200 rounded-lg mx-2"
-                              >
-                                <StarIcon className="w-4 h-4 mr-3 text-green-500" />
-                                Personal Style
-                              </Link>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (item.name === 'Blog') {
-                  return (
-                    <div key={item.name} className="relative">
-                      <div
-                        onMouseEnter={() => setIsBlogDropdownOpen(true)}
-                        onMouseLeave={() => setIsBlogDropdownOpen(false)}
-                      >
-                        <Link
-                          href="/blog"
-                          className="text-gray-700 hover:text-blue-600 px-4 py-3 text-base font-medium flex items-center"
-                        >
-                          {item.name}
-                          <ChevronDownIcon className="ml-1 h-4 w-4" />
-                        </Link>
-                        {isBlogDropdownOpen && (
-                          <div className="absolute left-0 mt-0 w-60 bg-white rounded-xl shadow-xl ring-1 ring-gray-200 z-50">
-                            <div className="py-3">
-                              <Link
-                                href="/blog"
-                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700 transition-all duration-200 rounded-lg mx-2 font-medium"
-                              >
-                                📚 All Articles
-                              </Link>
-                              <div className="border-t border-gray-100 my-2 mx-4"></div>
-                              {BLOG_CATEGORIES.map((category) => (
-                                <Link
-                                  key={category.slug}
-                                  href={`/blog/category/${category.slug}`}
-                                  className="block px-4 py-2 text-sm text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 hover:text-gray-800 transition-all duration-200 rounded-lg mx-2"
-                                >
-                                  {category.name}
-                                </Link>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="text-gray-700 hover:text-blue-600 px-4 py-3 text-base font-medium"
-                  >
-                    {item.name}
-                  </Link>
-                );
-              })}
+    <nav className="fixed top-0 inset-x-0 z-50 glass">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex items-center justify-between h-14">
+          <Link href="/" prefetch={false} className="flex items-center gap-2 group">
+            <div className="w-7 h-7 rounded-md bg-violet-600 flex items-center justify-center group-hover:bg-violet-500 transition-colors">
+              <SparklesIcon className="w-3.5 h-3.5 text-white" />
             </div>
-          </div>
+            <span className="text-sm font-semibold text-white tracking-tight">
+              Lyrica
+            </span>
+          </Link>
 
-          {/* User Menu */}
-          <div className="hidden md:block">
-            <div className="ml-4 flex items-center md:ml-6">
-              {/* Loading/skeleton state: if we likely have a session (hint cookie) but auth is hydrating */}
-              {(!mounted || (loading && authHint)) ? (
-                <div className="flex items-center gap-3">
-                  {/* Badge skeleton */}
-                  <div className="h-7 w-16 bg-gray-100 rounded-full animate-pulse" aria-hidden />
-                  {/* Account button skeleton */}
-                  <div className="h-9 w-28 bg-gray-200 rounded-full animate-pulse" aria-hidden />
-                </div>
-              ) : user ? (
-                <div className="flex items-center gap-3">
-                  {/* Subscription Status Badge */}
-                  <div className="flex items-center gap-2">
-                    {isPro ? (
-                      <div className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-md">
-                        <StarIcon className="w-3.5 h-3.5" />
-                        <span>PRO</span>
-                      </div>
-                    ) : isInTrial ? (
-                      <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-xs font-medium">
-                        <UserIcon className="w-3.5 h-3.5" />
-                        <span>TRIAL</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full text-xs font-medium">
-                        <UserIcon className="w-3.5 h-3.5" />
-                        <span>FREE</span>
+          <div className="hidden md:flex items-center gap-0.5">
+            {NAVIGATION_ITEMS.map((item) => {
+              if (item.name === 'Generate') {
+                return (
+                  <div
+                    key={item.name}
+                    className="relative"
+                    onMouseEnter={() => setHoveredItem('generate')}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <Link
+                      href="/generate"
+                      prefetch={false}
+                      className="text-zinc-400 hover:text-white px-3 py-1.5 text-[13px] font-medium transition-colors flex items-center gap-1"
+                    >
+                      {item.name}
+                      <ChevronDownIcon className="h-3 w-3" />
+                    </Link>
+                    {hoveredItem === 'generate' && (
+                      <div className="absolute left-0 top-full pt-2">
+                        <div className="w-48 py-1.5 rounded-xl glass-strong shadow-2xl">
+                          <Link href="/generate" prefetch={false}
+                            className="flex items-center px-3.5 py-2 text-[13px] text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 mr-2.5 text-violet-400" />
+                            AI Agent
+                          </Link>
+                          <Link href="/edit" prefetch={false}
+                            className="flex items-center px-3.5 py-2 text-[13px] text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <PencilIcon className="w-3.5 h-3.5 mr-2.5 text-cyan-400" />
+                            Lyrics Editor
+                          </Link>
+                          <Link href="/dashboard" prefetch={false}
+                            className="flex items-center px-3.5 py-2 text-[13px] text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <SparklesIcon className="w-3.5 h-3.5 mr-2.5 text-amber-400" />
+                            Dashboard
+                          </Link>
+                          <Link href="/personal-style" prefetch={false}
+                            className="flex items-center px-3.5 py-2 text-[13px] text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <StarIcon className="w-3.5 h-3.5 mr-2.5 text-emerald-400" />
+                            Personal Style
+                          </Link>
+                        </div>
                       </div>
                     )}
                   </div>
-                  
-                  {/* Account Button */}
-                  <Link
-                    href="/account"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer flex items-center gap-2"
+                );
+              }
+
+              if (item.name === 'Blog') {
+                return (
+                  <div
+                    key={item.name}
+                    className="relative"
+                    onMouseEnter={() => setHoveredItem('blog')}
+                    onMouseLeave={() => setHoveredItem(null)}
                   >
-                    <span>Account</span>
-                    {user.email && (
-                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{user.email.split('@')[0]}</span>
+                    <Link
+                      href="/blog"
+                      className="text-zinc-400 hover:text-white px-3 py-1.5 text-[13px] font-medium transition-colors flex items-center gap-1"
+                    >
+                      {item.name}
+                      <ChevronDownIcon className="h-3 w-3" />
+                    </Link>
+                    {hoveredItem === 'blog' && (
+                      <div className="absolute left-0 top-full pt-2">
+                        <div className="w-52 py-1.5 rounded-xl glass-strong shadow-2xl">
+                          <Link href="/blog"
+                            className="flex items-center px-3.5 py-2 text-[13px] font-medium text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            All Articles
+                          </Link>
+                          <div className="h-px bg-white/5 my-1 mx-3" />
+                          {BLOG_CATEGORIES.slice(0, 5).map((category) => (
+                            <Link key={category.slug} href={`/blog/category/${category.slug}`}
+                              className="block px-3.5 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+                            >
+                              {category.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                  </Link>
-                </div>
-              ) : (
-                <button
-                  onClick={handleSignIn}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer"
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="text-zinc-400 hover:text-white px-3 py-1.5 text-[13px] font-medium transition-colors"
                 >
-                  Sign In
-                </button>
-              )}
-            </div>
+                  {item.name}
+                </Link>
+              );
+            })}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-blue-600 p-2 cursor-pointer"
-            >
-              {isMenuOpen ? (
-                <XMarkIcon className="h-6 w-6" />
-              ) : (
-                <Bars3Icon className="h-6 w-6" />
-              )}
-            </button>
+          <div className="hidden md:flex items-center gap-3">
+            {(!mounted || (loading && authHint)) ? (
+              <div className="h-7 w-20 bg-white/5 rounded-md animate-pulse" />
+            ) : user ? (
+              <>
+                {isPro ? (
+                  <span className="text-[11px] font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
+                    PRO
+                  </span>
+                ) : isInTrial ? (
+                  <span className="text-[11px] font-medium text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded">
+                    TRIAL
+                  </span>
+                ) : null}
+                <Link
+                  href="/account"
+                  className="text-[13px] font-medium text-zinc-400 hover:text-white px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors"
+                >
+                  Account
+                </Link>
+              </>
+            ) : (
+              <button
+                onClick={() => router.push('/auth/signin')}
+                className="text-[13px] font-medium text-white bg-violet-600 hover:bg-violet-500 px-4 py-1.5 rounded-md transition-colors cursor-pointer"
+              >
+                Sign In
+              </button>
+            )}
           </div>
+
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden text-zinc-400 hover:text-white p-1 cursor-pointer"
+          >
+            {isMenuOpen ? <XMarkIcon className="h-5 w-5" /> : <Bars3Icon className="h-5 w-5" />}
+          </button>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
+        <div className="md:hidden border-t border-white/5 bg-zinc-950/95 backdrop-blur-xl">
+          <div className="px-4 py-3 space-y-0.5">
             {NAVIGATION_ITEMS.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                prefetch={false}
-                className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium"
+              <Link key={item.name} href={item.href} prefetch={false}
+                className="text-zinc-400 hover:text-white block px-3 py-2 text-sm transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 {item.name}
               </Link>
             ))}
-
-            {/* Generate Tools for Mobile */}
-            <div className="pl-4">
-              <div className="text-gray-500 text-sm font-medium mb-2">Tools</div>
-              <Link
-                href="/edit"
-                prefetch={false}
-                className="flex items-center text-gray-600 hover:text-purple-600 px-3 py-2 text-sm"
+            <div className="border-t border-white/5 mt-2 pt-2 space-y-0.5">
+              <Link href="/edit" prefetch={false}
+                className="flex items-center text-zinc-500 hover:text-zinc-300 px-3 py-2 text-sm transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <PencilIcon className="w-4 h-4 mr-2 text-purple-500" />
-                Polish Lyrics
+                <PencilIcon className="w-3.5 h-3.5 mr-2" /> Lyrics Editor
               </Link>
-              <Link
-                href="/dashboard"
-                prefetch={false}
-                className="flex items-center text-gray-600 hover:text-blue-600 px-3 py-2 text-sm"
+              <Link href="/dashboard" prefetch={false}
+                className="flex items-center text-zinc-500 hover:text-zinc-300 px-3 py-2 text-sm transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <LanguageIcon className="w-4 h-4 mr-2 text-indigo-500" />
-                Dashboard
+                <SparklesIcon className="w-3.5 h-3.5 mr-2" /> Dashboard
               </Link>
-              <Link
-                href="/personal-style"
-                prefetch={false}
-                className="flex items-center text-gray-600 hover:text-green-600 px-3 py-2 text-sm"
+              <Link href="/personal-style" prefetch={false}
+                className="flex items-center text-zinc-500 hover:text-zinc-300 px-3 py-2 text-sm transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <StarIcon className="w-4 h-4 mr-2 text-green-500" />
-                Personal Style
+                <StarIcon className="w-3.5 h-3.5 mr-2" /> Personal Style
               </Link>
             </div>
-
-            {/* Mobile: keep blog simple; no categories list */}
-
-            {/* User actions for mobile */}
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-white/5 mt-2 pt-3">
               {(!mounted || (loading && authHint)) ? (
-                <div className="space-y-2">
-                  <div className="px-3">
-                    <div className="h-8 w-36 bg-gray-100 rounded-full animate-pulse" aria-hidden />
-                  </div>
-                  <div className="h-10 w-full bg-gray-200 rounded-md animate-pulse" aria-hidden />
-                </div>
+                <div className="h-9 bg-white/5 rounded-md animate-pulse" />
               ) : user ? (
-                <div className="space-y-2">
-                  {/* Subscription Status Badge */}
-                  <div className="px-3">
-                    {isPro ? (
-                      <div className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-2 rounded-full text-sm font-medium shadow-md w-fit">
-                        <StarIcon className="w-4 h-4" />
-                        <span>PRO MEMBER</span>
-                      </div>
-                    ) : isInTrial ? (
-                      <div className="flex items-center gap-1.5 bg-orange-100 text-orange-700 px-3 py-2 rounded-full text-sm font-medium w-fit">
-                        <UserIcon className="w-4 h-4" />
-                        <span>TRIAL MEMBER</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 bg-gray-100 text-gray-600 px-3 py-2 rounded-full text-sm font-medium w-fit">
-                        <UserIcon className="w-4 h-4" />
-                        <span>FREE MEMBER</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <Link
-                    href="/account"
-                    prefetch={false}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 cursor-pointer"
-                  >
-                    Account
-                  </Link>
-                </div>
+                <Link href="/account" prefetch={false}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block text-center text-sm font-medium text-white bg-violet-600 hover:bg-violet-500 px-3 py-2.5 rounded-md transition-colors"
+                >
+                  Account
+                </Link>
               ) : (
-                <button
-                  onClick={() => {
-                    handleSignIn();
-                    setIsMenuOpen(false);
-                  }}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white block px-3 py-2 text-base font-medium w-full text-center rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 cursor-pointer"
+                <button onClick={() => { router.push('/auth/signin'); setIsMenuOpen(false); }}
+                  className="w-full text-sm font-medium text-white bg-violet-600 hover:bg-violet-500 px-3 py-2.5 rounded-md transition-colors cursor-pointer"
                 >
                   Sign In
                 </button>

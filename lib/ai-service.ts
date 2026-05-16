@@ -1,4 +1,4 @@
-﻿import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { LyricsGenerationParams, PersonalStyle } from './types';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
@@ -19,7 +19,7 @@ const NETWORK_SOFT_TIMEOUT_MS: number = parseInt(process.env.AI_NETWORK_SOFT_TIM
 const MAX_OUTPUT_TOKENS: number = parseInt(process.env.AI_MAX_OUTPUT_TOKENS || '8192');
 
 export class AIService {
-  private getModel(modelType: 'basic' | 'pro', isRegeneration: boolean = false) {
+  getModel(modelType: 'basic' | 'pro', isRegeneration: boolean = false) {
     // Per requirement: strictly use Gemini 2.5 models
     const modelName = modelType === 'pro' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
 
