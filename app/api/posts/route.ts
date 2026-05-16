@@ -5,7 +5,6 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    // 检查管理员session cookie
     const cookieStore = await cookies();
     const adminSession = cookieStore.get('admin_session');
     
@@ -16,10 +15,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse request body
     const { title, content, slug, seo_title, meta_description, category_id, status, published_at } = await request.json();
 
-    // Validate required fields
     if (!title || !content || !slug || !category_id) {
       return NextResponse.json(
         { error: 'Title, content, slug, and category are required' },
@@ -27,8 +24,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert post using admin client (service role)
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     const { data: post, error: dbError } = await adminClient
       .from('posts')
       .insert({
@@ -52,7 +51,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 低成本按需刷新（通过内部API，避免在函数内做大量工作）
     try {
       if (post.status === 'published') {
         const payloads: { path: string }[] = [
@@ -62,14 +60,16 @@ export async function POST(request: NextRequest) {
 
         if (post.slug) payloads.push({ path: `/blog/${post.slug}` });
 
-        // 查询分类 slug 以刷新分类页
         try {
-          const { data: cat } = await createAdminClient()
-            .from('categories')
-            .select('slug')
-            .eq('id', post.category_id)
-            .single();
-          if (cat?.slug) payloads.push({ path: `/blog/category/${cat.slug}` });
+          const catClient = createAdminClient();
+          if (catClient) {
+            const { data: cat } = await catClient
+              .from('categories')
+              .select('slug')
+              .eq('id', post.category_id)
+              .single();
+            if (cat?.slug) payloads.push({ path: `/blog/category/${cat.slug}` });
+          }
         } catch {}
 
         await Promise.all(
@@ -103,10 +103,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(_request: NextRequest) {
   try {
-    // Create admin client for database operations
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
-    // Get all posts with category information
     const { data: posts, error } = await adminClient
       .from('posts')
       .select(`

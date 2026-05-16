@@ -9,10 +9,11 @@ export async function GET(
 ) {
   const { id } = await context.params;
   try {
-    // Create admin client for database operations
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
-    // Get post by ID with category information
     const { data: post, error } = await adminClient
       .from('posts')
       .select(`
@@ -56,7 +57,6 @@ export async function PATCH(
 ) {
   const { id } = await context.params;
   try {
-    // 检查管理员session cookie
     const cookieStore = await cookies();
     const adminSession = cookieStore.get('admin_session');
     
@@ -67,10 +67,8 @@ export async function PATCH(
       );
     }
 
-    // Parse request body
     const { title, content, slug, seo_title, meta_description, category_id, status, published_at } = await request.json();
 
-    // Validate required fields
     if (!title || !content || !slug || !category_id) {
       return NextResponse.json(
         { error: 'Title, content, slug, and category are required' },
@@ -78,8 +76,10 @@ export async function PATCH(
       );
     }
 
-    // Update post using admin client (service role)
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     const { data: post, error: dbError } = await adminClient
       .from('posts')
       .update({
@@ -105,7 +105,6 @@ export async function PATCH(
       );
     }
 
-    // 按需刷新静态页面（首页列表、文章页、分类页、站点地图）
     try {
       const payloads: { path: string }[] = [
         { path: '/blog' },
@@ -116,16 +115,18 @@ export async function PATCH(
         payloads.push({ path: `/blog/${post.slug}` });
       }
 
-      // 获取分类 slug，用于刷新分类页
       if (post?.category_id) {
         try {
-          const { data: cat } = await createAdminClient()
-            .from('categories')
-            .select('slug')
-            .eq('id', post.category_id)
-            .single();
-          if (cat?.slug) {
-            payloads.push({ path: `/blog/category/${cat.slug}` });
+          const catClient = createAdminClient();
+          if (catClient) {
+            const { data: cat } = await catClient
+              .from('categories')
+              .select('slug')
+              .eq('id', post.category_id)
+              .single();
+            if (cat?.slug) {
+              payloads.push({ path: `/blog/category/${cat.slug}` });
+            }
           }
         } catch {}
       }
@@ -138,7 +139,6 @@ export async function PATCH(
         }))
       );
     } catch (error) {
-      // 按需刷新失败不影响主流程
       console.error('Failed to revalidate cache:', error);
     }
 
@@ -163,7 +163,6 @@ export async function DELETE(
 ) {
   const { id } = await context.params;
   try {
-    // 检查管理员session cookie
     const cookieStore = await cookies();
     const adminSession = cookieStore.get('admin_session');
     
@@ -174,8 +173,10 @@ export async function DELETE(
       );
     }
     
-    // Delete post using admin client (先查询 slug 与分类，便于刷新)
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     const { data: toDelete } = await adminClient
       .from('posts')
       .select('slug, category_id')
@@ -195,7 +196,6 @@ export async function DELETE(
       );
     }
 
-    // 删除后触发按需刷新
     try {
       const payloads: { path: string }[] = [
         { path: '/blog' },

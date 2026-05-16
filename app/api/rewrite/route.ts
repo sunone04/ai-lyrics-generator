@@ -5,6 +5,9 @@ import { aiService } from '@/lib/ai-service';
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     // Get user from session
     const { data: { user }, error: userError } = await supabase.auth.getUser();

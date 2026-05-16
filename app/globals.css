@@ -126,7 +126,13 @@ select {
   -webkit-text-fill-color: transparent;
   font-weight: bold;
   display: inline-block;
+  padding-bottom: 0.08em;
   animation: gradientFlow 4s ease-in-out infinite;
+}
+
+.descender-fix {
+  overflow: visible;
+  line-height: 1.15;
 }
 
 @keyframes gradientFlow {

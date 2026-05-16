@@ -5,6 +5,9 @@ import { LyricsGenerationParams } from '@/lib/types';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     // Get user from session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -48,6 +51,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     // Get user from session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -130,6 +136,9 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     // Get user from session
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -182,6 +191,9 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     // Get user from session
     const { data: { user }, error: userError } = await supabase.auth.getUser();

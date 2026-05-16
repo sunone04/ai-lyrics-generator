@@ -7,6 +7,9 @@ export async function GET(
 ) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     const { id } = await context.params;
     
@@ -43,6 +46,9 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     const { id } = await context.params;
     
@@ -107,6 +113,9 @@ export async function PATCH(
     }
 
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

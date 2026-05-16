@@ -25,9 +25,12 @@ async function safeCookieSetAll(cookiesToSet: { name: string; value: string; opt
 }
 
 export function createServerComponentClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll: safeCookieGetAll,
@@ -42,9 +45,8 @@ export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
-    throw new Error('Missing Supabase env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    return null;
   }
-  // Important: use supabase-js directly (no cookies) so Authorization uses service role
   return createServiceClient(url, serviceKey, {
     auth: {
       persistSession: false,
@@ -56,6 +58,7 @@ export function createAdminClient() {
 export async function getServerSession() {
   try {
     const supabase = createServerComponentClient();
+    if (!supabase) return null;
     const { data: { session } } = await supabase.auth.getSession();
     return session;
   } catch (error) {
@@ -67,6 +70,7 @@ export async function getServerSession() {
 export async function getServerUser() {
   try {
     const supabase = createServerComponentClient();
+    if (!supabase) return null;
     const { data: { user } } = await supabase.auth.getUser();
     return user;
   } catch (error) {

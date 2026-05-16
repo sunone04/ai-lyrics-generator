@@ -9,10 +9,11 @@ export async function GET(
 ) {
   const { id } = await context.params;
   try {
-    // Create admin client for database operations
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     
-    // Get category by ID
     const { data: category, error } = await adminClient
       .from('categories')
       .select('*')
@@ -48,7 +49,6 @@ export async function PATCH(
 ) {
   const { id } = await context.params;
   try {
-    // 检查管理员session cookie
     const cookieStore = await cookies();
     const adminSession = cookieStore.get('admin_session');
     
@@ -59,10 +59,8 @@ export async function PATCH(
       );
     }
 
-    // Parse request body
     const { name, slug, seo_title, meta_description, is_active } = await request.json();
 
-    // Validate required fields
     if (!name || !slug) {
       return NextResponse.json(
         { error: 'Name and slug are required' },
@@ -70,8 +68,10 @@ export async function PATCH(
       );
     }
 
-    // Update category using admin client
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     const { data: category, error: dbError } = await adminClient
       .from('categories')
       .update({
@@ -94,7 +94,6 @@ export async function PATCH(
       );
     }
 
-    // Clear blog cache after update
     try {
       await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
         method: 'POST',
@@ -102,7 +101,6 @@ export async function PATCH(
         body: JSON.stringify({ path: '/blog' })
       });
     } catch (error) {
-      // Cache revalidation failed, but don't fail the request
       console.error('Failed to revalidate cache:', error);
     }
 
@@ -127,7 +125,6 @@ export async function DELETE(
 ) {
   const { id } = await context.params;
   try {
-    // 检查管理员session cookie
     const cookieStore = await cookies();
     const adminSession = cookieStore.get('admin_session');
     
@@ -138,8 +135,10 @@ export async function DELETE(
       );
     }
     
-    // Delete category using admin client
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     const { error: dbError } = await adminClient
       .from('categories')
       .delete()
@@ -153,11 +152,9 @@ export async function DELETE(
       );
     }
 
-    // Clear cache and revalidate
     try {
       await cacheService.clearCategoryCache(parseInt(id));
       
-      // Trigger ISR invalidation
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
           method: 'POST',

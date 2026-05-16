@@ -5,6 +5,9 @@ import { PersonalStyleFormData } from '@/lib/types';
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Service unavailable' }, { status: 503 });
+    }
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -64,6 +67,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Service unavailable' }, { status: 503 });
+    }
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

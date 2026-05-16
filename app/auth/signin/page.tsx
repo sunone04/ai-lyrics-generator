@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { LoadingButton } from '@/components/ui/loading';
@@ -10,7 +10,6 @@ import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { createClient } from '@/lib/supabase';
 
-// 独立的组件来处理 useSearchParams
 function SignInContent() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo');
@@ -21,7 +20,6 @@ function SignInContent() {
   return <SignInForm returnTo={returnTo} initialError={{ error, reason }} initialMode={signup ? 'signup' : 'signin'} />;
 }
 
-// Main sign-in form component
 function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string | null; initialError: { error: string | null; reason: string | null }, initialMode?: 'signup' | 'signin' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,10 +32,8 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const router = useRouter();
   
-  // Supabase client
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  // Show message based on callback error (logs reason for developers)
   useEffect(() => {
     if (initialError?.error) {
       const map: Record<string, string> = {
@@ -48,18 +44,15 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
       const display = map[initialError.error] || 'Sign in failed. Please try again.';
       setErrors({ general: display });
       if (initialError.reason) {
-        // See console for details in development
         console.warn('[Auth Callback] reason=', decodeURIComponent(initialError.reason));
       }
     }
   }, [initialError]);
 
-  // Clear errors
   const clearErrors = () => {
     setErrors({});
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors: {email?: string; password?: string} = {};
     
@@ -93,7 +86,6 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
 
     setIsLoading(true);
 
-    // Timeout guard to avoid endless spinner
     let timeoutId: any;
     const startTimeoutGuard = () => {
       timeoutId = setTimeout(() => {
@@ -107,6 +99,10 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
       startTimeoutGuard();
 
       if (isSignUp) {
+        if (!supabase) {
+          setErrors({ general: 'Service unavailable' });
+          return;
+        }
         const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
         const { error } = await supabase.auth.signUp({
           email,
@@ -123,7 +119,6 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
           toast.success('Registration successful. Please check your email for a confirmation link.');
         }
       } else {
-        // 改为调用服务端 API，服务端写入 HttpOnly Cookie，符合 SaaS 规范
         const res = await fetch('/api/auth/signin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -134,7 +129,6 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
           setErrors({ general: result?.error || 'Sign in failed' });
         } else {
           toast.success('Signed in successfully');
-          // 强制整页刷新以便 AuthProvider 从服务端 Cookie 重新获取用户
           window.location.href = returnTo ? decodeURIComponent(returnTo) : '/';
         }
       }
@@ -151,12 +145,17 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
     setIsGoogleLoading(true);
     clearErrors();
     
+    if (!supabase) {
+      setErrors({ general: 'Service unavailable' });
+      setIsGoogleLoading(false);
+      return;
+    }
+    
     try {
       const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Use configured site origin to avoid www/apex mismatch
           redirectTo: `${siteOrigin}/auth/callback${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`,
           queryParams: { prompt: 'select_account' },
         },
@@ -167,7 +166,6 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
         window.location.href = data.url;
       }
     } catch (error: any) {
-      // 结构化错误日志：意外异常
       try {
         console.error('[Auth] Google sign-in unexpected error', {
           message: error?.message,
@@ -182,7 +180,6 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
     }
   };
 
-  // Resend confirmation email
   const resendConfirmation = async () => {
     if (!email) {
       setErrors({ email: 'Please enter your email address' });
@@ -191,6 +188,12 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
 
     setIsLoading(true);
     clearErrors();
+
+    if (!supabase) {
+      setErrors({ general: 'Service unavailable' });
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
@@ -213,7 +216,6 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
     }
   };
 
-  // Toggle sign-up / sign-in mode
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     clearErrors();
@@ -222,28 +224,27 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen noise-bg py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Breadcrumbs />
         
         <div className="max-w-md mx-auto mt-8">
-          <div className="bg-white py-8 px-6 shadow rounded-lg">
-            {/* 注册成功状态 */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] py-8 px-6 shadow-2xl shadow-black/40">
             {registrationSuccess ? (
               <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                  <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-emerald-500/10 mb-4">
+                  <CheckCircleIcon className="h-6 w-6 text-emerald-400" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                  📧 Check Your Email
+                <h1 className="text-2xl font-bold text-white mb-4">
+                  Check Your Email
                 </h1>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <p className="text-gray-700 mb-3">
-                    We've sent a confirmation link to:
+                <div className="rounded-lg border border-violet-500/20 bg-violet-600/5 p-4 mb-6">
+                  <p className="text-zinc-400 mb-3">
+                    We&apos;ve sent a confirmation link to:
                   </p>
-                  <p className="font-semibold text-blue-800 text-lg mb-3">{email}</p>
-                  <div className="text-sm text-gray-600 space-y-2">
-                    <p>📍 <strong>Next steps:</strong></p>
+                  <p className="font-semibold text-violet-400 text-lg mb-3">{email}</p>
+                  <div className="text-sm text-zinc-500 space-y-2">
+                    <p className="text-zinc-300 font-medium">Next steps:</p>
                     <ol className="list-decimal list-inside space-y-1 text-left">
                       <li>Check your email inbox (and spam folder)</li>
                       <li>Click the confirmation link in the email</li>
@@ -252,9 +253,9 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                   </div>
                 </div>
                 
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Important:</strong> The confirmation link expires in <strong>24 hours</strong>. If you don't see the email within 5 minutes, check your spam folder or click "Resend Email" below.
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mb-6">
+                  <p className="text-sm text-amber-400">
+                    <strong className="text-amber-300">Important:</strong> The confirmation link expires in <strong>24 hours</strong>. If you don&apos;t see the email within 5 minutes, check your spam folder or click &ldquo;Resend Email&rdquo; below.
                   </p>
                 </div>
 
@@ -262,9 +263,9 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                   <LoadingButton
                     onClick={resendConfirmation}
                     isLoading={isLoading}
-                    className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium cursor-pointer"
+                    className="w-full bg-emerald-600 text-white py-2 px-4 rounded-lg hover:bg-emerald-500 focus:outline-none font-medium cursor-pointer transition-colors"
                   >
-                    📧 Resend Confirmation Email
+                    Resend Confirmation Email
                   </LoadingButton>
                   
                   <button
@@ -272,7 +273,7 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                       setRegistrationSuccess(false);
                       setIsSignUp(false);
                     }}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium cursor-pointer"
+                    className="w-full bg-violet-600 text-white py-2 px-4 rounded-lg hover:bg-violet-500 focus:outline-none font-medium cursor-pointer transition-colors"
                   >
                     Continue to Sign In
                   </button>
@@ -282,45 +283,44 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                       setRegistrationSuccess(false);
                       setEmail('');
                     }}
-                    className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium cursor-pointer"
+                    className="w-full bg-white/5 text-zinc-400 py-2 px-4 rounded-lg hover:bg-white/10 hover:text-white focus:outline-none font-medium cursor-pointer transition-colors"
                   >
                     Use Different Email
                   </button>
                 </div>
 
-                <div className="mt-6 text-xs text-gray-500">
-                  <p>💡 Tip: Add our email to your contacts to ensure delivery</p>
+                <div className="mt-6 text-xs text-zinc-600">
+                  <p>Tip: Add our email to your contacts to ensure delivery</p>
                 </div>
               </div>
             ) : (
               <>
                 <div className="text-center mb-8">
-                  <h1 className="text-3xl font-bold text-gray-900">
+                  <h1 className="text-3xl font-bold text-white">
                     {isSignUp ? 'Create Account' : 'Sign In'}
                   </h1>
-                  <p className="mt-2 text-gray-600">
+                  <p className="mt-2 text-zinc-500">
                     {isSignUp 
                       ? 'Start creating amazing lyrics today' 
-                      : 'Welcome back to AI Lyrics Generator'
+                      : 'Welcome back to Lyrica'
                     }
                   </p>
-                  <div className="mt-3 inline-block bg-green-50 text-green-700 border border-green-200 rounded-md px-3 py-2 text-sm">
-                    New users get a 3-day free trial membership (no credit card required)
+                  <div className="mt-3 inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg px-3 py-2 text-sm">
+                    3-day free trial · No credit card required
                   </div>
                 </div>
 
-                {/* 通用错误信息 */}
                 {errors.general && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+                  <div className="mb-6 p-4 rounded-lg border border-red-500/20 bg-red-500/5">
                     <div className="flex">
                       <ExclamationCircleIcon className="h-5 w-5 text-red-400 mr-2 mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-sm text-red-700">{errors.general}</p>
+                        <p className="text-sm text-red-400">{errors.general}</p>
                         {(errors.general.includes('already registered') || errors.general.includes('not be confirmed')) && (
                           <button
                             onClick={resendConfirmation}
                             disabled={isLoading || !email}
-                            className="mt-2 text-sm text-blue-600 hover:text-blue-500 font-medium disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
+                            className="mt-2 text-sm text-violet-400 hover:text-violet-300 font-medium disabled:text-zinc-600 disabled:cursor-not-allowed cursor-pointer"
                           >
                             Resend Confirmation Email
                           </button>
@@ -330,9 +330,9 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="email" className="block text-sm font-medium text-zinc-400 mb-1.5">
                       Email address
                     </label>
                     <input
@@ -345,23 +345,23 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                           setErrors(prev => ({ ...prev, email: undefined }));
                         }
                       }}
-                      className={`mt-1 block w-full px-4 py-3 text-gray-900 border rounded-md shadow-sm focus:outline-none text-base placeholder-gray-500 ${
+                      className={`block w-full px-4 py-3 text-white border rounded-lg bg-white/[0.03] focus:outline-none text-base placeholder-zinc-600 transition-colors ${
                         errors.email 
-                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                          ? 'border-red-500/40 focus:ring-1 focus:ring-red-500/40 focus:border-red-500/40' 
+                          : 'border-white/10 focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40'
                       }`}
                       placeholder="Enter your email"
                     />
                     {errors.email && (
-                      <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                      <p className="mt-1.5 text-sm text-red-400">{errors.email}</p>
                     )}
                   </div>
 
                   <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="password" className="block text-sm font-medium text-zinc-400 mb-1.5">
                       Password
                     </label>
-                    <div className="mt-1 relative">
+                    <div className="relative">
                       <input
                         id="password"
                         type={showPassword ? 'text' : 'password'}
@@ -372,10 +372,10 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                             setErrors(prev => ({ ...prev, password: undefined }));
                           }
                         }}
-                        className={`block w-full px-4 py-3 pr-12 text-gray-900 border rounded-md shadow-sm focus:outline-none text-base placeholder-gray-500 ${
+                        className={`block w-full px-4 py-3 pr-12 text-white border rounded-lg bg-white/[0.03] focus:outline-none text-base placeholder-zinc-600 transition-colors ${
                           errors.password 
-                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                            ? 'border-red-500/40 focus:ring-1 focus:ring-red-500/40 focus:border-red-500/40' 
+                            : 'border-white/10 focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40'
                         }`}
                         placeholder="Enter your password"
                         minLength={6}
@@ -383,20 +383,20 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
                       >
                         {showPassword ? (
-                          <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                          <EyeSlashIcon className="h-5 w-5 text-zinc-600 hover:text-zinc-400" />
                         ) : (
-                          <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                          <EyeIcon className="h-5 w-5 text-zinc-600 hover:text-zinc-400" />
                         )}
                       </button>
                     </div>
                     {errors.password && (
-                      <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                      <p className="mt-1.5 text-sm text-red-400">{errors.password}</p>
                     )}
                     {isSignUp && !errors.password && (
-                      <p className="mt-1 text-sm text-gray-500">
+                      <p className="mt-1.5 text-sm text-zinc-600">
                         Password must be at least 6 characters long
                       </p>
                     )}
@@ -404,7 +404,7 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
 
                   {isSignUp && (
                     <div>
-                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-400 mb-1.5">
                         Confirm Password
                       </label>
                       <input
@@ -412,10 +412,10 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                         type={showPassword ? 'text' : 'password'}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className={`block w-full mt-1 px-4 py-3 text-gray-900 border rounded-md shadow-sm focus:outline-none text-base placeholder-gray-500 ${
+                        className={`block w-full px-4 py-3 text-white border rounded-lg bg-white/[0.03] focus:outline-none text-base placeholder-zinc-600 transition-colors ${
                           errors.password 
-                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                            ? 'border-red-500/40 focus:ring-1 focus:ring-red-500/40 focus:border-red-500/40' 
+                            : 'border-white/10 focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40'
                         }`}
                         placeholder="Re-enter your password"
                         minLength={6}
@@ -426,7 +426,7 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                   <LoadingButton
                     type="submit"
                     isLoading={isLoading}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium cursor-pointer"
+                    className="w-full bg-violet-600 text-white py-3 px-4 rounded-lg hover:bg-violet-500 focus:outline-none font-medium cursor-pointer transition-colors shadow-lg shadow-violet-600/20"
                   >
                     {isSignUp ? 'Create Account' : 'Sign In'}
                   </LoadingButton>
@@ -435,17 +435,17 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                 <div className="mt-6">
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-300" />
+                      <div className="w-full border-t border-white/5" />
                     </div>
                     <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                      <span className="px-3 bg-[#0d0d0f] text-zinc-600">Or continue with</span>
                     </div>
                   </div>
 
                   <LoadingButton
                     onClick={handleGoogleSignIn}
                     isLoading={isGoogleLoading}
-                    className="mt-3 w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium flex items-center justify-center cursor-pointer"
+                    className="mt-3 w-full bg-white/5 border border-white/10 text-zinc-300 py-3 px-4 rounded-lg hover:bg-white/10 hover:text-white focus:outline-none font-medium flex items-center justify-center cursor-pointer transition-colors"
                   >
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -457,44 +457,12 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                   </LoadingButton>
                 </div>
 
-                <div className="mt-6 text-center">
-                  <button
-                    onClick={toggleMode}
-                    className="text-blue-600 hover:text-blue-500 font-medium cursor-pointer"
-                  >
-                    {isSignUp 
-                      ? 'Already have an account? Sign in' 
-                      : "Don't have an account? Sign up"
-                    }
-                  </button>
-                </div>
-
-                {/* User Help Section */}
-                <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">Need Help?</h3>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    {isSignUp ? (
-                      <>
-                        <p>Your account will be created immediately</p>
-                        <p>Check your email for confirmation</p>
-                        <p>Free tier includes 1 lyric per day</p>
-                      </>
-                    ) : (
-                      <>
-                        <p>Use the email you signed up with</p>
-                        <p>Can't sign in? Try resetting your password</p>
-                        <p>Need help? Contact our support team</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-
                 {!isSignUp && (
                   <div className="mt-4 text-center space-y-2">
                     <div>
                       <Link
                         href="/auth/reset-password"
-                        className="text-sm text-blue-600 hover:text-blue-500"
+                        className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
                       >
                         Forgot your password?
                       </Link>
@@ -503,13 +471,25 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
                       <button
                         onClick={resendConfirmation}
                         disabled={isLoading || !email}
-                        className="text-sm text-gray-600 hover:text-gray-500 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
+                        className="text-sm text-zinc-600 hover:text-zinc-400 disabled:text-zinc-700 disabled:cursor-not-allowed cursor-pointer transition-colors"
                       >
                         Resend confirmation email
                       </button>
                     </div>
                   </div>
                 )}
+
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={toggleMode}
+                    className="text-violet-400 hover:text-violet-300 font-medium cursor-pointer transition-colors"
+                  >
+                    {isSignUp 
+                      ? 'Already have an account? Sign in' 
+                      : "Don't have an account? Sign up"
+                    }
+                  </button>
+                </div>
               </>
             )}
           </div>
@@ -519,16 +499,15 @@ function SignInForm({ returnTo, initialError, initialMode }: { returnTo: string 
   );
 }
 
-// 主导出组件，⽤ Suspense 包裹 useSearchParams
 export default function SignInPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen noise-bg flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Loading...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500 mx-auto"></div>
+              <p className="mt-2 text-zinc-500">Loading...</p>
             </div>
           </div>
         </div>

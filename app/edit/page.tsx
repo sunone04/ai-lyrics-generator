@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -11,7 +11,7 @@ import { useTrial } from '@/lib/hooks/use-trial';
 import { SparklesIcon, ClockIcon, PencilIcon, ClipboardDocumentIcon, DocumentArrowDownIcon, DocumentArrowUpIcon } from '@heroicons/react/24/outline';
 
 export default function EditPage() {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile } = useAuth();
   const { isInTrial } = useTrial();
   const router = useRouter();
 
@@ -20,7 +20,7 @@ export default function EditPage() {
   const [rewriteRequest, setRewriteRequest] = useState('');
   const [isRewriting, setIsRewriting] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioUrl,   setAudioUrl]   = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleTextSelection = () => {
@@ -124,28 +124,28 @@ export default function EditPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-12">
+    <div className="min-h-screen noise-bg py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Breadcrumbs />
 
         <div className="mt-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center px-4 py-2 bg-purple-100 rounded-full text-purple-800 text-sm font-medium mb-6">
+            <div className="inline-flex items-center px-4 py-2 bg-violet-500/10 rounded-full text-violet-400 text-sm font-medium mb-6">
               <PencilIcon className="w-4 h-4 mr-2" />
               Premium AI Lyrics Editor
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-6">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent mb-6">
               AI Lyrics Editor
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-6">
+            <p className="text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed mb-6">
               Edit and refine your lyrics with advanced AI assistance. Upload, edit, and perfect your songs with professional tools.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/generate" className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors cursor-pointer">
+              <Link href="/generate" className="inline-flex items-center px-4 py-2 bg-violet-500/10 text-violet-400 rounded-lg hover:bg-violet-500/20 transition-colors cursor-pointer">
                 <SparklesIcon className="w-4 h-4 mr-2" />
                 Generate Lyrics
               </Link>
-              <Link href="/dashboard" className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer">
+              <Link href="/dashboard" className="inline-flex items-center px-4 py-2 bg-white/5 text-zinc-400 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
                 <ClockIcon className="w-4 h-4 mr-2" />
                 View History
               </Link>
@@ -153,35 +153,34 @@ export default function EditPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Editor */}
             <div className="lg:col-span-2">
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 shadow-2xl shadow-black/40">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Lyrics</h2>
+                  <h2 className="text-xl font-semibold text-white">Lyrics</h2>
                   <div className="flex space-x-2">
-                    <button onClick={handleCopy} className="p-2 text-gray-600 hover:text-blue-600 transition-colors cursor-pointer" title="Copy">
+                    <button onClick={handleCopy} className="p-2 text-zinc-500 hover:text-violet-400 transition-colors cursor-pointer" title="Copy">
                       <ClipboardDocumentIcon className="h-5 w-5" />
                     </button>
-                    <button onClick={handleDownload} className="p-2 text-gray-600 hover:text-green-600 transition-colors cursor-pointer" title="Download">
+                    <button onClick={handleDownload} className="p-2 text-zinc-500 hover:text-emerald-400 transition-colors cursor-pointer" title="Download">
                       <DocumentArrowDownIcon className="h-5 w-5" />
                     </button>
                   </div>
                 </div>
                 {!lyrics ? (
                   <div
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                    className="border-2 border-dashed border-white/10 rounded-lg p-12 text-center hover:border-violet-500/40 transition-colors cursor-pointer"
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <DocumentArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Upload or paste your lyrics</h3>
-                    <p className="text-gray-600 mb-4">Drag and drop a .txt file here, or click to browse</p>
+                    <DocumentArrowUpIcon className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-white mb-2">Upload or paste your lyrics</h3>
+                    <p className="text-zinc-500 mb-4">Drag and drop a .txt file here, or click to browse</p>
                     <input ref={fileInputRef} type="file" accept=".txt,text/plain" className="hidden" onChange={handleTextFileUpload} />
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
+                      className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-500 cursor-pointer"
                     >
                       Choose File
                     </button>
@@ -194,51 +193,50 @@ export default function EditPage() {
                         onChange={(e) => setLyrics(e.target.value)}
                         onMouseUp={handleTextSelection}
                         onKeyUp={handleTextSelection}
-                        className="w-full h-96 p-6 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-base text-gray-900 bg-gray-50/50 shadow-inner selection:bg-blue-200 selection:text-blue-900"
+                        className="w-full h-96 p-6 border border-white/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 font-mono text-base text-white bg-white/[0.03] shadow-inner selection:bg-violet-500/30 selection:text-white placeholder-zinc-600 transition-colors"
                         placeholder="Your lyrics will appear here..."
                       />
-                      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1 text-xs text-gray-600 border border-gray-200">
+                      <div className="absolute top-2 right-2 bg-white/5 backdrop-blur-sm rounded-lg px-3 py-1 text-xs text-zinc-500 border border-white/5">
                         Tip: Select text to rewrite with AI
                       </div>
                     </div>
                     <div className="mt-4 text-center">
-                      <button onClick={() => setLyrics('')} className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer">Clear lyrics</button>
+                      <button onClick={() => setLyrics('')} className="text-zinc-500 hover:text-red-400 transition-colors cursor-pointer">Clear lyrics</button>
                     </div>
                   </>
                 )}
               </div>
             </div>
 
-            {/* AI Rewrite Panel */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <SparklesIcon className="h-5 w-5 mr-2 text-blue-600" />
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 shadow-2xl shadow-black/40">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <SparklesIcon className="h-5 w-5 mr-2 text-violet-400" />
                   AI Rewrite
                 </h3>
 
                 {selectedText ? (
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Selected Text:</label>
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm max-h-40 overflow-auto">
+                    <label className="block text-sm font-medium text-zinc-400 mb-2">Selected Text:</label>
+                    <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-md text-sm max-h-40 overflow-auto">
                       <div className="flex justify-between items-start gap-3">
-                        <div className="text-blue-800 whitespace-pre-wrap break-words">"{selectedText}"</div>
-                        <button onClick={() => setSelectedText('')} className="text-blue-600 hover:text-blue-800 flex-shrink-0 cursor-pointer">Clear</button>
+                        <div className="text-violet-300 whitespace-pre-wrap break-words">"{selectedText}"</div>
+                        <button onClick={() => setSelectedText('')} className="text-violet-400 hover:text-violet-300 flex-shrink-0 cursor-pointer">Clear</button>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="mb-4 text-xs text-gray-500">Tip: Highlight a verse/chorus or lines to rewrite</div>
+                  <div className="mb-4 text-xs text-zinc-600">Tip: Highlight a verse/chorus or lines to rewrite</div>
                 )}
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Rewrite Instructions:</label>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Rewrite Instructions:</label>
                   <textarea
                     value={rewriteRequest}
                     onChange={(e) => setRewriteRequest(e.target.value)}
                     rows={4}
                     maxLength={500}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 bg-white placeholder-gray-500"
+                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 text-sm text-white bg-white/[0.03] placeholder-zinc-600 transition-colors"
                     placeholder="e.g., Make it more emotional; change the rhyme scheme; simplify the language; punchier chorus"
                   />
                 </div>
@@ -247,39 +245,37 @@ export default function EditPage() {
                   onClick={handleRewrite}
                   isLoading={isRewriting}
                   disabled={!selectedText || !rewriteRequest.trim()}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg"
+                  className="w-full bg-violet-600 text-white py-3 px-4 rounded-lg hover:bg-violet-500 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg shadow-violet-600/20"
                 >
                   {isRewriting ? 'Rewriting...' : selectedText ? 'Rewrite Selected Text' : 'Select Text First'}
                 </LoadingButton>
 
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500">Daily rewrite limit:</span>
-                    <span className="font-medium text-gray-700">{profile?.rewrite_count || 0}/30</span>
+                    <span className="text-zinc-600">Daily rewrite limit:</span>
+                    <span className="font-medium text-zinc-400">{profile?.rewrite_count || 0}/30</span>
                   </div>
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="bg-blue-50 rounded-lg p-4 mt-6">
-                <h4 className="font-medium text-gray-900 mb-3">Quick Actions</h4>
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 mt-6">
+                <h4 className="font-medium text-white mb-3">Quick Actions</h4>
                 <div className="space-y-2">
-                  <button onClick={() => router.push('/generate')} className="w-full text-left text-blue-600 hover:text-blue-700 transition-colors">- Generate new lyrics</button>
-                  <button onClick={() => router.push('/dashboard')} className="w-full text-left text-blue-600 hover:text-blue-700 transition-colors">- View your lyrics history</button>
-                  <button onClick={() => router.push('/auth/signin')} className="w-full text-left text-blue-600 hover:text-blue-700 transition-colors">- Upgrade subscription</button>
+                  <button onClick={() => router.push('/generate')} className="w-full text-left text-violet-400 hover:text-violet-300 transition-colors">- Generate new lyrics</button>
+                  <button onClick={() => router.push('/dashboard')} className="w-full text-left text-violet-400 hover:text-violet-300 transition-colors">- View your lyrics history</button>
+                  <button onClick={() => router.push('/pricing')} className="w-full text-left text-violet-400 hover:text-violet-300 transition-colors">- Upgrade subscription</button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Audio Preview */}
-          <div className="bg-white rounded-lg shadow p-6 mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Audio Preview</h3>
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 mt-6 shadow-2xl shadow-black/40">
+            <h3 className="text-lg font-semibold text-white mb-4">Audio Preview</h3>
             {!audioUrl ? (
               <div>
                 <input type="file" accept="audio/*" onChange={handleAudioUpload} className="hidden" id="audio-upload" />
-                <label htmlFor="audio-upload" className="block w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-400 transition-colors cursor-pointer">
-                  <span className="text-gray-600">Upload an audio file to preview with your lyrics</span>
+                <label htmlFor="audio-upload" className="block w-full p-4 border-2 border-dashed border-white/10 rounded-lg text-center hover:border-violet-500/40 transition-colors cursor-pointer">
+                  <span className="text-zinc-500">Upload an audio file to preview with your lyrics</span>
                 </label>
               </div>
             ) : (
@@ -288,15 +284,14 @@ export default function EditPage() {
                   <source src={audioUrl} type={audioFile?.type} />
                   Your browser does not support the audio element.
                 </audio>
-                <button onClick={() => { setAudioFile(null); setAudioUrl(null); }} className="text-red-600 hover:text-red-700 transition-colors">Remove audio</button>
+                <button onClick={() => { setAudioFile(null); setAudioUrl(null); }} className="text-red-400 hover:text-red-300 transition-colors">Remove audio</button>
               </div>
             )}
-            <p className="text-sm text-gray-500 mt-2">Audio files are only stored temporarily in your browser and are not uploaded to our servers.</p>
+            <p className="text-sm text-zinc-600 mt-2">Audio files are only stored temporarily in your browser and are not uploaded to our servers.</p>
           </div>
 
-          {/* Privacy Notice */}
           <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500">Your lyrics are processed securely and are not permanently stored on our servers.</p>
+            <p className="text-sm text-zinc-600">Your lyrics are processed securely and are not permanently stored on our servers.</p>
           </div>
         </div>
       </div>

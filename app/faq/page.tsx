@@ -1,9 +1,7 @@
 import { Metadata } from 'next';
 
-// 强制静态生成 - FAQ 内容基本不变
 export const dynamic = 'force-static';
 
-// 元数据配置
 export const metadata: Metadata = {
   title: 'FAQ',
   description: 'Answers to common questions about our AI lyrics generator and how to create professional lyrics with AI.',
@@ -37,7 +35,6 @@ export default function FAQPage() {
     return acc;
   }, {} as Record<string, typeof faqs>);
 
-  // FAQPage 结构化数据（JSON-LD）
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -52,39 +49,37 @@ export default function FAQPage() {
   } as const;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen noise-bg py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* FAQPage JSON-LD */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
-        {/* Simple breadcrumb without JS */}
-        <nav aria-label="Breadcrumb" className="text-sm text-gray-500">
-          <a href="/" className="hover:text-gray-700">Home</a>
+
+        <nav aria-label="Breadcrumb" className="text-sm text-zinc-600">
+          <a href="/" className="hover:text-zinc-400 transition-colors">Home</a>
           <span className="mx-2">/</span>
-          <span className="text-gray-900">FAQ</span>
+          <span className="text-zinc-400">FAQ</span>
         </nav>
 
         <div className="mt-8">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Find answers to common questions about our AI lyrics generator and how it can help you create amazing songs.</p>
+          <div className="text-center mb-14">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Frequently Asked Questions</h1>
+            <p className="text-zinc-500 max-w-2xl mx-auto">Find answers to common questions about our AI lyrics generator.</p>
           </div>
 
-          {/* Category sections with details/summary (no JS) */}
           <div className="space-y-10">
             {Object.entries(grouped).map(([category, items]) => (
               <section key={category} id={category.replace(/\s+/g, '-').toLowerCase()}>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">{category}</h2>
-                <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-white mb-4">{category}</h2>
+                <div className="space-y-2">
                   {items.map((faq, idx) => (
-                    <details key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 group">
-                      <summary className="cursor-pointer select-none px-6 py-4 font-medium text-gray-900 flex items-center justify-between">
+                    <details key={idx} className="group rounded-xl border border-white/5 bg-white/[0.02]">
+                      <summary className="cursor-pointer select-none px-6 py-4 text-sm font-medium text-zinc-300 flex items-center justify-between hover:text-white transition-colors">
                         <span>{faq.question}</span>
-                        <span aria-hidden="true" className="ml-4 text-gray-400 group-open:rotate-180 transition-transform">&#9662;</span>
+                        <span aria-hidden="true" className="ml-4 text-zinc-600 group-open:rotate-180 transition-transform">&#9662;</span>
                       </summary>
-                      <div className="px-6 pb-4 text-gray-600 leading-relaxed">{faq.answer}</div>
+                      <div className="px-6 pb-4 text-xs text-zinc-500 leading-relaxed">{faq.answer}</div>
                     </details>
                   ))}
                 </div>
@@ -92,13 +87,12 @@ export default function FAQPage() {
             ))}
           </div>
 
-          {/* Contact Support */}
-          <div className="mt-12 text-center bg-white p-8 rounded-lg shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Still have questions?</h2>
-            <p className="text-gray-600 mb-6">Can't find the answer you're looking for? Please contact our support team and we'll get back to you as soon as possible.</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="mailto:sun@ai-lyrics-generator.net" className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors font-medium">Contact Support</a>
-            </div>
+          <div className="mt-14 text-center rounded-xl border border-violet-500/20 bg-violet-600/5 p-8">
+            <h2 className="text-lg font-bold text-white mb-3">Still have questions?</h2>
+            <p className="text-sm text-zinc-500 mb-6">Can&apos;t find the answer you&apos;re looking for? Please contact our support team.</p>
+            <a href="mailto:sun@ai-lyrics-generator.net" className="inline-flex items-center bg-violet-600 hover:bg-violet-500 text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors">
+              Contact Support
+            </a>
           </div>
         </div>
       </div>

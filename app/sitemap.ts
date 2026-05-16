@@ -88,11 +88,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const paginationPages: any[] = [];
   
   try {
-    // 创建匿名 Supabase 客户端（不使用 cookies）
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      return [...staticPages];
+    }
+    
+    const supabase = createClient(url, key);
     
     // Fetch active categories
     const { data: categories } = await supabase

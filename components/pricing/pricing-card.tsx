@@ -30,7 +30,6 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
   const handleSubscribe = async () => {
     if (!isLoaded) {
-      // still allow user to click; soft-warn only
       console.warn('Paddle is still loading');
     }
 
@@ -45,16 +44,13 @@ export default function PricingCard({ plan }: PricingCardProps) {
       const result = await openCheckout({
         priceId: plan.priceId || undefined,
         customerEmail: user.email,
-        // No redirect by default; keep in overlay and handle via events
         customData: { plan_name: plan.name, user_id: user.id }
       });
 
       if (result.status === 'completed') {
         toast.success('Payment successful. Updating membership...');
-        // 先尝试立即刷新
         try { await auth?.refreshProfile?.(true); } catch {}
 
-        // 轮询最多 ~20s 等待后端（webhook/队列）完成写入，避免用户手动刷新
         const waitUntilActive = async (timeoutMs = 15000, intervalMs = 2500) => {
           const start = Date.now();
           while (Date.now() - start < timeoutMs) {
@@ -72,17 +68,11 @@ export default function PricingCard({ plan }: PricingCardProps) {
         };
 
         try { await waitUntilActive(); } catch {}
-
         try { await auth?.refreshProfile?.(true); } catch {}
         toast.success('Membership updated! Redirecting...');
-
-        // 成功后跳回首页
         try { router.push('/'); } catch { window.location.href = '/'; }
       } else if (result.status === 'error') {
         toast.error('Payment failed. Please try again.');
-      } else {
-        // closed
-        // No toast needed; user just closed the checkout
       }
     } catch (error: any) {
       console.error('Failed to open checkout:', error);
@@ -91,13 +81,14 @@ export default function PricingCard({ plan }: PricingCardProps) {
   };
 
   return (
-    <div className={`relative bg-white rounded-2xl shadow-xl border-2 transition-transform duration-200 hover:-translate-y-1 ${plan.popular
-        ? 'border-blue-500 ring-4 ring-blue-500/20'
-        : 'border-gray-200'
-      }`}>
+    <div className={`relative rounded-2xl border transition-transform duration-200 hover:-translate-y-1 ${
+      plan.popular
+        ? 'border-violet-500/30 bg-violet-600/5 ring-1 ring-violet-500/20'
+        : 'border-white/5 bg-white/[0.02]'
+    }`}>
       {plan.popular && (
-        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-          <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+          <span className="bg-violet-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
             Most Popular
           </span>
         </div>
@@ -105,23 +96,21 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
       <div className="p-8 pb-24 min-h-[640px] flex flex-col">
         <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-          <p className="text-gray-600 mb-6">{plan.description}</p>
+          <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+          <p className="text-xs text-zinc-500 mb-6">{plan.description}</p>
           <div className="mb-4">
-            <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-            <span className="text-gray-500 ml-2">/{plan.period}</span>
+            <span className="text-4xl font-bold text-white">{plan.price}</span>
+            <span className="text-zinc-500 ml-2 text-sm">/{plan.period}</span>
           </div>
         </div>
 
-        <div className="space-y-4 mb-8 flex-1">
+        <div className="space-y-3 mb-8 flex-1">
           {plan.features.map((feature, index) => (
             <div key={index} className="flex items-start">
-              <CheckIcon className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-              <span className="text-gray-700">{feature}</span>
+              <CheckIcon className="w-4 h-4 text-emerald-400 mt-0.5 mr-2.5 flex-shrink-0" />
+              <span className="text-xs text-zinc-400">{feature}</span>
             </div>
           ))}
-
-          {/* no negative list */}
         </div>
 
         <div className="text-center absolute left-8 right-8 bottom-6">
@@ -129,11 +118,26 @@ export default function PricingCard({ plan }: PricingCardProps) {
             <button
               onClick={handleSubscribe}
               disabled={false}
-              className={`w-full px-6 py-3 rounded-lg font-medium transition-all duration-200 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer`}
+              className={`w-full px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                plan.popular
+                  ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20'
+                  : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+              }`}
             >
               {plan.cta}
             </button>
-          ) : null}
+          ) : (
+            <a
+              href="/auth/signin"
+              className={`block w-full px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 text-center ${
+                plan.popular
+                  ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20'
+                  : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+              }`}
+            >
+              {plan.cta}
+            </a>
+          )}
         </div>
       </div>
     </div>

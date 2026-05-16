@@ -8,6 +8,9 @@ export const runtime = 'edge';
 export async function GET() {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store', 'Vary': 'Cookie' } });
+    }
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {

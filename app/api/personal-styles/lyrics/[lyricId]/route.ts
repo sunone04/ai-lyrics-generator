@@ -9,6 +9,9 @@ export async function PUT(
   try {
     const { lyricId } = await context.params;
     const supabase = createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Service unavailable' }, { status: 503 });
+    }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -67,6 +70,9 @@ export async function DELETE(
   try {
     const { lyricId } = await context.params;
     const supabase = createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Service unavailable' }, { status: 503 });
+    }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

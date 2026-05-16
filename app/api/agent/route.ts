@@ -7,6 +7,9 @@ const userLocks = new Map<string, number>();
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return new Response(JSON.stringify({ error: 'Service unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });

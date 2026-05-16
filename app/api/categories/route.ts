@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
 
     // Insert category using admin client
     const adminClient = createAdminClient();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
     const { data: category, error: dbError } = await adminClient
       .from('categories')
       .insert({

@@ -4,26 +4,27 @@ import Breadcrumbs from '@/components/ui/breadcrumbs';
 
 export default function FeaturedPage() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen noise-bg py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <Breadcrumbs customBreadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Press & Badges', href: '/featured' }]} />
 
         <div className="mt-8">
-          <h1 className="text-3xl font-bold text-gray-900">Press & Badges</h1>
-          <p className="mt-3 text-gray-600">
-            We appreciate being featured by industry directories and communities. Below are official badges with direct links to their listings.
-          </p>
+          <div className="text-center mb-14">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Press & Badges</h1>
+            <p className="text-zinc-500 max-w-2xl mx-auto">
+              We appreciate being featured by industry directories and communities. Below are official badges with direct links to their listings.
+            </p>
+          </div>
 
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* AgentHunter badge */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-sm text-gray-700 mb-3">Featured on AgentHunter</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+              <p className="text-sm text-zinc-300 mb-4">Featured on AgentHunter</p>
               <a
                 href="https://www.agenthunter.io?utm_source=badge&utm_medium=embed&utm_campaign=AI-Lyrics-Generator"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="AgentHunter Featured AI Agent badge"
-                className="inline-flex items-center gap-2 bg-amber-50 border border-amber-400 px-3 py-2 rounded-lg no-underline transition hover:shadow-sm"
+                className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-lg no-underline transition hover:bg-amber-500/15"
               >
                 <img
                   src="https://www.agenthunter.io/logo-light.svg"
@@ -33,25 +34,24 @@ export default function FeaturedPage() {
                   decoding="async"
                 />
                 <div className="flex flex-col leading-tight">
-                  <p className="m-0 text-xs text-amber-800">AgentHunter</p>
-                  <p className="m-0 text-sm text-amber-950 font-semibold">Featured AI Agent</p>
+                  <p className="m-0 text-xs text-amber-400">AgentHunter</p>
+                  <p className="m-0 text-sm text-amber-300 font-semibold">Featured AI Agent</p>
                 </div>
               </a>
 
-              <p className="mt-3 text-xs text-gray-500">
+              <p className="mt-4 text-xs text-zinc-600">
                 Link opens in a new tab. Tracking parameters are included per directory requirements.
               </p>
             </div>
 
-            {/* Dang.ai badge */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-sm text-gray-700 mb-3">Featured on Dang.ai</p>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+              <p className="text-sm text-zinc-300 mb-4">Featured on Dang.ai</p>
               <a
                 href="https://dang.ai/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Dang.ai Featured badge"
-                className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-400 px-3 py-2 rounded-lg no-underline transition hover:shadow-sm"
+                className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 px-3 py-2 rounded-lg no-underline transition hover:bg-indigo-500/15"
               >
                 <img
                   src="https://cdn.prod.website-files.com/63d8afd87da01fb58ea3fbcb/6487e2868c6c8f93b4828827_dang-badge.png"
@@ -63,16 +63,14 @@ export default function FeaturedPage() {
                 />
               </a>
 
-              <p className="mt-3 text-xs text-gray-500">Link opens in a new tab.</p>
+              <p className="mt-4 text-xs text-zinc-600">Link opens in a new tab.</p>
             </div>
           </div>
 
-          {/* Reciprocal links */}
           <section className="mt-10">
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">Reciprocal Links</h2>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              {/* As requested, a plain anchor link */}
-              <a href="https://viesearch.com/">Viesearch - The Human-curated Search Engine</a>
+            <h2 className="text-lg font-semibold text-white mb-4">Reciprocal Links</h2>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+              <a href="https://viesearch.com/" className="text-sm text-violet-400 hover:text-violet-300 transition-colors">Viesearch - The Human-curated Search Engine</a>
             </div>
           </section>
         </div>

@@ -18,6 +18,9 @@ export const runtime = 'edge';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+    }
 
     // Auth: only for signed-in users
     const {

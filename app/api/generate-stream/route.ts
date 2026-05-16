@@ -14,6 +14,9 @@ function paramsHash(obj: unknown) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return new Response(JSON.stringify({ error: 'Service unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {

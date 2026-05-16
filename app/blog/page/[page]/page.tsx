@@ -18,6 +18,7 @@ export async function generateStaticParams() {
   // 在构建时使用管理员客户端，不依赖 cookies
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
+  if (!supabase) return [];
 
   const { count } = await supabase
     .from('posts')
@@ -43,6 +44,7 @@ async function getBlogPosts(page: number) {
   // 缓存未命中，从数据库获取（使用 AdminClient，无需认证）
   const { createAdminClient } = await import('@/lib/supabase-server');
   const supabase = createAdminClient();
+  if (!supabase) return { posts: [], totalCount: 0 };
   const offset = (page - 1) * POSTS_PER_PAGE;
 
   const { data: postsData, error, count } = await supabase

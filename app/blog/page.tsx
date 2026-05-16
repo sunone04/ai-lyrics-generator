@@ -1,9 +1,8 @@
-﻿import { Metadata } from 'next';
+import { Metadata } from 'next';
 import Link from 'next/link';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { cacheService } from '@/lib/cache-service';
 import { BLOG_CATEGORIES } from '@/lib/constants';
-import { formatDate } from '@/lib/utils';
 import { Post } from '@/lib/types';
 import { buildTitleBase, buildDescription, clampTitle } from '@/lib/seo';
 
@@ -43,14 +42,12 @@ export const metadata: Metadata = {
 
 async function getBlogPosts() {
   try {
-    // 浣跨敤姘镐箙缂撳瓨鏂规硶
     let posts = await cacheService.getBlogPosts(undefined, 1, 12);
     
     if (posts && posts.posts && posts.posts.length > 0) {
       return { posts: posts.posts, totalCount: posts.total || 0 };
     }
     
-    // 濡傛灉缂撳瓨涓虹┖锛岃繑鍥炵┖缁撴灉锛堥伩鍏嶆棤闄愰噸璇曪級
     return { posts: [], totalCount: 0 };
   } catch (error) {
     console.error('Unexpected error in getBlogPosts:', error);
@@ -60,14 +57,13 @@ async function getBlogPosts() {
 
 async function getCategories() {
   try {
-    // 浣跨敤姘镐箙缂撳瓨鏂规硶
     let categories = await cacheService.getCategories();
     
     if (categories && categories.length > 0) {
       return categories;
     }
     
-    // 濡傛灉缂撳瓨涓虹┖锛岃繑鍥為粯璁ゅ垎绫?    return BLOG_CATEGORIES;
+    return BLOG_CATEGORIES;
   } catch (error) {
     console.error('Unexpected error in getCategories:', error);
     return BLOG_CATEGORIES;
@@ -80,7 +76,6 @@ export default async function BlogPage() {
     getCategories()
   ]);
 
-  // 生成结构化数据
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Blog',
@@ -108,7 +103,6 @@ export default async function BlogPage() {
 
   return (
     <>
-      {/* 缁撴瀯鍖栨暟鎹?*/}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -116,80 +110,75 @@ export default async function BlogPage() {
         }}
       />
       
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen noise-bg py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumbs />
         
         <div className="mt-8">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Songwriting Blog
             </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
               Expert tips, techniques, and insights for creating amazing lyrics and music
             </p>
-            <p className="text-sm text-gray-600 mt-2">
-              Ready to create? <Link href="/generate" className="underline hover:text-blue-700">Try the AI Lyrics Generator</Link>
+            <p className="text-sm text-zinc-500 mt-2">
+              Ready to create? <Link href="/generate" className="text-violet-400 hover:text-violet-300 transition-colors">Try the AI Lyrics Generator</Link>
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Main Content */}
             <div className="lg:col-span-3">
               {posts.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-12 text-center">
+                  <h3 className="text-lg font-medium text-white mb-2">
                     Coming Soon
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-zinc-500">
                     We&apos;re working on creating amazing content for you. Check back soon!
                   </p>
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {posts.map((post: Post) => (
-                      <article key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                      <article key={post.id} className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden hover:border-white/10 transition-colors">
                         <div className="p-6">
                           <div className="flex items-center space-x-2 mb-3">
                             {post.category && (
                               <Link
                                 href={`/blog/category/${post.category.slug}`}
                                 prefetch={false}
-                                className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                                className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
                               >
                                 {post.category.name}
                               </Link>
                             )}
-
-
-
-
                           </div>
                           
-                          <h2 className="text-xl font-bold text-black mb-3">
+                          <h2 className="text-lg font-bold text-white mb-3">
                             <Link
                               href={`/blog/${post.slug}`}
                               prefetch={false}
-                              className="hover:text-blue-600 transition-colors"
+                              className="hover:text-violet-400 transition-colors"
                             >
                               {post.title}
                             </Link>
                           </h2>
                           
-                                                      {post.meta_description && (
-                              <p className="text-black mb-4 leading-relaxed line-clamp-3">
-                                {post.meta_description}
-                              </p>
-                            )}
+                          {post.meta_description && (
+                            <p className="text-sm text-zinc-500 mb-4 leading-relaxed line-clamp-3">
+                              {post.meta_description}
+                            </p>
+                          )}
                           
                           <Link
                             href={`/blog/${post.slug}`}
                             prefetch={false}
-                            className="inline-flex items-center text-blue-600 hover:text-blue-500 font-medium"
+                            className="inline-flex items-center text-sm text-violet-400 hover:text-violet-300 font-medium transition-colors"
                           >
                             Read more
-                            <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="ml-1 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                           </Link>
@@ -198,20 +187,19 @@ export default async function BlogPage() {
                     ))}
                   </div>
 
-                  {/* 鍒嗛〉閾炬帴 */}
                   {totalCount > 12 && (
                     <div className="mt-12 text-center">
                       <Link
                         href="/blog/page/2"
                         prefetch={false}
-                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                        className="inline-flex items-center px-6 py-3 text-sm font-medium rounded-lg text-white bg-violet-600 hover:bg-violet-500 transition-colors"
                       >
                         View More Articles
-                        <svg className="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </Link>
-                      <p className="mt-2 text-sm text-gray-500">
+                      <p className="mt-2 text-xs text-zinc-600">
                         Showing 12 of {totalCount} articles
                       </p>
                     </div>
@@ -220,10 +208,9 @@ export default async function BlogPage() {
               )}
             </div>
 
-            {/* Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 mb-8">
+                <h3 className="text-sm font-semibold text-white mb-4">
                   Categories
                 </h3>
                 <ul className="space-y-2">
@@ -232,7 +219,7 @@ export default async function BlogPage() {
                       <Link
                         href={`/blog/category/${category.slug}`}
                         prefetch={false}
-                        className="text-gray-600 hover:text-blue-600 transition-colors"
+                        className="text-sm text-zinc-500 hover:text-violet-400 transition-colors"
                       >
                         {category.name}
                       </Link>
@@ -241,17 +228,17 @@ export default async function BlogPage() {
                 </ul>
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              <div className="rounded-xl border border-violet-500/20 bg-violet-600/5 p-6">
+                <h3 className="text-sm font-semibold text-white mb-3">
                   Start Creating
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-xs text-zinc-500 mb-4">
                   Ready to put these tips into practice? Generate professional lyrics with our AI.
                 </p>
                 <Link
                   href="/generate"
                   prefetch={false}
-                  className="block w-full bg-blue-600 text-white text-center py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium"
+                  className="block w-full bg-violet-600 hover:bg-violet-500 text-white text-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors"
                 >
                   Generate Lyrics
                 </Link>
@@ -265,6 +252,5 @@ export default async function BlogPage() {
   );
 }
 
-// 寮哄埗瀹屽叏闈欐€佽緭鍑猴紝涓斾笉鑷姩鍐嶉獙璇?export const dynamic = 'force-static';
-// 鍚敤ISR - 姘镐箙缂撳瓨锛屽彧鍦ㄧ鐞嗘搷浣滄椂閫氳繃 /api/revalidate 鍒锋柊
+export const dynamic = 'force-static';
 export const revalidate = false;

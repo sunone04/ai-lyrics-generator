@@ -63,6 +63,9 @@ export async function GET() {
     } catch {}
 
     const supabase = await createServerComponentClient();
+    if (!supabase) {
+      return NextResponse.json({ user: null }, { headers: ANON_CACHE_HEADERS });
+    }
 
     // Read user from HttpOnly cookie session
     const {

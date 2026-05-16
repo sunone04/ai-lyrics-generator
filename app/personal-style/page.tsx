@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,7 @@ import Loading from '@/components/ui/loading';
 import Breadcrumbs from '@/components/ui/breadcrumbs';
 import { PlusIcon, PencilIcon, TrashIcon, BookOpenIcon, SparklesIcon, ShieldCheckIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
 import { useTrial } from '@/lib/hooks/use-trial';
-// Types to match the new database structure
+
 interface StyleGroup {
   id: number;
   name: string;
@@ -25,29 +25,23 @@ interface Lyric {
   word_count: number;
   created_at: string;
 }
-// Main Page Component
+
 export default function PersonalStylePage() {
   const { user } = useAuth();
   const router = useRouter();
   const { isActiveUser } = useTrial();
   const { personalStyles, loadingPersonalStyles, fetchPersonalStyles } = useData();
-  // Modal States
+
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isLyricsModalOpen, setIsLyricsModalOpen] = useState(false);
-  // Data States
   const [editingGroup, setEditingGroup] = useState<StyleGroup | null>(null);
   const [currentGroup, setCurrentGroup] = useState<StyleGroup | null>(null);
-  
 
-  // Removed brittle DOM cleanup: fix texts at source instead
-
-  // Provider 已基于提示 Cookie 做了懒加载与去重，此处不再重复触发 refreshProfile
-  // 首次登录后触发一次强制拉取，避免依赖函数引用造成死循环
   useEffect(() => {
     if (user) fetchPersonalStyles(true);
-    // 仅在用户ID变化时触发
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
   if (!user) {
     const faqSchema = {
       '@context': 'https://schema.org',
@@ -58,8 +52,7 @@ export default function PersonalStylePage() {
           name: 'What is the Personal Style Library?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text:
-              'Personal Style Library lets you save short lyric samples in groups so our AI can learn your unique writing style and use it in future generations.'
+            text: 'Personal Style Library lets you save short lyric samples in groups so our AI can learn your unique writing style and use it in future generations.'
           }
         },
         {
@@ -67,8 +60,7 @@ export default function PersonalStylePage() {
           name: 'Do I need a paid plan to try it?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text:
-              'New users get a 3-day free trial (no credit card required). During trial, you can experience premium features including Personal Style Library.'
+            text: 'New users get a 3-day free trial (no credit card required). During trial, you can experience premium features including Personal Style Library.'
           }
         },
         {
@@ -76,86 +68,80 @@ export default function PersonalStylePage() {
           name: 'How many samples can I add?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text:
-              'Each style group supports up to 5 short samples (<= 500 characters per sample). The AI will use the entire group when generating lyrics.'
+            text: 'Each style group supports up to 5 short samples (<= 500 characters per sample). The AI will use the entire group when generating lyrics.'
           }
         }
-        // 额外：支持一次性批量添加多条样本（最多5条）
       ]
     } as const;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+      <div className="min-h-screen noise-bg">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
         <div className="container mx-auto px-4 py-12">
           <Breadcrumbs customBreadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Personal Style Library', href: '/personal-style' }]} />
 
-          {/* Hero */}
           <div className="text-center max-w-3xl mx-auto mt-6">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
               Personal Style Library
-              <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mt-2">Teach the AI Your Unique Writing Style</span>
+              <span className="block bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent mt-2">Teach the AI Your Unique Writing Style</span>
             </h1>
-            <p className="mt-5 text-lg text-gray-700 leading-relaxed">
+            <p className="mt-5 text-lg text-zinc-400 leading-relaxed">
               Create your own style library by adding short samples of lyrics you wrote. These samples act as private reference cues so the AI can write in your voice, structure, and wording - as if you wrote it yourself.
             </p>
-            <div className="mt-3 text-sm text-gray-700 bg-gray-50 inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200">
-              <ShieldCheckIcon className="w-4 h-4 text-green-600" />
+            <div className="mt-3 text-sm text-zinc-400 bg-white/[0.03] inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/5">
+              <ShieldCheckIcon className="w-4 h-4 text-emerald-400" />
               We respect your privacy: your samples are only used at generation time as temporary references - not for model training or any other purpose.
             </div>
             <div className="mt-6 inline-flex gap-3">
-              <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-medium">Sign In to Access</Link>
-              <Link href="/generate" className="px-6 py-3 rounded-lg text-blue-700 bg-white border border-blue-200 hover:bg-blue-50 font-medium">Try The Generator</Link>
+              <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-violet-600 hover:bg-violet-500 font-medium shadow-lg shadow-violet-600/20">Sign In to Access</Link>
+              <Link href="/generate" className="px-6 py-3 rounded-lg text-violet-400 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 font-medium">Try The Generator</Link>
             </div>
           </div>
 
-          {/* Benefits */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 max-w-6xl mx-auto">
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <SparklesIcon className="w-6 h-6 text-blue-600" />
-              <h3 className="mt-3 font-semibold text-gray-900">Write In Your Voice</h3>
-              <p className="mt-2 text-gray-600 text-sm">The AI learns your language, structure, and favorite phrases to keep the vibe consistent across songs.</p>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 shadow-2xl shadow-black/40">
+              <SparklesIcon className="w-6 h-6 text-violet-400" />
+              <h3 className="mt-3 font-semibold text-white">Write In Your Voice</h3>
+              <p className="mt-2 text-zinc-500 text-sm">The AI learns your language, structure, and favorite phrases to keep the vibe consistent across songs.</p>
             </div>
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <MusicalNoteIcon className="w-6 h-6 text-purple-600" />
-              <h3 className="mt-3 font-semibold text-gray-900">Use It Anywhere</h3>
-              <p className="mt-2 text-gray-600 text-sm">Pick your style group in the generator and the model will use all samples from that group while composing.</p>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 shadow-2xl shadow-black/40">
+              <MusicalNoteIcon className="w-6 h-6 text-pink-400" />
+              <h3 className="mt-3 font-semibold text-white">Use It Anywhere</h3>
+              <p className="mt-2 text-zinc-500 text-sm">Pick your style group in the generator and the model will use all samples from that group while composing.</p>
             </div>
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <ShieldCheckIcon className="w-6 h-6 text-emerald-600" />
-              <h3 className="mt-3 font-semibold text-gray-900">Private & Secure</h3>
-              <p className="mt-2 text-gray-600 text-sm">Your samples are visible only to you. You can edit or remove them anytime with one click.</p>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 shadow-2xl shadow-black/40">
+              <ShieldCheckIcon className="w-6 h-6 text-emerald-400" />
+              <h3 className="mt-3 font-semibold text-white">Private & Secure</h3>
+              <p className="mt-2 text-zinc-500 text-sm">Your samples are visible only to you. You can edit or remove them anytime with one click.</p>
             </div>
           </div>
 
-          {/* How it works */}
           <div className="mt-16 max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-900 text-center">How It Works</h2>
+            <h2 className="text-2xl font-bold text-white text-center">How It Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-              <div className="bg-white rounded-xl p-6 border border-gray-100">
-                <div className="text-xs font-semibold text-blue-700">Step 1</div>
-                <h3 className="mt-1 font-semibold">Create a Style Group</h3>
-                <p className="mt-2 text-sm text-gray-600">Start a new group for a singer persona, mood, or genre.</p>
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+                <div className="text-xs font-semibold text-violet-400">Step 1</div>
+                <h3 className="mt-1 font-semibold text-white">Create a Style Group</h3>
+                <p className="mt-2 text-sm text-zinc-500">Start a new group for a singer persona, mood, or genre.</p>
               </div>
-              <div className="bg-white rounded-xl p-6 border border-gray-100">
-                <div className="text-xs font-semibold text-blue-700">Step 2</div>
-                <h3 className="mt-1 font-semibold">Add 3-5 Short Samples</h3>
-                <p className="mt-2 text-sm text-gray-600">Each sample {'<='} 500 characters. The AI uses the entire group.</p>
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+                <div className="text-xs font-semibold text-violet-400">Step 2</div>
+                <h3 className="mt-1 font-semibold text-white">Add 3-5 Short Samples</h3>
+                <p className="mt-2 text-sm text-zinc-500">Each sample {'<='} 500 characters. The AI uses the entire group.</p>
               </div>
-              <div className="bg-white rounded-xl p-6 border border-gray-100">
-                <div className="text-xs font-semibold text-blue-700">Step 3</div>
-                <h3 className="mt-1 font-semibold">Generate Lyrics</h3>
-                <p className="mt-2 text-sm text-gray-600">Pick your style group on the Generate page and create songs in your voice.</p>
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+                <div className="text-xs font-semibold text-violet-400">Step 3</div>
+                <h3 className="mt-1 font-semibold text-white">Generate Lyrics</h3>
+                <p className="mt-2 text-sm text-zinc-500">Pick your style group on the Generate page and create songs in your voice.</p>
               </div>
             </div>
           </div>
 
-          {/* CTA */}
           <div className="text-center mt-12">
-            <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-medium">Create Your First Style Group</Link>
-            <p className="text-sm text-gray-500 mt-3">
-              Prefer to explore first? <Link href="/generate" className="text-blue-600 hover:text-blue-700">Try the AI Lyrics Generator</Link>
+            <Link href="/auth/signin" className="px-6 py-3 rounded-lg text-white bg-violet-600 hover:bg-violet-500 font-medium shadow-lg shadow-violet-600/20">Create Your First Style Group</Link>
+            <p className="text-sm text-zinc-600 mt-3">
+              Prefer to explore first? <Link href="/generate" className="text-violet-400 hover:text-violet-300">Try the AI Lyrics Generator</Link>
             </p>
           </div>
         </div>
@@ -166,15 +152,15 @@ export default function PersonalStylePage() {
     return <Loading />;
   }
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+    <div className="min-h-screen noise-bg">
       <div className="container mx-auto px-4 py-8">
         <Breadcrumbs customBreadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Personal Style Library', href: '/personal-style' }]} />
         {!isActiveUser && (
-          <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <div className="mb-6 p-4 bg-violet-500/10 border border-violet-500/20 rounded-lg">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5"><SparklesIcon className="w-5 h-5 text-purple-600" /></div>
+              <div className="mt-0.5"><SparklesIcon className="w-5 h-5 text-violet-400" /></div>
               <div>
-                <h3 className="font-semibold text-purple-900">Premium Feature</h3>
+                <h3 className="font-semibold text-violet-300">Premium Feature</h3>
               </div>
             </div>
             <div className="mt-3 flex gap-3">
@@ -197,11 +183,9 @@ export default function PersonalStylePage() {
             setCurrentGroup(group);
             setIsLyricsModalOpen(true);
           }}
-          // 删除后强制刷新，绕过时间缓存与会员限制
           onDelete={() => fetchPersonalStyles(true)}
         />
       </div>
-      {/* Modals */}
       {isGroupModalOpen && (
         <GroupFormModal
           group={editingGroup}
@@ -221,29 +205,29 @@ export default function PersonalStylePage() {
     </div>
   );
 }
-// 注意：本页为 Client Component，不导出 revalidate/dynamic 段配置。
-// Sub-components for clarity
+
 const Header = ({ isActiveUser, onAddNew }: { isActiveUser: boolean, onAddNew: () => void }) => (
   <div className="mb-8">
     <div className="flex justify-between items-center">
       <div>
-        <h1 className="text-4xl font-bold text-gray-800">Personal Style Library</h1>
-        <p className="text-xl text-gray-600 mt-2">Add your own lyric samples as private references so the AI can write in your voice. Samples are never used to train models.</p>
+        <h1 className="text-4xl font-bold text-white">Personal Style Library</h1>
+        <p className="text-xl text-zinc-400 mt-2">Add your own lyric samples as private references so the AI can write in your voice. Samples are never used to train models.</p>
       </div>
-      <Button onClick={onAddNew} className={`bg-blue-600 hover:bg-blue-700 ${!isActiveUser ? 'opacity-70' : ''}`}>
+      <Button onClick={onAddNew} className={`bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-600/20 ${!isActiveUser ? 'opacity-70' : ''}`}>
         <PlusIcon className="w-5 h-5 mr-2" />
         Create New Style
       </Button>
     </div>
-    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700">
-        <div className="flex items-start gap-2"><MusicalNoteIcon className="w-4 h-4 text-blue-600 mt-0.5" /><span>1) Create a style group for a singer persona, mood, or genre.</span></div>
-        <div className="flex items-start gap-2"><BookOpenIcon className="w-4 h-4 text-purple-600 mt-0.5" /><span>2) Add 3-5 short lyric samples ({'<='} 500 chars each).</span></div>
-        <div className="flex items-start gap-2"><ShieldCheckIcon className="w-4 h-4 text-emerald-600 mt-0.5" /><span>3) On the Generate page, pick this group to write in your voice.</span></div>
+    <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-zinc-400">
+        <div className="flex items-start gap-2"><MusicalNoteIcon className="w-4 h-4 text-violet-400 mt-0.5" /><span>1) Create a style group for a singer persona, mood, or genre.</span></div>
+        <div className="flex items-start gap-2"><BookOpenIcon className="w-4 h-4 text-pink-400 mt-0.5" /><span>2) Add 3-5 short lyric samples ({'<='} 500 chars each).</span></div>
+        <div className="flex items-start gap-2"><ShieldCheckIcon className="w-4 h-4 text-emerald-400 mt-0.5" /><span>3) On the Generate page, pick this group to write in your voice.</span></div>
       </div>
     </div>
   </div>
 );
+
 const StyleGroupGrid = ({ styleGroups, onEdit, onDelete }: {
   styleGroups: StyleGroup[],
   onEdit: (group: StyleGroup) => void,
@@ -251,24 +235,24 @@ const StyleGroupGrid = ({ styleGroups, onEdit, onDelete }: {
 }) => {
   if (styleGroups.length === 0) {
     return (
-      <Card className="text-center p-12">
-        <BookOpenIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-        <h3 className="text-xl font-semibold text-gray-600">No Style Groups Yet</h3>
-        <p className="text-gray-500 mt-2">Click 'Create New Style' to get started.</p>
+      <Card className="text-center p-12 border-white/5 bg-white/[0.02]">
+        <BookOpenIcon className="w-16 h-16 mx-auto text-zinc-700 mb-4" />
+        <h3 className="text-xl font-semibold text-zinc-400">No Style Groups Yet</h3>
+        <p className="text-zinc-600 mt-2">Click 'Create New Style' to get started.</p>
       </Card>
     );
   }
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {styleGroups.map(group => (
-        <Card key={group.id} className="hover:shadow-lg transition-shadow flex flex-col">
+        <Card key={group.id} className="hover:border-violet-500/20 transition-colors flex flex-col border-white/5 bg-white/[0.02]">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-800">{group.name}</CardTitle>
+            <CardTitle className="text-lg font-semibold text-white">{group.name}</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow">
-            <p className="text-xs text-gray-400">Created: {new Date(group.created_at).toLocaleDateString()}</p>
+            <p className="text-xs text-zinc-600">Created: {new Date(group.created_at).toLocaleDateString()}</p>
           </CardContent>
-          <div className="p-4 border-t flex justify-end space-x-2">
+          <div className="p-4 border-t border-white/5 flex justify-end space-x-2">
             <Button variant="outline" size="sm" onClick={() => onEdit(group)}>Edit</Button>
             <DeleteButton id={group.id} onSuccess={onDelete} apiPath="/api/personal-styles" />
           </div>
@@ -277,14 +261,14 @@ const StyleGroupGrid = ({ styleGroups, onEdit, onDelete }: {
     </div>
   );
 };
-// Modal Components
+
 const Modal = ({ children, onClose }: { children: React.ReactNode, onClose: () => void }) => (
   <div
-    className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+    className="fixed inset-0 z-50 p-4 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     onClick={onClose}
   >
     <div
-      className="bg-white text-gray-900 rounded-xl shadow-2xl ring-1 ring-black/5 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      className="bg-zinc-900 text-white rounded-xl shadow-2xl ring-1 ring-white/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       onClick={e => e.stopPropagation()}
     >
       <div className="p-6">
@@ -293,11 +277,10 @@ const Modal = ({ children, onClose }: { children: React.ReactNode, onClose: () =
     </div>
   </div>
 );
+
 const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | null, onClose: () => void, onSuccess: () => void }) => {
   const [name, setName] = useState(group?.name || '');
-  // 鍙€夛細鍦ㄥ垱寤哄垎缁勬椂鍚屾椂娣诲姞棣栨潯姝岃瘝
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // 支持一次添加多条歌词样本（最多5条）
   const [samples, setSamples] = useState<{ title: string; lyrics: string }[]>([{ title: '', lyrics: '' }]);
   const addSample = () => {
     setSamples(prev => (prev.length >= 5 ? prev : [...prev, { title: '', lyrics: '' }]));
@@ -321,7 +304,6 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
       });
       const data = await response.json();
       if (data.success) {
-        // Batch create up to 5 lyric samples when creating a new group
         if (!group) {
           const styleGroupId = data.styleGroup?.id as number | undefined;
           if (styleGroupId) {
@@ -364,19 +346,19 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Enter style name (e.g., Dark Folk)"
-          className="w-full p-2 border rounded mb-4 bg-white text-gray-900"
+          className="w-full p-2 border border-white/10 rounded mb-4 bg-white/[0.03] text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40"
           required
           maxLength={100}
         />
         {!group && (
           <div className="space-y-3 mb-4">
-            <p className="text-sm text-gray-600">Optional: Add lyric samples now (up to 5)</p>
+            <p className="text-sm text-zinc-400">Optional: Add lyric samples now (up to 5)</p>
             {samples.map((s, idx) => (
-              <div key={idx} className="border rounded-lg p-3 bg-gray-50">
+              <div key={idx} className="border border-white/5 rounded-lg p-3 bg-white/[0.02]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">Sample {idx + 1}</span>
+                  <span className="text-xs text-zinc-600">Sample {idx + 1}</span>
                   {samples.length > 1 && (
-                    <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => removeSample(idx)}>Remove</button>
+                    <button type="button" className="text-xs text-red-400 hover:text-red-300" onClick={() => removeSample(idx)}>Remove</button>
                   )}
                 </div>
                 <input
@@ -384,21 +366,21 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
                   value={s.title}
                   onChange={e => updateSample(idx, 'title', e.target.value)}
                   placeholder="Title (e.g., Verse 1 Sample)"
-                  className="w-full p-2 border rounded bg-white text-gray-900 mb-2"
+                  className="w-full p-2 border border-white/10 rounded bg-white/[0.03] text-white mb-2 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40"
                   maxLength={100}
                 />
                 <textarea
                   value={s.lyrics}
                   onChange={e => updateSample(idx, 'lyrics', e.target.value)}
                   placeholder="Paste lyrics here (<= 500 chars)"
-                  className="w-full p-2 border rounded bg-white text-gray-900"
+                  className="w-full p-2 border border-white/10 rounded bg-white/[0.03] text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40"
                   rows={6}
                   maxLength={500}
                 />
               </div>
             ))}
             <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500">Tips: Short, representative lines work best.</span>
+              <span className="text-xs text-zinc-600">Tips: Short, representative lines work best.</span>
               <Button type="button" variant="outline" onClick={addSample} disabled={samples.length >= 5}><PlusIcon className="w-4 h-4 mr-1" />Add Sample</Button>
             </div>
           </div>
@@ -411,6 +393,7 @@ const GroupFormModal = ({ group, onClose, onSuccess }: { group: StyleGroup | nul
     </Modal>
   );
 };
+
 import useSWR from 'swr';
 const LyricsViewerModal = ({ group, onClose }: {
   group: StyleGroup,
@@ -431,229 +414,152 @@ const LyricsViewerModal = ({ group, onClose }: {
   const [editingAll, setEditingAll] = useState(true);
   const [saveBusy, setSaveBusy] = useState(false);
   const [drafts, setDrafts] = useState<Array<{ id?: number; title: string; lyrics: string; _deleted?: boolean; _new?: boolean }>>([]);
-  // 初始化草稿：进入编辑模式或歌词变更时仅在草稿为空时填充，避免重复开销
+
   useEffect(() => {
     if (editingAll && drafts.length === 0) {
       setDrafts((lyrics || []).map(l => ({ id: l.id, title: l.title || '', lyrics: l.lyrics || '' })));
     }
   }, [editingAll, lyrics, drafts.length]);
+
   const addDraft = () => {
-    // enforce up to 5 non-deleted items
-    const alive = drafts.filter(d => !d._deleted).length;
-    if (alive >= 5) return;
+    const nonDeleted = drafts.filter(d => !d._deleted);
+    if (nonDeleted.length >= 5) {
+      toast.error('Maximum 5 samples per group');
+      return;
+    }
     setDrafts(prev => [...prev, { title: '', lyrics: '', _new: true }]);
   };
+
   const removeDraft = (idx: number) => {
-    setDrafts(prev => prev.map((d, i) => {
-      if (i !== idx) return d;
-      if (!d.id) {
-        // brand new item -> remove from list
-        return { ...d, _deleted: true } as any;
-      }
-      return { ...d, _deleted: !d._deleted };
-    }).filter(d => d.id || !d._deleted));
+    setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, _deleted: true } : d));
   };
+
   const updateDraft = (idx: number, field: 'title' | 'lyrics', value: string) => {
     setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
   };
-  const computeChanges = () => {
-    const origMap = new Map<number, { title: string; lyrics: string }>();
-    (lyrics || []).forEach(l => origMap.set(l.id, { title: l.title || '', lyrics: l.lyrics || '' }));
-    const toDelete = drafts.filter(d => d.id && d._deleted) as Array<{ id: number }>;
-    const toUpdate = drafts.filter(d => d.id && !d._deleted && (
-      d.title.trim() !== (origMap.get(d.id!)?.title || '') ||
-      d.lyrics.trim() !== (origMap.get(d.id!)?.lyrics || '')
-    )) as Array<{ id: number; title: string; lyrics: string }>;
-    const toCreateAll = drafts.filter(d => !d.id && !d._deleted && d.title.trim() && d.lyrics.trim()) as Array<{ title: string; lyrics: string }>;
-    const currentCount = (lyrics || []).length;
-    const allowedCreates = Math.max(0, 5 - (currentCount - toDelete.length));
-    const toCreate = toCreateAll.slice(0, allowedCreates);
-    return { toDelete, toUpdate, toCreate };
-  };
-  const hasChanges = () => {
-    const { toDelete, toUpdate, toCreate } = computeChanges();
-    return toDelete.length + toUpdate.length + toCreate.length > 0;
-  };
-  const handleSaveAll = async () => {
-    const { toDelete, toUpdate, toCreate } = computeChanges();
-    if (toDelete.length + toUpdate.length + toCreate.length === 0) { setEditingAll(false); return; }
+
+  const saveAll = async () => {
     setSaveBusy(true);
     try {
-      // Delete first to maintain max-count constraints
-      for (const d of toDelete) {
-        try { await fetch(`/api/personal-styles/lyrics/${d.id}`, { method: 'DELETE' }); } catch {}
+      if (name.trim() !== (group?.name || '')) {
+        await fetch(`/api/personal-styles/${group.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name.trim() }),
+        });
       }
-      for (const u of toUpdate) {
-        try {
-          await fetch(`/api/personal-styles/lyrics/${u.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: u.title.trim(), lyrics: u.lyrics.trim() })
-          });
-        } catch {}
-      }
-      for (const c of toCreate) {
-        try {
+
+      for (const draft of drafts) {
+        if (draft._deleted && draft.id) {
+          await fetch(`/api/personal-styles/lyrics/${draft.id}`, { method: 'DELETE' });
+        } else if (draft._new && !draft._deleted && draft.title.trim() && draft.lyrics.trim()) {
           await fetch('/api/personal-styles/lyrics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ style_group_id: group.id, title: c.title.trim(), lyrics: c.lyrics.trim() })
+            body: JSON.stringify({ style_group_id: group.id, title: draft.title.trim(), lyrics: draft.lyrics.trim() }),
           });
-        } catch {}
+        } else if (!draft._new && !draft._deleted && draft.id) {
+          await fetch(`/api/personal-styles/lyrics/${draft.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: draft.title.trim(), lyrics: draft.lyrics.trim() }),
+          });
+        }
       }
-      // refresh lists
-      try { await mutate(); } catch {}
-      try { await fetchPersonalStyles(true); } catch {}
-      toast.success('Changes saved');
-      setEditingAll(false);
-      setDrafts([]);
+
+      await mutate();
+      await fetchPersonalStyles(true);
+      toast.success('All changes saved');
+    } catch (e) {
+      toast.error('Failed to save changes');
     } finally {
       setSaveBusy(false);
     }
   };
-  const handleSaveName = async () => {
-    if (!name?.trim() || name.trim() === group.name) return;
-    setSavingName(true);
-    try {
-      const res = await fetch(`/api/personal-styles/${group.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() })
-      });
-      const j = await res.json();
-      if (!res.ok || !j?.success) throw new Error(j?.error || 'Failed');
-      toast.success('Group name updated');
-      try { await mutate(); } catch {}
-      try { await fetchPersonalStyles(true); } catch {}
-    } catch (e) {
-      toast.error((e as Error)?.message || 'Failed to update');
-    } finally {
-      setSavingName(false);
-    }
-  };
+
+  const visibleDrafts = drafts.filter(d => !d._deleted);
+
   return (
     <Modal onClose={onClose}>
-      <div className="flex flex-col gap-3 mb-4">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-xl font-semibold">Edit "{group.name}"</h3>
-          <div className="flex items-center gap-2"><Link href="/generate" className="text-sm text-blue-600 hover:text-blue-800 font-medium">Use in Generator -{'>'}</Link></div>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="flex-1 p-2 border rounded bg-white text-gray-900"
-            maxLength={100}
-          />
-          <Button onClick={handleSaveName} disabled={savingName || !name.trim() || name.trim() === group.name}>{savingName ? 'Saving...' : 'Save Name'}</Button>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-semibold">Edit Style Group</h3>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={addDraft} disabled={visibleDrafts.length >= 5}>
+            <PlusIcon className="w-4 h-4 mr-1" /> Add Sample
+          </Button>
+          <Button size="sm" onClick={saveAll} disabled={saveBusy}>
+            {saveBusy ? 'Saving...' : 'Save All'}
+          </Button>
         </div>
       </div>
-      {isLoading ? <Loading /> : (
-        !editingAll ? (
-          <div className="space-y-4">
-            {lyrics.length === 0 ? <p>No lyric samples yet.</p> : lyrics.map(lyric => (
-              <div key={lyric.id} className="p-4 border rounded-lg">
-                <h4 className="font-semibold text-lg">{lyric.title}</h4>
-                <p className="text-gray-600 mt-2 whitespace-pre-wrap">{lyric.lyrics}</p>
-                <p className="text-xs text-gray-400 mt-2">{lyric.word_count} words</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {drafts.length === 0 && (
-              <p className="text-sm text-gray-500">No items. Click "Add Sample" to add.</p>
-            )}
-            {drafts.map((d, idx) => (
-              <div key={d.id ?? `new-${idx}`} className={`p-4 border rounded-lg ${d._deleted ? 'opacity-50' : ''}`}>
-                <div className="flex items-center justify-end">
-                  <button type="button" className={`text-xs ${d._deleted ? 'text-gray-600' : 'text-red-600'} hover:underline`} onClick={() => removeDraft(idx)}>
-                    {d._deleted ? 'Undo Remove' : 'Remove'}
-                  </button>
+
+      <input
+        type="text"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        className="w-full p-2 border border-white/10 rounded mb-4 bg-white/[0.03] text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40"
+        placeholder="Style group name"
+      />
+
+      {isLoading ? (
+        <div className="text-center py-8 text-zinc-500">Loading...</div>
+      ) : (
+        <div className="space-y-3">
+          {drafts.map((draft, idx) => {
+            if (draft._deleted) return null;
+            return (
+              <div key={idx} className="border border-white/5 rounded-lg p-3 bg-white/[0.02]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-zinc-600">Sample {idx + 1}</span>
+                  <button type="button" className="text-xs text-red-400 hover:text-red-300" onClick={() => removeDraft(idx)}>Remove</button>
                 </div>
                 <input
                   type="text"
-                  value={d.title}
+                  value={draft.title}
                   onChange={e => updateDraft(idx, 'title', e.target.value)}
-                  placeholder="Title (e.g., Verse 1 Sample)"
-                  className="w-full p-2 border rounded bg-white text-gray-900 mt-2"
+                  placeholder="Title"
+                  className="w-full p-2 border border-white/10 rounded bg-white/[0.03] text-white mb-2 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40"
                   maxLength={100}
-                  disabled={d._deleted}
                 />
                 <textarea
-                  value={d.lyrics}
+                  value={draft.lyrics}
                   onChange={e => updateDraft(idx, 'lyrics', e.target.value)}
-                  placeholder="Paste lyrics here..."
-                  className="w-full p-2 border rounded bg-white text-gray-900 mt-2"
-                  rows={8}
+                  placeholder="Lyrics (<= 500 chars)"
+                  className="w-full p-2 border border-white/10 rounded bg-white/[0.03] text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40"
+                  rows={4}
                   maxLength={500}
-                  disabled={d._deleted}
                 />
               </div>
-            ))}
-            <div className="flex items-center justify-between pt-2">
-              <Button type="button" variant="outline" onClick={addDraft} disabled={drafts.filter(d => !d._deleted).length >= 5}>
-                <PlusIcon className="w-5 h-5 mr-2" /> Add Sample
-              </Button>
-              <div className="flex items-center gap-2">
-                <Button type="button" onClick={handleSaveAll} disabled={saveBusy || !hasChanges()}>
-                  {saveBusy ? 'Saving...' : 'Save All'}
-                </Button>
-                <Button type="button" variant="outline" onClick={onClose} disabled={saveBusy}>Cancel</Button>
-              </div>
-            </div>
-          </div>
-        )
+            );
+          })}
+        </div>
       )}
     </Modal>
   );
 };
-const DeleteButton = ({ id, onSuccess, apiPath }: { id: number, onSuccess: () => void, apiPath: string }) => {
+
+function DeleteButton({ id, onSuccess, apiPath }: { id: number; onSuccess: () => void; apiPath: string }) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const { removePersonalStyle } = useData();
+
   const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this?')) return;
     setIsDeleting(true);
     try {
-      const response = await fetch(`${apiPath}/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        // 乐观更新：仅分组删除时从列表中移除
-        if (apiPath === '/api/personal-styles') {
-          try { removePersonalStyle(id); } catch {}
-        }
-        // 触发调用方的后续刷新（如歌词列表刷新、或强制拉取）
-        onSuccess();
-      } else {
-        const data = await response.json().catch(() => ({} as any));
-        toast.error(data.error || 'Failed to delete');
-      }
-    } catch (error) {
-      console.error('Delete failed:', error);
+      const res = await fetch(`${apiPath}/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      toast.success('Deleted successfully');
+      onSuccess();
+    } catch (e) {
       toast.error('Failed to delete');
     } finally {
       setIsDeleting(false);
     }
   };
+
   return (
-    <>
-      <Button variant="ghost" size="sm" onClick={() => setShowConfirm(true)} disabled={isDeleting}>
-        {isDeleting ? '...' : <TrashIcon className="w-4 h-4 text-red-500" />}
-      </Button>
-      {showConfirm && (
-        <Modal onClose={() => setShowConfirm(false)}>
-          <h3 className="text-lg font-semibold mb-2">Confirm Deletion</h3>
-          <p className="text-sm text-gray-600 mb-4">This action will permanently remove the item. This cannot be undone.</p>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={isDeleting}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </div>
-        </Modal>
-      )}
-    </>
+    <Button variant="outline" size="sm" onClick={handleDelete} disabled={isDeleting} className="text-red-400 hover:text-red-300 hover:border-red-500/20">
+      <TrashIcon className="w-4 h-4 mr-1" />
+      {isDeleting ? 'Deleting...' : 'Delete'}
+    </Button>
   );
-};
-
-
+}
